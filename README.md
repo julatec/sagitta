@@ -11,11 +11,38 @@ decisions  →  laws  →  localization  →  second law  →  consequences for 
 
 The essay asks where the asymmetry between the two directions of a search lives: going forward,
 from a witness to the answer "yes", is easy; going backward, from "yes" to a witness, seems hard.
-The formalization answers: **not** in the dynamics (reversible dynamics goes back at the same
+The essay's reading of the formalization: **not** in the dynamics (reversible dynamics goes back at the same
 cost), **not** in the state while it is kept whole (with the full boundary going back is one
 verification), but **only** in the erasure of the boundary down to one bit, where the asymmetry is
 *exactly* the question `P` versus `NP`. The second law says that the asymmetry is real; it is a
 named hypothesis, never an axiom.
+
+## Fidelity notes: what is and is not proved (read first)
+
+An independent audit compared every central statement with the literature (40 statements: 33
+faithful, 2 weaker, 5 different). The differences, stated plainly:
+
+* **Bennett.** `bennett_holds` proves a *reversible* machine (step injective on every running
+  configuration) that halts with the right output in polynomial time. It does **not yet** state
+  that the auxiliary tapes end clean, which is the point of Bennett (1973): a history simulation
+  that never uncomputes (Lecerf, Landauer) would satisfy the current `Bennett` proposition. The
+  construction *does* uncompute and leaves the tapes clean (`bennettTM_correct`), but that is not
+  yet part of the exported statement. Strengthening `Bennett` to require clean tapes is in progress.
+  The exact time is `2n + 4t + 6|y| + 21` (n = input length, t = steps of the simulated machine,
+  y = output); the `4t` matches Bennett's count.
+* **ISING.** `ISING_npComplete` is NP-completeness on arbitrary graphs with integer couplings
+  written in binary (via MAX-CUT). Barahona (1982) proves the much stronger result on 3D lattices
+  with couplings in {−1, 0, 1}; that is not formalized here.
+* **Law22.** It measures `n` in bits of the CNF encoding (the size form of SH), not in variables.
+  It is equivalent to the weak ETH (n variables) only by Theorem 2.4 of arXiv 2611.02650, which is
+  not formalized here.
+* **Localization.** `localization` and `localization_one(_tm)` are conjunctions of the proved
+  facts. The words "only" and "neither symmetry decides the arrow" are the essay's reading, not a
+  formal statement; `arrow_independent` uses models without dynamics. In the abstract core, the
+  equality of the cost back and forward is definitional; for Turing machines there is no general
+  costed inverse.
+* **`decision_bennett_holds`.** Its conclusion follows from HD alone; Bennett adds the reversible
+  verifier, not the arrow.
 
 ## The first localization, complete: neither symmetry of time decides the arrow
 
@@ -71,8 +98,8 @@ HD  --(localization, part 3)-->  arrow (P ≠ NP)  -->  SAT, 3-SAT, ISING ∉ P;
 * **The parallel with physics.** The past hypothesis plus reversible dynamics give the second law
   of thermodynamics; here HD plus Bennett's reversible simulation give the arrow and locate it
   (`TM.decision_bennett_holds`): the verifier runs on a reversible machine, and still the arrow
-  holds, because it is in the bit, not in the dynamics. Bennett's simulation is a theorem for
-  cslib's machines (`TM.bennett_holds`), so only HD is assumed.
+  holds, because it is in the bit, not in the dynamics. A reversible simulation is a theorem for
+  cslib's machines (`TM.bennett_holds`; clean tapes not yet in the statement), so only HD is assumed.
 * **Three senses of "decision".** The decision problem (a yes/no question), the erasure of the
   boundary down to that bit, and the choice of a witness that going back has to make again.
 * **Not an axiom.** HD is a definition of type `Prop`, taken as `(h : DecisionHypothesis)`. The end
@@ -115,10 +142,10 @@ The project has two layers, and both are default build targets.
 | **Decision hypothesis (central)** | `Core/Decision.lean`, `TM/Decision.lean` | `Model.DecisionHypothesis`, `TM.DecisionHypothesis`, `decisionHypothesis_iff_arrow`, `decisionHypothesis_on_boundary` | defines HD |
 | Second law 2.1 (Kelvin) | `Core/SecondLaw.lean`, `TM/Instance.lean` | `Model.Arrow`, `Model.kelvin`, `TM.kelvin`, `arrow_independent` | defines `Arrow` |
 | Second law 2.2 | `TM/Law22.lean` | `Law22`, `Law22.arrow` (2.2 implies 2.1) | defines `Law22` |
-| Bennett (1973), proved | `TM/Instance.lean`, `TM/Bennett/*.lean` | `Bennett`, `bennett_holds`, `reversible_verifier_holds`, `IsReversible.runFrom_injective` | none |
+| Bennett-style reversible simulation (clean tapes not yet in the statement; see Fidelity notes) | `TM/Instance.lean`, `TM/Bennett/*.lean` | `Bennett`, `bennett_holds`, `reversible_verifier_holds`, `IsReversible.runFrom_injective` | none |
 | SAT, 3-SAT not in P | `TM/Consequences.lean` | `SAT_notMem_P`, `ThreeSAT_notMem_P` | `Arrow` |
 | An NP-intermediate problem | `TM/Consequences.lean` | `exists_intermediate` (Ladner) | `Arrow` |
-| ISING not in P | `TM/Ising.lean`, `TM/Consequences.lean` | `Ising.ISING_npComplete`, `ISING_notMem_P` | `Arrow` |
+| ISING not in P (arbitrary graphs, binary weights; not Barahona's lattices) | `TM/Ising.lean`, `TM/Consequences.lean` | `Ising.ISING_npComplete`, `ISING_notMem_P` | `Arrow` |
 | Consequences from HD | `TM/Decision.lean` | `SAT_notMem_P_of_decision`, `ThreeSAT_notMem_P_of_decision`, `exists_intermediate_of_decision`, `ISING_notMem_P_of_decision` | HD |
 | HD and Bennett | `TM/Decision.lean`, `TM/Bennett/Discharge.lean` | `decision_bennett_holds` (and `decision_bennett`, with `Bennett` as an argument) | HD |
 | 3-SAT not in TIME(2^(n^(1-ε))) | `TM/Consequences.lean` | `ThreeSAT_notMem_TIME` | `Law22` |
@@ -151,7 +178,7 @@ fails if any of them depends on anything other than `propext`, `Classical.choice
 without the arrow the consequences fail (`consequences_need_arrow`); the same holds for HD (`decisionHypothesis_independent`,
 `consequences_need_decisionHypothesis`).
 
-**Bennett's theorem is proved for cslib's machines** (`TM.bennett_holds : Bennett`, in
+**A Bennett-style reversible simulation is proved for cslib's machines** (`TM.bennett_holds : Bennett`, in
 `TM/Bennett/Discharge.lean`): every function computable in polynomial time is computed in
 polynomial time and space by a multi-tape machine with finitely many states whose step is injective
 on **every** running configuration, not only the reachable ones. The construction, one file per
