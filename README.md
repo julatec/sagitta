@@ -1,7 +1,7 @@
 # Sagitta: the computational arrow of time, in Lean
 
 This is the Lean 4 artifact of the essay *The Computational Arrow of Time: Locating the Second Law
-of Computation*. It formalizes one chain of reasoning, and nothing else:
+of Computation* (in preparation). It formalizes one chain of reasoning, and nothing else:
 
 ```
 decisions  →  laws  →  localization  →  second law  →  consequences for NP
