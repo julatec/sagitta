@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jose-de-Jesus Ulate-Cardenas
 -/
 import Sagitta.Arrow.TM.Bennett.Uncompute
+import Sagitta.Arrow.TM.Bennett.Copy
 import Cslib.Computability.Machines.Turing.MultiTape.Plumbing.Sequential
 
 /-!
@@ -234,5 +235,163 @@ theorem seq_runFrom (c : Cfg k Bool S₀ input) (t₀ t₁ : ℕ)
 
 theorem seq_initCfg : (tm₀.seq tm₁).initCfg input = (tm₀.initCfg input).mapState (handOver tm₁.q₀) :=
   rfl
+
+
+/-- **A run of the composite, up to a time bound.** If `tm₀` has halted by `t₀` and `tm₁`, started
+where `tm₀` stopped, has halted by `t₁`, the composite has halted by `t₀ + t₁` in the image of the
+final configuration of `tm₁` (it switches at the first halting of `tm₀`, possibly earlier). -/
+theorem seq_runFrom_of_le (c : Cfg k Bool S₀ input) {t₀ t₁ : ℕ}
+    (hhalt : (tm₀.runFrom c t₀).Halted)
+    (hhalt₁ : (tm₁.runFrom ((tm₀.runFrom c t₀).withState (some tm₁.q₀)) t₁).Halted)
+    {T : ℕ} (hT : t₀ + t₁ ≤ T) :
+    (tm₀.seq tm₁).runFrom (c.mapState (handOver tm₁.q₀)) T =
+      (tm₁.runFrom ((tm₀.runFrom c t₀).withState (some tm₁.q₀)) t₁).mapState (Option.map .inr) := by
+  classical
+  have hex : ∃ i, (tm₀.runFrom c i).Halted := ⟨t₀, hhalt⟩
+  set τ := Nat.find hex
+  have hτ : τ ≤ t₀ := Nat.find_min' hex hhalt
+  have hrun : ∀ i < τ, ¬(tm₀.runFrom c i).Halted := fun i hi => Nat.find_min hex hi
+  have hsame : tm₀.runFrom c t₀ = tm₀.runFrom c τ := runFrom_eq_of_halt _ _ hτ (Nat.find_spec hex)
+  have e := seq_runFrom (tm₁ := tm₁) c τ t₁ hrun (Nat.find_spec hex)
+  rw [← hsame] at e
+  rw [runFrom_eq_of_halt _ _ (by omega : τ + t₁ ≤ T) (by rw [e]; simp [hhalt₁]), e]
+
+theorem seq_q₀ : (tm₀.seq tm₁).q₀ = .inl tm₀.q₀ := rfl
+
+/-! ## The inverse has no re-entry -/
+
+/-- No transition of the reversible inverse enters its initial state `back none`. -/
+theorem uncTM_noReentry {h : ℕ} {State : Type} (tm : MultiTapeTM k Bool State)
+    (code : Record k State → Fin h → Bool) : NoReentry (uncTM tm code) := by
+  intro q r w
+  simp only [uncTM, tr_ofTr, q₀_ofTr]
+  rcases q with (q | q | rec) | s
+  · simp [uncTr, uBack]
+  · simp only [uncTr]
+    generalize decode code (fun j => w (histTape k j)) = o
+    rcases o with _ | rec <;> simp only [uPeek] <;> split_ifs <;> simp [uFinish, uFail, uUndo]
+  · simp only [uncTr]; split_ifs <;> simp [uRestore, uFail]
+  · simp [uncTr, uSink]
+
+/-! ## The gate in front of the emitting machine -/
+
+/-- The states of the gate. -/
+inductive GateState
+  /-- Move the source head one cell left. -/
+  | start
+  /-- Check that the cell is blank and move back (and halt). -/
+  | check
+  /-- The cell was not blank: append `true` forever. -/
+  | sink
+  deriving DecidableEq
+
+instance : Finite GateState :=
+  Finite.of_injective (β := Fin 3)
+    (fun s => match s with | .start => 0 | .check => 1 | .sink => 2)
+    (by intro a b; cases a <;> cases b <;> simp)
+
+/-- The actions of the gate: only the head of `src` moves, by `m`, nothing is written, and `o` is
+appended to the output. -/
+def gateAct (src : Fin k) (m : SignType) (o : Option Bool) (q : Option GateState) :
+    Action k Bool GateState :=
+  ⟨0, fun i => if i = src then (none, m) else (none, 0), o, q⟩
+
+theorem gateAct_write {src : Fin k} {m : SignType} {o : Option Bool} {q : Option GateState}
+    (i : Fin k) : ((gateAct src m o q).workTapes i).1 = none := by
+  simp only [gateAct]; split_ifs <;> rfl
+
+theorem gateAct_move {src : Fin k} {m : SignType} {o : Option Bool} {q : Option GateState}
+    (i : Fin k) : ((gateAct src m o q).workTapes i).2 = if i = src then m else 0 := by
+  simp only [gateAct]; split_ifs <;> rfl
+
+/-- The transition function of the gate. -/
+def gateTr (src : Fin k) :
+    GateState → Option Bool → (Fin k → Option Bool) → Action k Bool GateState
+  | .start, _, _ => gateAct src (-1) none (some .check)
+  | .check, _, w => match w src with
+    | none => gateAct src 1 none none
+    | some _ => gateAct src 0 (some false) (some .sink)
+  | .sink, _, _ => gateAct src 0 (some true) (some .sink)
+
+/-- **The gate**: checks that the cell left of the head of `src` is blank, and comes back. -/
+def gateTM (src : Fin k) : MultiTapeTM k Bool GateState :=
+  ofTr .start (gateTr src)
+
+/-- **The gate is reversible.** -/
+theorem gateTM_isReversible (src : Fin k) : IsReversible (gateTM src) := by
+  intro input c c' hc hc' hstep
+  obtain ⟨q, hq⟩ := Option.ne_none_iff_exists'.mp hc
+  obtain ⟨q', hq'⟩ := Option.ne_none_iff_exists'.mp hc'
+  rw [step_of_state hq, step_of_state hq', gateTM, tr_ofTr, tr_ofTr] at hstep
+  rcases q with _ | _ | _ <;> rcases q' with _ | _ | _ <;>
+    rcases hs : c.workTapeSymbols src with _ | b <;>
+    rcases hs' : c'.workTapeSymbols src with _ | b' <;>
+    simp only [gateTr, hs, hs'] at hstep <;>
+    first
+    | exact apply_injective _ (hq.trans hq'.symm) (Or.inl rfl) (fun i => Or.inl (gateAct_write i))
+        hstep
+    | (have h2 := congrArg Cfg.state hstep; simp [gateAct] at h2; done)
+    | (have h2 := congrArg (fun x => x.output.getLast?) hstep; simp [gateAct] at h2)
+
+
+/-- **The gate is correct**: from `start`, with a blank left of the head of `src`, it halts after
+two steps with nothing changed. -/
+theorem gateTM_run {src : Fin k} (c : Cfg k Bool GateState input) (hst : c.state = some .start)
+    (hleft : c.workTapes src (c.workTapePos src - 1) = none) :
+    (gateTM src).runFrom c 2 = { c with state := none } := by
+  have h1 : (gateTM src).runFrom c 1 = (gateAct src (-1) none (some .check)).apply c := by
+    rw [runFrom, Function.iterate_one, step_of_state hst, gateTM, tr_ofTr]; rfl
+  have hs : ((gateAct src (-1) none (some .check)).apply c).workTapeSymbols src = none := by
+    simp only [Cfg.workTapeSymbols, Action.apply_workTapes, Action.apply_workTapePos, gateAct_write,
+      gateAct_move, ↓reduceIte]
+    simpa [sub_eq_add_neg] using hleft
+  rw [show 2 = 1 + 1 from rfl, runFrom, Function.iterate_succ_apply', ← runFrom, h1,
+    step_of_state (q := .check) (by simp [gateAct]), gateTM, tr_ofTr]
+  simp only [gateTr, hs]
+  apply Cfg.ext
+  · simp [gateAct]
+  · simp [gateAct, moveInputPos]
+  · funext i; simp [Action.apply_workTapes, gateAct_write]
+  · funext i
+    simp only [Action.apply_workTapePos, gateAct_move]
+    split_ifs <;> simp
+  · simp [gateAct]
+
+/-- **The hand-off from the gate to the emitting machine is distinguishable**: after the gate the
+cell left of the head of `src` is blank, after a forward step of `emitTM` it holds a symbol. -/
+theorem gate_emit_handOff (src : Fin k) : HandOff (gateTM src) (emitTM src) := by
+  intro input c c' hc hc' hhalt he
+  obtain ⟨q, hq⟩ := Option.ne_none_iff_exists'.mp hc
+  obtain ⟨q', hq'⟩ := Option.ne_none_iff_exists'.mp hc'
+  rw [step_of_state hq, gateTM, tr_ofTr] at hhalt he
+  rw [step_of_state hq', emitTM, tr_ofTr] at he
+  have ht := congrFun (congrArg Cfg.workTapes he) src
+  have hp := congrFun (congrArg Cfg.workTapePos he) src
+  have hst := congrArg Cfg.state he
+  rcases q with _ | _ | _ <;> rcases q' with _ | _ <;>
+    rcases hs : c.workTapeSymbols src with _ | b <;>
+    rcases hs' : c'.workTapeSymbols src with _ | b' <;>
+    simp only [gateTr, emitTr, hs, hs'] at hhalt ht hp hst <;>
+    simp [gateAct, emitAct, Cfg.Halted] at hhalt hst
+  -- the one case left: the gate halts reading a blank, `emitTM` steps forward reading `b'`
+  simp only [Action.apply_workTapes, Action.apply_workTapePos, Cfg.withState, gateAct_write,
+    emitAct_write, gateAct_move, emitAct_move, ↓reduceIte] at ht hp
+  have hp' : c'.workTapePos src = c.workTapePos src := by simpa using hp
+  have : c'.workTapeSymbols src = c.workTapeSymbols src := by
+    simp only [Cfg.workTapeSymbols, ht, hp']
+  rw [hs, hs'] at this
+  exact absurd this (by simp)
+
+/-- The gate followed by the emitting machine never re-enters its initial state. -/
+theorem gate_emit_noReentry (src : Fin k) : NoReentry ((gateTM src).seq (emitTM src)) := by
+  intro q r w
+  rw [seq_q₀]
+  rcases q with q | q
+  · rw [seq_tr_inl]
+    simp only [gateTM, tr_ofTr, q₀_ofTr]
+    rcases q with _ | _ | _ <;> simp only [gateTr] <;> (try split) <;> simp [gateAct, handOver]
+  · rw [seq_tr_inr]
+    generalize ((emitTM src).tr q r w).state = o
+    rcases o with _ | o <;> simp
 
 end Sagitta.Arrow.TM.Bennett
