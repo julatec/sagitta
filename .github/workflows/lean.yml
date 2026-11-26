@@ -45,4 +45,25 @@ jobs:
           # "resource exhausted (error code: 12)" on the GitHub runner, with or without swap.
           api-docs: false
           build-page: false
-          deploy: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+          # The action's own deploy step failed twice on 26 nov 2026 ("No artifacts named github-pages"
+          # right after uploading it); upload and deploy are done below, in their own job.
+          deploy: false
+      - name: Site contents
+        run: ls -R docs | head -40
+      - name: Upload the site
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
