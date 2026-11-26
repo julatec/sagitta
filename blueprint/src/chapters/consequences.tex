@@ -132,9 +132,9 @@ or law 2.2 (stronger). None of the hypotheses is proved, and none is an axiom.
   $H_J(\sigma) = 2\,\mathrm{cut}_J(\sigma) - \sum_e J_e$; hence $\ISING$ is $\cNP$-complete,
   $\cP = \cNP$ if and only if $\ISING \in \cP$, and $\ISING \in \cP$ if and only if $\SAT \in \cP$.
   \source{\cite{Barahona82}.}
-  \fidelity{Barahona proves $\cNP$-hardness for restricted lattices (planar with a field, or
-  three-dimensional); this is the case of arbitrary graphs without field, by the reduction from
-  $\MAXCUT$.}
+  \fidelity{this is $\cNP$-completeness on arbitrary graphs, with integer couplings written in
+  binary and no field, by the reduction from $\MAXCUT$. Barahona proves the much stronger result on
+  three-dimensional lattices with couplings in $\{-1, 0, 1\}$, which is not formalized here.}
 \end{theorem}
 
 \begin{proof}

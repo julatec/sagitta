@@ -208,8 +208,9 @@ number of questions on the path that $f$ selects.
   formula. A hypothesis, never an axiom.
   \source{the weak exponential-time hypothesis, shown equivalent to Stearns and Hunt's satisfiability
   hypothesis SH in \cite{ETHdead} (as cited in the Lean source, Theorem~2.4).}
-  \fidelity{$n$ is the length of the binary encoding of the formula, not the number of variables;
-  the formulation by input length is the one of SH.}
+  \fidelity{$n$ is measured in bits of the CNF encoding (the size form of SH), not in variables. It is
+  equivalent to the weak ETH ($n$ variables) only by Theorem~2.4 of \cite{ETHdead}, which is not
+  formalized here.}
 \end{definition}
 
 \begin{theorem}[Law 2.2 implies law 2.1]

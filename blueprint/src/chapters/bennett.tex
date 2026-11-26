@@ -47,8 +47,10 @@ polynomial-time verifier runs on a reversible machine.
   polynomial space by a reversible machine with finitely many states.
   \source{\cite{Bennett73}.}
   \fidelity{Bennett's theorem is stated for any computation, with time and space overheads; here it
-  is restricted to polynomial-time functions, with polynomial bounds. Clean tapes being added to the
-  statement (the auxiliary tapes blank at the end); see the Fidelity notes of the README.}
+  is restricted to polynomial-time functions, with polynomial bounds. The statement does not yet say
+  that the auxiliary tapes end clean, which is the point of Bennett (1973): a history simulation
+  that never uncomputes would satisfy it. Clean tapes are being added to the statement; see the
+  Fidelity notes of the README.}
 \end{definition}
 
 \begin{lemma}[A reversible machine stays on a blank of its input]
@@ -368,11 +370,13 @@ polynomial-time verifier runs on a reversible machine.
   \leanok
   \uses{def:bennett, thm:revTM, def:polytime}
   Bennett's statement holds: every function computable in polynomial time is computed by a
-  reversible machine with finitely many states in time $2n + 10\,t(n) + 21$ (for a machine running
-  in time $t$) and space linear in that time.
+  reversible machine with finitely many states in time $2n + 4t + 6|y| + 21 \le 2n + 10\,t + 21$ (for a
+  machine running in time $t$ with output $y$ on inputs of length $n$) and space linear in that
+  time.
   \source{\cite{Bennett73}.}
-  \fidelity{see Definitions~\ref{def:isReversible} and~\ref{def:bennett}. The bounds are
-  linear in the time, as in the 1973 construction.}
+  \fidelity{clean tapes being added to the statement; see Definition~\ref{def:bennett} and the
+  Fidelity notes of the README. The construction itself uncomputes and leaves every work tape blank
+  (Theorem~\ref{thm:bennettTM}); the $4t$ matches Bennett's count.}
 \end{theorem}
 
 \begin{proof}
