@@ -52,6 +52,14 @@ item). The differences, stated plainly:
   costed inverse.
 * **`decision_bennett_holds`.** Its conclusion follows from HD alone; Bennett adds the reversible
   verifier, not the arrow.
+* **Blind statements (`Sagitta/Fidelity`).** `Blind.lean` states five results from the literature
+  without reading this project; `Equiv.lean` compares them with ours, in Lean. Goldreich's
+  Theorem 2.6 follows from `FNP_subset_FPSearch_iff`, and HD is exactly `PC ⊄ PF`; the blind Ladner
+  and ISING statements are equivalent to ours. The blind Bennett statement is **false**
+  (`not_bennettPoly`): it asks the input head back at the origin, which no reversible cslib machine
+  computing the identity can do, since its input head cannot leave a blank. For Law 2.2 against the
+  weak ETH no implication is proved: the `n` (bits against variables) and the domain differ, and
+  the blind size form has a defect at the empty formula; the obstructions are proved.
 
 ## The first localization, complete: neither symmetry of time decides the arrow
 
