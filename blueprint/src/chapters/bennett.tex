@@ -46,8 +46,9 @@ polynomial-time verifier runs on a reversible machine.
   \emph{Bennett}: every function computable in polynomial time is computed in polynomial time and
   polynomial space by a reversible machine with finitely many states.
   \source{\cite{Bennett73}.}
-  \fidelity{Bennett's theorem is stated for any computation, with time and space overheads; here it
-  is restricted to polynomial-time functions, with polynomial bounds. The statement does not yet say
+  \fidelity{Bennett's theorem is stated for any computation, with linear overheads; here it is
+  restricted to polynomial-time functions, and the exported statement asks only for polynomial
+  bounds (the construction gives linear ones, Theorem~\ref{thm:bennett-holds}). The statement does not yet say
   that the auxiliary tapes end clean, which is the point of Bennett (1973): a history simulation
   that never uncomputes would satisfy it. Clean tapes are being added to the statement; see the
   Fidelity notes of the README.}
@@ -412,6 +413,8 @@ polynomial-time verifier runs on a reversible machine.
   thermodynamics, HD and Bennett give the arrow and locate it: it is in the reduction to one bit, not
   in the dynamics.
   \own{}
+  \fidelity{the arrow follows from HD alone (Theorem~\ref{thm:hd-iff-arrow-tm}); Bennett adds the
+  reversible verifier, not the arrow.}
 \end{theorem}
 
 \begin{proof}
