@@ -1,0 +1,175 @@
+/-
+Copyright (c) 2026 Christian Reitwiessner and Samuel Schlesinger. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Christian Reitwiessner, Samuel Schlesinger
+-/
+
+module
+-- upstream: vendored crei:crei/tidy-universal @7f7c0696 (unsubmitted)
+-- vendored: state relabeling and its resource-preserving specification are local additions
+-- vendored: `space_seq_le` is stated with the space of run paths since cslib #1122
+-- vendored: the runs of `seq` are stated with `Cfg.mapState` and `handOver` since cslib #1151
+-- vendored: `exists_runPath_seq_space_le` (cslib PR #1111) is removed: since cslib #1209 upstream's
+-- `exists_runPath_seq` states the space bound itself
+
+public import Cslib.Computability.Machines.Turing.MultiTape.Plumbing.Sequential
+public import CslibFrontier.Computability.Machines.Turing.MultiTape.Plumbing.TransformsTapes
+
+/-!
+# Space of a sequential run
+
+The additions of Christian Reitwiessner's branch `crei/tidy-universal` to
+`Cslib.Computability.Machines.Turing.MultiTape.Plumbing.Sequential`: sequential runs read through
+`Turing.MultiTapeTM.runFrom`, with their space, and sequential composition of transformations given
+by equations.
+
+## Main results
+
+* `Turing.MultiTapeTM.runFrom_seq`: runs compose.
+* `Turing.MultiTapeTM.relabel`: rename states without changing instructions.
+* `Turing.MultiTapeTM.TransformsTapes.relabel`: preserve independent resource bounds.
+* `Turing.MultiTapeTM.withState_runFrom_seq`: invariants of a sequential run.
+* `Turing.MultiTapeTM.space_seq_le`: the space of a sequential run is at most that of its phases.
+* `Turing.MultiTapeTM.TransformsTapes.seq_eq`: sequential composition of transformations given by
+  equations.
+-/
+
+public section
+
+namespace Turing.MultiTapeTM
+
+variable {k : ℕ} {Symbol State₀ State₁ : Type*} {input : List Symbol}
+
+variable {tm₀ : MultiTapeTM k Symbol State₀} {tm₁ : MultiTapeTM k Symbol State₁}
+
+/-- Rename control states without changing any instruction or tape. -/
+@[expose] noncomputable def relabel {State' : Type*}
+    (tm : MultiTapeTM k Symbol State₀) (e : State₀ ≃ State') :
+    MultiTapeTM k Symbol State' :=
+  ofTr (e tm.q₀) fun q inp work =>
+    let a := tm.tr (e.symm q) inp work
+    { a with state := a.state.map e }
+
+/-- State renaming commutes with every step, including the stationary halted steps. -/
+theorem runFrom_relabel {State' : Type*} (tm : MultiTapeTM k Symbol State₀)
+    (e : State₀ ≃ State') (cfg : Cfg k Symbol State₀ input) (n : ℕ) :
+    (tm.relabel e).runFrom (cfg.mapState (Option.map e)) n =
+      (tm.runFrom cfg n).mapState (Option.map e) := by
+  refine (Function.Semiconj.iterate_right (fun c => ?_) n cfg).symm
+  cases hq : c.state with
+  | none => rw [step_of_halt hq, step_of_halt (by simp [hq])]
+  | some q =>
+    rw [step_of_state hq, step_of_state (q := e q) (by simp [hq])]
+    -- The observed tape symbols are definitionally unchanged by the control-state map.
+    simp only [relabel, tr_ofTr, Equiv.symm_apply_apply, Cfg.mapState,
+      Action.apply, Cfg.inputSymbol, Cfg.mk.injEq]; repeat' constructor
+
+/-- Renaming states preserves the time and visited-cell bounds independently. -/
+theorem TransformsTapes.relabel {State' : Type*}
+    {P : (input : List Symbol) → (Fin k → List Symbol) → Prop}
+    {Q : (input : List Symbol) → (Fin k → List Symbol) → (Fin k → List Symbol) →
+      List Symbol → Prop} {t s : ℕ}
+    (h : TransformsTapes tm₀ P Q t s) (e : State₀ ≃ State') :
+    TransformsTapes (tm₀.relabel e) P Q t s := by
+  refine transformsTapes_iff_runFrom.mpr fun input ws out hP => ?_
+  obtain ⟨ws', emitted, hrun, hQ, hspace⟩ :=
+    transformsTapes_iff_runFrom.mp h input ws out hP
+  have hstart : wordsCfg input (some (tm₀.relabel e).q₀) ws out =
+      (wordsCfg input (some tm₀.q₀) ws out).mapState (Option.map e) := rfl
+  refine ⟨ws', emitted, ?_, hQ, ?_⟩
+  · rw [hstart, runFrom_relabel, hrun]; rfl
+  · rw [hstart, space_eq_of_workTapePos (tm' := tm₀) _
+      (wordsCfg input (some tm₀.q₀) ws out) t
+      (fun m _ => by rw [runFrom_relabel]; rfl)]
+    exact hspace
+
+/-- If `tm₀` halts at step `u`, then from step `u` on `seq` mirrors `tm₁`, started where `tm₀`
+halted. -/
+lemma HaltsAt.runFrom_seq {cfg : Cfg k Symbol State₀ input} {u : ℕ} (h : tm₀.HaltsAt cfg u)
+    (n : ℕ) :
+    (tm₀.seq tm₁).runFrom (cfg.mapState (handOver tm₁.q₀)) (u + n) =
+      (tm₁.runFrom ((tm₀.runFrom cfg u).withState (some tm₁.q₀)) n).mapState (Option.map .inr) := by
+  rw [runFrom_add, h.runFrom_combine_left (handOver_some _) le_rfl,
+    mapState_handOver_of_halted h.halted, runFrom_combine_right]
+
+/-- **Sequential composition of runs.** If `tm₀` has halted in `mid` by step `t₀`, and `tm₁`,
+started where `tm₀` halted, has halted in `fin` by step `t₁`, then the composed machine has halted
+in `fin` by step `t₀ + t₁`. Each machine may halt earlier than its bound; in particular `tm₀` need
+not be running at every step before `t₀`. -/
+theorem runFrom_seq {cfg mid : Cfg k Symbol State₀ input} {fin : Cfg k Symbol State₁ input}
+    {t₀ t₁ : ℕ} (h₀ : tm₀.runFrom cfg t₀ = mid) (hmid : mid.Halted)
+    (h₁ : tm₁.runFrom (mid.withState (some tm₁.q₀)) t₁ = fin) (hfin : fin.Halted) :
+    (tm₀.seq tm₁).runFrom (cfg.mapState (handOver tm₁.q₀)) (t₀ + t₁) =
+      fin.mapState (Option.map .inr) := by
+  obtain ⟨u, hu, hhaltsAt⟩ := exists_haltsAt (tm := tm₀) (cfg := cfg) (h₀ ▸ hmid)
+  have hrun : (tm₀.seq tm₁).runFrom (cfg.mapState (handOver tm₁.q₀)) (u + t₁) =
+      fin.mapState (Option.map .inr) := by
+    rw [hhaltsAt.runFrom_seq, ← hhaltsAt.runFrom_eq hu, h₀, h₁]
+  have hhalt : ((tm₀.seq tm₁).runFrom (cfg.mapState (handOver tm₁.q₀)) (u + t₁)).Halted := by
+    rw [hrun]
+    exact congrArg (Option.map _) hfin
+  rw [runFrom_eq_of_halt _ _ (by omega) hhalt, hrun]
+
+/-- **Invariants of a sequential run.** If `tm₀` has halted in `mid` by step `t₀`, then a property
+of a configuration apart from its control state holds throughout the run of the composed machine if
+it holds before step `t₀` of the run of `tm₀` and throughout the run of `tm₁` started where `tm₀`
+halted. The property is stated on the configurations in the state `some ()`, which keeps the input
+head, the work tapes, the work-tape heads and the output. -/
+theorem withState_runFrom_seq {P : Cfg k Symbol Unit input → Prop}
+    {cfg mid : Cfg k Symbol State₀ input} {t₀ : ℕ} (h₀ : tm₀.runFrom cfg t₀ = mid)
+    (hmid : mid.Halted) (hP₀ : ∀ m < t₀, P ((tm₀.runFrom cfg m).withState (some ())))
+    (hP₁ : ∀ n, P ((tm₁.runFrom (mid.withState (some tm₁.q₀)) n).withState (some ()))) (m : ℕ) :
+    P (((tm₀.seq tm₁).runFrom (cfg.mapState (handOver tm₁.q₀)) m).withState (some ())) := by
+  obtain ⟨u, hu, hhaltsAt⟩ := exists_haltsAt (tm := tm₀) (cfg := cfg) (h₀ ▸ hmid)
+  rcases Nat.lt_or_ge m u with hm | hm
+  · rw [hhaltsAt.runFrom_combine_left (handOver_some _) hm.le]
+    exact hP₀ m (by lia)
+  · obtain ⟨n, rfl⟩ := Nat.exists_eq_add_of_le hm
+    rw [hhaltsAt.runFrom_seq, ← hhaltsAt.runFrom_eq hu, h₀]
+    exact hP₁ n
+
+/-- If `tm₀` has halted in `mid` after `t₀` steps and `tm₁`, started from `mid`, has halted after
+`t₁` steps, then in `t₀ + t₁` steps `tm₀.seq tm₁` uses at most the space of the two runs combined.
+-/
+theorem space_seq_le {cfg mid : Cfg k Symbol State₀ input} {t₀ t₁ : ℕ}
+    (h₀ : tm₀.runFrom cfg t₀ = mid) (hmid : mid.Halted)
+    (h₁ : (tm₁.runFrom (mid.withState (some tm₁.q₀)) t₁).Halted) :
+    (MultiTapeNTM.RunPath.ofDeterministic (tm₀.seq tm₁) (cfg.mapState (handOver tm₁.q₀))
+      (t₀ + t₁)).space ≤
+      (MultiTapeNTM.RunPath.ofDeterministic tm₀ cfg t₀).space +
+        (MultiTapeNTM.RunPath.ofDeterministic tm₁ (mid.withState (some tm₁.q₀)) t₁).space := by
+  -- the first halting time of `tm₀`, which may be earlier than `t₀`
+  obtain ⟨u, hu, hhaltsAt⟩ := exists_haltsAt (tm := tm₀) (cfg := cfg) (h₀ ▸ hmid)
+  -- from step `u` on, `seq` mirrors `tm₁`, started on what `tm₀` left
+  have hright (n : ℕ) : (tm₀.seq tm₁).runFrom (cfg.mapState (handOver tm₁.q₀)) (u + n) =
+      (tm₁.runFrom (mid.withState (some tm₁.q₀)) n).mapState (Option.map .inr) := by
+    rw [hhaltsAt.runFrom_seq, ← hhaltsAt.runFrom_eq hu, h₀]
+  have hhalt : ((tm₀.seq tm₁).runFrom (cfg.mapState (handOver tm₁.q₀)) (u + t₁)).Halted := by
+    rw [hright]
+    exact congrArg (Option.map _) h₁
+  rw [space_eq_of_halt _ (by omega : u + t₁ ≤ t₀ + t₁) hhalt]
+  refine le_trans (space_add_le _ _ _) (Nat.add_le_add ?_ ?_)
+  · -- the first phase visits what the first machine visits
+    refine le_trans (le_of_eq (space_eq_of_workTapePos _ _ u fun m hm => ?_))
+      (space_mono tm₀ _ hu)
+    rw [hhaltsAt.runFrom_combine_left (handOver_some _) hm]
+    rfl
+  · -- the second phase visits what the second machine visits
+    rw [← add_zero u, hright 0]
+    refine le_of_eq (space_eq_of_workTapePos _ _ t₁ fun m hm => ?_)
+    rw [runFrom_combine_right]
+    rfl
+
+/-- **Sequential composition of transformations given by equations.** If the first machine leaves
+the words `ws₁` and emits `e₀`, and the second takes `ws₁` to `ws₂` emitting `e₁`, the composed
+machine leaves `ws₂` and emits `e₀ ++ e₁`. -/
+theorem TransformsTapes.seq_eq {P : (input : List Symbol) → (Fin k → List Symbol) → Prop}
+    {ws₁ ws₂ : Fin k → List Symbol} {e₀ e₁ : List Symbol} {t₀ s₀ t₁ s₁ : ℕ}
+    (h₀ : TransformsTapes tm₀ P (fun _ _ ws' e => ws' = ws₁ ∧ e = e₀) t₀ s₀)
+    (h₁ : TransformsTapes tm₁ (fun _ ws => ws = ws₁) (fun _ _ ws' e => ws' = ws₂ ∧ e = e₁) t₁ s₁) :
+    TransformsTapes (tm₀.seq tm₁) P (fun _ _ ws' e => ws' = ws₂ ∧ e = e₀ ++ e₁)
+      (t₀ + t₁) (s₀ + s₁) :=
+  (transformsTapes_seq h₀ h₁ fun _ _ _ _ _ h => h.1).imp (fun _ _ h => h)
+    (by rintro _ _ _ _ _ ⟨_, _, _, ⟨rfl, rfl⟩, ⟨rfl, rfl⟩, rfl⟩; exact ⟨rfl, rfl⟩) le_rfl le_rfl
+
+end Turing.MultiTapeTM

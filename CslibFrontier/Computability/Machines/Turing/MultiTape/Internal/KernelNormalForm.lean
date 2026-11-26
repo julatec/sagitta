@@ -1,0 +1,518 @@
+/-
+Copyright (c) 2026 Samuel Schlesinger. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Samuel Schlesinger
+-/
+
+module
+-- upstream: candidate (coordinate with crei on #611)
+
+public import CslibFrontier.Computability.Machines.Turing.MultiTape.Plumbing.ClearShadowed
+public import Cslib.Computability.Machines.Turing.MultiTape.Plumbing.ExtendTapes
+public import Cslib.Computability.Machines.Turing.MultiTape.Plumbing.RewindInput
+public import CslibFrontier.Computability.Machines.Turing.MultiTape.Plumbing.Sequential
+public import CslibFrontier.Computability.Machines.Turing.MultiTape.Plumbing.Tidy.Defs
+public import CslibFrontier.Computability.Machines.Turing.MultiTape.Machine.ExtendTapes
+public import CslibFrontier.Computability.Machines.Turing.MultiTape.Machine.Sequential
+public import Cslib.Foundations.Data.Fin.Tuple
+public import Mathlib.Basic.Finite.Sum
+public import Mathlib.Data.Fin.Tuple.Embedding
+import CslibFrontier.Computability.Machines.Turing.MultiTape.Plumbing.ExtendTapesView
+import CslibFrontier.Computability.Machines.Turing.MultiTape.Tactic.Step
+import CslibFrontier.Tactic.FinIndex
+import Mathlib.Algebra.BigOperators.Fin
+import Mathlib.Algebra.BigOperators.Ring.Finset
+import Mathlib.Data.Fintype.Option
+import Mathlib.Tactic.FinCases
+import Mathlib.Tactic.Ring
+
+/-! # The existing single-machine tidy normalization construction
+
+Machine declarations are moved from their original module without changing programs or resource
+formulas. Higher computability-calculus theorems remain in the original facade.
+
+## Main definitions
+
+* `Turing.MultiTapeTM.PairReady`: the invariant for clearing one work tape and its shadow.
+* `Turing.MultiTapeTM.clearList`, `.tidy`: the legacy cleanup sequence and tidy normal form.
+* `Turing.MultiTapeMachine.tidy`: the retained choice-free transition table for the same normal
+  form.
+
+## Main results
+
+* `Turing.MultiTapeTM.exists_runPath_clearList`: the exact cleanup run for a list of ready tapes.
+* `Turing.MultiTapeTM.exists_runPath_tidy`: the normal-form run with its exact time and workspace
+  bounds.
+* `Turing.MultiTapeTM.ComputesInTimeAndSpace.computesTidily_tidy`: the legacy machine-level
+  normal-form certificate.
+* `Turing.MultiTapeMachine.ComputesInTimeAndSpace.computesTidily_tidy`: the same certificate for
+  the retained explicit table, derived from its completed-run laws.
+-/
+
+@[expose] public section
+
+namespace Turing.MultiTapeTM
+
+variable {k : ℕ} {Symbol : Type*} [DecidableEq Symbol] {input : List Symbol} {m₀ m₁ : Symbol}
+
+/-! ### Clearing a work tape and its shadow -/
+
+/-- The embedding of work tape `i` and its shadow `k + i`. -/
+def pairEmb (i : Fin k) : Fin 2 ↪ Fin (k + k) :=
+  Function.Embedding.embFinTwo (Fin.castAdd_ne_natAdd i i)
+
+@[simp] theorem pairEmb_zero (i : Fin k) : pairEmb i 0 = Fin.castAdd k i := rfl
+
+/-- The shadow of work tape `i` is tape `k + i`, written `i.addNat k` in simp normal form. -/
+@[simp] theorem pairEmb_one (i : Fin k) : pairEmb i 1 = i.addNat k :=
+  Fin.natAdd_eq_addNat k i
+
+/-- The tapes of the pair `i` are work tape `i` and its shadow. -/
+theorem pairIdx_eq_iff {j : Fin (k + k)} {i : Fin k} :
+    pairIdx j = i ↔ j = Fin.castAdd k i ∨ j = i.addNat k := by
+  refine Fin.addCases (fun j' => ?_) (fun j' => ?_) j
+  · simp only [pairIdx_castAdd, Fin.castAdd_inj, ← Fin.natAdd_eq_addNat, Fin.castAdd_ne_natAdd,
+      or_false]
+  · simp only [pairIdx_natAdd, ← Fin.natAdd_eq_addNat, Fin.natAdd_inj,
+      (Fin.castAdd_ne_natAdd _ _).symm, false_or]
+
+/-- Tape `j` is a tape of the pair `i` exactly when it is work tape `i` or its shadow. -/
+theorem partialInv_pairEmb (i : Fin k) (j : Fin (k + k)) :
+    partialInv (pairEmb i) j =
+      if j = Fin.castAdd k i then some 0 else if j = i.addNat k then some 1 else none := by
+  split_ifs with h₀ h₁
+  · exact h₀ ▸ partialInv_embed (pairEmb i) 0
+  · exact h₁ ▸ pairEmb_one i ▸ partialInv_embed (pairEmb i) 1
+  · refine partialInv_eq_none _ ?_
+    rintro ⟨a, rfl⟩
+    fin_cases a <;> simp_all [pairEmb_one]
+
+variable {σ σ' : Type*}
+
+/-- Work tape `i` of `C` and its shadow `k + i` are ready to be cleared: the heads of both are on
+cell `c - a`, the shadow marks cells `V` that together with `c - a` form the interval `[-a, b]`,
+and the work tape is blank outside it. -/
+structure PairReady (m₀ m₁ : Symbol) (C : Cfg (k + k) Symbol σ input) (i : Fin k) (a b c : ℕ)
+    (V : Finset ℤ) : Prop where
+  /-- The head of the work tape is on cell `c - a`. -/
+  pos_castAdd : C.workTapePos (Fin.castAdd k i) = c - a
+  /-- The head of the shadow is on cell `c - a`. -/
+  pos_natAdd : C.workTapePos (Fin.natAdd k i) = c - a
+  /-- The marked cells and the cell under the heads form the interval `[-a, b]`. -/
+  insert_eq : insert ((c : ℤ) - a) V = Finset.Icc (-(a : ℤ)) b
+  /-- The shadow marks the cells `V`. -/
+  shadow_eq : C.workTapes (Fin.natAdd k i) = shadowTape m₀ m₁ V
+  /-- The work tape is blank outside `[-a, b]`. -/
+  blank : ∀ y ∉ Finset.Icc (-(a : ℤ)) b, C.workTapes (Fin.castAdd k i) y = none
+
+/-- `C`, halted, with the work tapes in `l` and their shadows blank and their heads on the start
+cell. -/
+def clearedCfg (l : List (Fin k)) (C : Cfg (k + k) Symbol σ input) :
+    Cfg (k + k) Symbol σ' input :=
+  ⟨none, C.inputPos, fun j => if pairIdx j ∈ l then fun _ => none else C.workTapes j,
+    fun j => if pairIdx j ∈ l then 0 else C.workTapePos j, C.output⟩
+
+omit [DecidableEq Symbol] in
+@[simp] theorem clearedCfg_nil (C : Cfg (k + k) Symbol σ input) :
+    clearedCfg (σ' := σ') [] C = C.withState none := by
+  tm_step
+
+omit [DecidableEq Symbol] in
+theorem clearedCfg_cons {σ₁ : Type*} (i : Fin k) (l : List (Fin k))
+    (C : Cfg (k + k) Symbol σ input) :
+    clearedCfg (σ' := σ') (i :: l) C =
+      clearedCfg (σ' := σ') l (clearedCfg (σ' := σ₁) [i] C) := by
+  refine Cfg.ext rfl rfl ?_ ?_ rfl <;> funext j <;>
+    simp only [clearedCfg, List.mem_cons] <;>
+    by_cases hj : pairIdx j = i <;> by_cases hj' : pairIdx j ∈ l <;> simp [hj, hj']
+
+omit [DecidableEq Symbol] in
+@[simp] theorem mapState_inr_clearedCfg {State₀ State₁ : Type*} (l : List (Fin k))
+    (C : Cfg (k + k) Symbol σ input) :
+    (clearedCfg (σ' := State₁) l C).mapState (Option.map (Sum.inr (α := State₀))) =
+      clearedCfg (σ' := State₀ ⊕ State₁) l C := rfl
+
+omit [DecidableEq Symbol] in
+/-- Clearing tapes `l` preserves `PairReady` on any tape `i ∉ l`. -/
+theorem PairReady.clearedCfg {C : Cfg (k + k) Symbol σ input} {i : Fin k} {a b c : ℕ}
+    {V : Finset ℤ} {l : List (Fin k)} (h : PairReady m₀ m₁ C i a b c V) (hil : i ∉ l) :
+    PairReady m₀ m₁ (Turing.MultiTapeTM.clearedCfg (σ' := σ') l C) i a b c V where
+  pos_castAdd := by simp [Turing.MultiTapeTM.clearedCfg, hil, h.pos_castAdd]
+  pos_natAdd := by simpa [Turing.MultiTapeTM.clearedCfg, hil] using h.pos_natAdd
+  insert_eq := h.insert_eq
+  shadow_eq := by simpa [Turing.MultiTapeTM.clearedCfg, hil] using h.shadow_eq
+  blank y hy := by simp [Turing.MultiTapeTM.clearedCfg, hil, h.blank y hy]
+
+/-- **Clearing one work tape and its shadow** inside a machine with `k + k` work tapes. -/
+theorem runFrom_clearShadowed_pairEmb (hm : m₀ ≠ m₁) {C : Cfg (k + k) Symbol σ input} {i : Fin k}
+    {a b c : ℕ} {V : Finset ℤ} (h : PairReady m₀ m₁ C i a b c V) :
+    ((clearShadowed m₀ m₁).extendTapes (pairEmb i)).runFrom (C.withState (some .start))
+        (a + 2 * b + c + 5) = clearedCfg [i] C := by
+  have hview : viewCfg (pairEmb i) (C.withState (some .start)) =
+      ClearShadowed.cfg (some .start) C.inputPos (C.workTapes (Fin.castAdd k i))
+        (shadowTape m₀ m₁ V) (c - a) C.output := by
+    refine Cfg.ext rfl rfl ?_ ?_ rfl <;> funext j <;> fin_cases j
+    · rfl
+    · exact h.shadow_eq
+    · exact h.pos_castAdd
+    · exact h.pos_natAdd
+  rw [runFrom_extendTapes, hview, runFrom_clearShadowed hm h.insert_eq h.blank]
+  have hne : i.addNat k ≠ Fin.castAdd k i := by fin_index
+  tm_step [embed, partialInv_pairEmb, clearedCfg, pairIdx_eq_iff]
+
+/-- The control states of `clearList` for a list of length `n`. -/
+def ClearListState : ℕ → Type
+  | 0 => Unit
+  | n + 1 => ClearShadowedState ⊕ ClearListState n
+
+instance instFiniteClearListState : (n : ℕ) → Finite (ClearListState n)
+  | 0 => inferInstanceAs (Finite Unit)
+  | n + 1 =>
+    haveI := instFiniteClearListState n
+    inferInstanceAs (Finite (ClearShadowedState ⊕ ClearListState n))
+
+/-- Constructive enumeration of the recursively nested control used to clear a list of tapes. -/
+instance instFintypeClearListState : (n : ℕ) → Fintype (ClearListState n)
+  | 0 => inferInstanceAs (Fintype Unit)
+  | n + 1 =>
+    haveI := instFintypeClearListState n
+    inferInstanceAs (Fintype (ClearShadowedState ⊕ ClearListState n))
+
+variable (m₀ m₁) in
+/-- Clear the work tapes in `l` along their shadows, one after the other. -/
+noncomputable def clearList :
+    (l : List (Fin k)) → MultiTapeTM (k + k) Symbol (ClearListState l.length)
+  | [] => nop (k + k) Symbol
+  | i :: l => ((clearShadowed m₀ m₁).extendTapes (pairEmb i)).seq (clearList l)
+
+/-- **Clearing a list of work tapes** with their shadows, each ready to be cleared: a run path of
+`clearList m₀ m₁ l` to the configuration with these tapes cleared. -/
+theorem exists_runPath_clearList (hm : m₀ ≠ m₁) (l : List (Fin k)) (hl : l.Nodup)
+    (a b c : Fin k → ℕ) (V : Fin k → Finset ℤ) (C : Cfg (k + k) Symbol σ input)
+    (hC : ∀ i ∈ l, PairReady m₀ m₁ C i (a i) (b i) (c i) (V i)) :
+    ∃ p : (clearList m₀ m₁ l).RunPath input,
+      p.head = C.withState (some (clearList m₀ m₁ l).q₀) ∧ p.last = clearedCfg l C ∧
+        p.time ≤ (l.map fun i => a i + 2 * b i + c i + 5).sum + 1 := by
+  induction l generalizing C σ with
+  | nil =>
+    exact ⟨.ofDeterministic _ _ 1, rfl,
+      (runFrom_nop_withState C).trans (clearedCfg_nil C).symm, le_rfl⟩
+  | cons i l ih =>
+    obtain ⟨hil, hl⟩ := List.nodup_cons.1 hl
+    have hmid := runFrom_clearShadowed_pairEmb hm (hC i List.mem_cons_self)
+    obtain ⟨p₁, hh₁, hl₁, ht₁⟩ := ih hl (clearedCfg (σ' := σ) [i] C) fun j hj =>
+      (hC j (List.mem_cons_of_mem _ hj)).clearedCfg (by simp [ne_of_mem_of_not_mem hj hil])
+    -- clear tape `i`, then the others
+    obtain ⟨p, hh, hl', ht, -⟩ := exists_runPath_seq
+      (p₀ := .ofDeterministic ((clearShadowed m₀ m₁).extendTapes (pairEmb i))
+        (C.withState (some .start)) (a i + 2 * b i + c i + 5)) (p₁ := p₁)
+      (by rw [MultiTapeNTM.RunPath.last_ofDeterministic, hmid]; rfl)
+      (by rw [hh₁, MultiTapeNTM.RunPath.last_ofDeterministic, hmid]; rfl)
+    refine ⟨p, hh, hl'.trans ?_, ?_⟩
+    · rw [hl₁, mapState_inr_clearedCfg]
+      exact (clearedCfg_cons i l C).symm
+    · change p.length ≤ a i + 2 * b i + c i + 5 + p₁.length at ht
+      change p₁.length ≤ _ at ht₁
+      change p.length ≤ _
+      rw [List.map_cons, List.sum_cons]
+      omega
+
+/-! ### The tidy normal form -/
+
+variable {State : Type*}
+
+variable (m₀ m₁) in
+/-- The tidy normal form of `tm`: run `tm` with shadowed work tapes, clear every work tape along
+its shadow, and rewind the input head. The symbols `m₀` and `m₁` mark the shadows. -/
+noncomputable def tidy (tm : MultiTapeTM k Symbol State) :
+    MultiTapeTM (k + k) Symbol
+      ((Option State ⊕ ClearListState (List.finRange k).length) ⊕ RewindState) :=
+  ((shadow m₀ m₁ tm).seq (clearList m₀ m₁ (List.finRange k))).seq
+    ((rewindInput Symbol).extendTapes (noTapes (k + k)))
+
+variable {tm : MultiTapeTM k Symbol State}
+
+omit [DecidableEq Symbol] in
+/-- The configuration in which the clearing phase ends: halted, with blank work tapes and every
+head on its start cell. -/
+private theorem clearedCfg_finRange (C : Cfg (k + k) Symbol σ input) :
+    clearedCfg (σ' := σ') (List.finRange k) C = ⟨none, C.inputPos, fun _ _ => none, fun _ => 0,
+      C.output⟩ := by
+  simp [clearedCfg]
+
+/-- Common normal-form run proof for a rewind machine with the standard completed-run law. -/
+private theorem exists_runPath_tidy_with_rewind
+    (rewind : MultiTapeTM 0 Symbol RewindState)
+    (hrun : ∀ {word : List Symbol} (position : Fin (word.length + 2))
+      (tapes : Fin 0 → ℤ → Option Symbol) (heads : Fin 0 → ℤ) (out : List Symbol),
+      rewind.runFrom ⟨some rewind.q₀, position, tapes, heads, out⟩
+        (position.val - 1 + 2) = ⟨none, 1, tapes, heads, out⟩)
+    (hm : m₀ ≠ m₁) {u : ℕ}
+    (hlt : ∀ m < u, ¬(tm.runFrom (tm.initCfg input) m).Halted)
+    (hu : (tm.runFrom (tm.initCfg input) u).Halted) :
+    let normalized :=
+      ((shadow m₀ m₁ tm).seq (clearList m₀ m₁ (List.finRange k))).seq
+        (rewind.extendTapes (noTapes (k + k)))
+    ∃ p : normalized.RunPath input, p.head = normalized.initCfg input ∧
+      p.last = wordsCfg input none (fun _ => []) (tm.runFrom (tm.initCfg input) u).output ∧
+      p.time ≤ 2 * u +
+        3 * (MultiTapeNTM.RunPath.ofDeterministic tm (tm.initCfg input) u).space + 2 * k + 4 ∧
+      p.space ≤ 2 * (MultiTapeNTM.RunPath.ofDeterministic tm (tm.initCfg input) u).space +
+        2 * k * (3 * (MultiTapeNTM.RunPath.ofDeterministic tm (tm.initCfg input) u).space + 2 * k +
+          3) := by
+  dsimp only
+  set c₀ := tm.initCfg input
+  set D := tm.runFrom c₀ u
+  set S := (MultiTapeNTM.RunPath.ofDeterministic tm c₀ u).space
+  set C₁ := Shadow.cfg m₀ m₁ D (Shadow.visited tm c₀ u)
+  -- the visited cells of each tape form an interval `[L i, R i]` around the start cell
+  choose L R hLR using fun i => exists_visitedByTapeHead_eq_Icc (tm := tm) c₀ u i
+  have h0 : ∀ i, (0 : ℤ) ∈ Finset.Icc (L i) (R i) := fun i =>
+    hLR i ▸ MultiTapeNTM.RunPath.mem_visitedByTapeHead_ofDeterministic.2 ⟨0, by omega, rfl⟩
+  have hp : ∀ i, D.workTapePos i ∈ Finset.Icc (L i) (R i) := fun i =>
+    hLR i ▸ MultiTapeNTM.RunPath.mem_visitedByTapeHead_ofDeterministic.2 ⟨u, le_rfl, rfl⟩
+  simp only [Finset.mem_Icc] at h0 hp
+  set a : Fin k → ℕ := fun i => (-L i).toNat
+  set b : Fin k → ℕ := fun i => (R i).toNat
+  set c : Fin k → ℕ := fun i => (D.workTapePos i - L i).toNat
+  have ha : ∀ i, (a i : ℤ) = -L i := fun i => Int.toNat_of_nonneg (by have := h0 i; omega)
+  have hb : ∀ i, (b i : ℤ) = R i := fun i => Int.toNat_of_nonneg (h0 i).2
+  have hc : ∀ i, (c i : ℤ) = D.workTapePos i - L i := fun i =>
+    Int.toNat_of_nonneg (by have := hp i; omega)
+  have hready : ∀ i ∈ List.finRange k,
+      PairReady m₀ m₁ C₁ i (a i) (b i) (c i) (Shadow.visited tm c₀ u i) := fun i _ => by
+    have hIcc : Finset.Icc (-(a i : ℤ)) (b i) = Finset.Icc (L i) (R i) := by rw [ha, hb, neg_neg]
+    refine ⟨?_, ?_, ?_, ?_, fun y hy => ?_⟩
+    · simp only [C₁, Shadow.cfg, Fin.append_left, ha, hc]
+      ring
+    · simp only [C₁, Shadow.cfg, Fin.append_right, ha, hc]
+      ring
+    · rw [hIcc, ← hLR, Shadow.visitedByTapeHead_eq_insert, ha, hc]
+      congr 1
+      ring
+    · simp only [C₁, Shadow.cfg, Fin.append_right]
+    · rw [hIcc, ← hLR] at hy
+      simp only [C₁, Shadow.cfg, Fin.append_left]
+      exact workTapes_runFrom_eq_of_notMem_visitedByTapeHead hy
+  -- the three phases: shadowing, clearing, rewinding the input head
+  have hA : (shadow m₀ m₁ tm).runFrom ((shadow m₀ m₁ tm).initCfg input) (u + 1) = C₁ :=
+    runFrom_shadow hlt
+  have hC₁ : C₁.Halted := by
+    simp only [Cfg.Halted, C₁, Shadow.cfg, Option.map_eq_none_iff]
+    exact hu
+  obtain ⟨pB, hhB, hlB, htB⟩ := exists_runPath_clearList hm (List.finRange k)
+    (List.nodup_finRange k) a b c (Shadow.visited tm c₀ u) C₁ hready
+  rw [clearedCfg_finRange] at hlB
+  obtain ⟨pAB, hhAB, hlAB, htAB, hsAB, -⟩ := exists_runPath_seq
+    (p₀ := .ofDeterministic (shadow m₀ m₁ tm) ((shadow m₀ m₁ tm).initCfg input) (u + 1))
+    (p₁ := pB) (by rw [MultiTapeNTM.RunPath.last_ofDeterministic, hA]; exact hC₁)
+    (by rw [hhB, MultiTapeNTM.RunPath.last_ofDeterministic, hA])
+  set R₀ : Cfg (k + k) Symbol RewindState input :=
+    ((⟨none, C₁.inputPos, fun _ _ => none, fun _ => 0, C₁.output⟩ :
+        Cfg (k + k) Symbol (ClearListState (List.finRange k).length) input).mapState
+          (Option.map (Sum.inr (α := Option State)))).withState
+      (some (rewind.extendTapes (noTapes (k + k))).q₀)
+  have hR : (rewind.extendTapes (noTapes (k + k))).runFrom R₀
+      (C₁.inputPos.val - 1 + 2) = ⟨none, 1, fun _ _ => none, fun _ => 0, C₁.output⟩ := by
+    rw [runFrom_noTapes]
+    simp only [R₀, noTapesCfg, Cfg.withState, Cfg.mapState, extendTapes_q₀,
+      hrun]
+  obtain ⟨p, hh, hl, ht, hs, -⟩ := exists_runPath_seq (p₀ := pAB)
+    (p₁ := .ofDeterministic (rewind.extendTapes (noTapes (k + k))) R₀
+      (C₁.inputPos.val - 1 + 2))
+    (by rw [hlAB, hlB]; rfl) (by rw [hlAB, hlB]; rfl)
+  -- the time bound
+  set Tc := ((List.finRange k).map fun i => a i + 2 * b i + c i + 5).sum + 1
+  have hcard (i : Fin k) :
+      a i + b i + 1 = (MultiTapeNTM.RunPath.ofDeterministic tm c₀ u).spaceUsedByTape i := by
+    rw [MultiTapeNTM.RunPath.spaceUsedByTape, hLR, Int.card_Icc]
+    have := ha i
+    have := hb i
+    omega
+  have hTc : Tc ≤ 3 * S + 2 * k + 1 := by
+    have hsum : ((List.finRange k).map fun i => a i + 2 * b i + c i + 5).sum ≤
+        ∑ i, (3 * (MultiTapeNTM.RunPath.ofDeterministic tm c₀ u).spaceUsedByTape i + 2) := by
+      rw [← Fin.sum_univ_def]
+      refine Finset.sum_le_sum fun i _ => ?_
+      have := hcard i
+      have := hp i
+      have := ha i
+      have := hb i
+      have := hc i
+      omega
+    have : ∑ i, (3 * (MultiTapeNTM.RunPath.ofDeterministic tm c₀ u).spaceUsedByTape i + 2) =
+        3 * S + 2 * k := by
+      rw [Finset.sum_add_distrib, ← Finset.mul_sum]
+      simp [S, MultiTapeNTM.RunPath.space, mul_comm]
+    omega
+  have hTr : C₁.inputPos.val - 1 + 2 ≤ u + 2 := by
+    have h₁ : (D.inputPos : ℕ) ≤ (c₀.inputPos : ℕ) + u := inputPos_runFrom_le tm c₀ u
+    have h₂ : (c₀.inputPos : ℕ) = 1 := rfl
+    change (D.inputPos : ℕ) - 1 + 2 ≤ u + 2
+    omega
+  change pB.length ≤ Tc at htB
+  refine ⟨p, hh.trans (by rw [hhAB]; rfl), hl.trans ?_, ?_, ?_⟩
+  · rw [MultiTapeNTM.RunPath.last_ofDeterministic, hR]
+    tm_step [tapeOfList_nil]
+  · change p.length ≤ pAB.length + (C₁.inputPos.val - 1 + 2) at ht
+    change pAB.length ≤ u + 1 + pB.length at htAB
+    change p.length ≤ _
+    omega
+  · -- the shadowing phase visits `2 S` cells, the clearing phase at most one new cell per tape and
+    -- step, and the rewinding phase one cell per tape
+    refine hs.trans ?_
+    have hsA : (MultiTapeNTM.RunPath.ofDeterministic (shadow m₀ m₁ tm)
+        ((shadow m₀ m₁ tm).initCfg input) (u + 1)).space = 2 * S := space_shadow hlt
+    have hsB : pB.space ≤ (k + k) * pB.length + (k + k) :=
+      pB.space_le_mul_time_add_one.trans_eq (Nat.mul_add_one _ _)
+    have hsR : (MultiTapeNTM.RunPath.ofDeterministic
+        (rewind.extendTapes (noTapes (k + k))) R₀ (C₁.inputPos.val - 1 + 2)).space ≤
+        k + k :=
+      space_noTapes_le _ _ _
+    have h₂ : (k + k) * pB.length ≤ 2 * k * (3 * S + 2 * k + 1) :=
+      (Nat.mul_le_mul_left _ (htB.trans hTc)).trans_eq (by ring)
+    have h₃ : 2 * k * (3 * S + 2 * k + 3) = 2 * k * (3 * S + 2 * k + 1) + 4 * k := by ring
+    omega
+
+/-- **The run of the tidy normal form.** If `tm` first halts at step `u`, having used `S` cells,
+then `tidy m₀ m₁ tm` has a run path to the halted configuration with blank work tapes, every head on
+its start cell and the output of `tm`, taking at most `2 u + 3 S + 2 k + 4` steps and visiting at
+most `2 S + 2 k (3 S + 2 k + 3)` cells. -/
+theorem exists_runPath_tidy (hm : m₀ ≠ m₁) {u : ℕ}
+    (hlt : ∀ m < u, ¬(tm.runFrom (tm.initCfg input) m).Halted)
+    (hu : (tm.runFrom (tm.initCfg input) u).Halted) :
+    ∃ p : (tidy m₀ m₁ tm).RunPath input, p.head = (tidy m₀ m₁ tm).initCfg input ∧
+      p.last = wordsCfg input none (fun _ => []) (tm.runFrom (tm.initCfg input) u).output ∧
+      p.time ≤ 2 * u +
+        3 * (MultiTapeNTM.RunPath.ofDeterministic tm (tm.initCfg input) u).space + 2 * k + 4 ∧
+      p.space ≤ 2 * (MultiTapeNTM.RunPath.ofDeterministic tm (tm.initCfg input) u).space +
+        2 * k * (3 * (MultiTapeNTM.RunPath.ofDeterministic tm (tm.initCfg input) u).space + 2 * k +
+          3) := by
+  simpa only [tidy] using
+    (exists_runPath_tidy_with_rewind (rewind := rewindInput Symbol)
+      Turing.MultiTapeTM.runFrom_rewindInput hm hlt hu)
+
+/-- **The tidy normal form.** What `tm` computes within `t` steps and `s` cells,
+`tidy m₀ m₁ tm` computes tidily within `2 t + 3 s + 2 k + 4` steps and `2 s + 2 k (3 s + 2 k + 3)`
+cells, for any two distinct marks `m₀` and `m₁`. -/
+theorem ComputesInTimeAndSpace.computesTidily_tidy (hm : m₀ ≠ m₁) {output : List Symbol}
+    {t s : ℕ} (h : tm.ComputesInTimeAndSpace input output t s) :
+    (tidy m₀ m₁ tm).ComputesTidilyInTimeAndSpace input output (2 * t + 3 * s + 2 * k + 4)
+      (2 * s + 2 * k * (3 * s + 2 * k + 3)) := by
+  obtain ⟨⟨u', hu', hout⟩, ht, hs⟩ := h
+  -- the first step at which `tm` has halted
+  obtain ⟨u, -, hu, hlt⟩ := exists_haltsAt hu'
+  have hut : u ≤ t := Nat.le_of_not_lt fun h => hlt t h (runsInTime_iff_halted.mp ht)
+  have hout' : (tm.runFrom (tm.initCfg input) u).output = output := by
+    rw [← hout, runFrom_eq_of_halt _ _ (Nat.le_of_not_lt fun h => hlt u' h hu') hu]
+  have hS := space_le_of_runsInSpace hs u
+  obtain ⟨p, hhead, hlast, htime, hspace⟩ := exists_runPath_tidy hm hlt hu
+  rw [computesTidily_iff]
+  refine ⟨p, hhead.trans (initCfg_eq_wordsCfg input), hlast.trans (by rw [hout']), by omega,
+    hspace.trans (Nat.add_le_add (Nat.mul_le_mul_left 2 hS) (Nat.mul_le_mul_left _ ?_))⟩
+  omega
+
+end Turing.MultiTapeTM
+
+namespace Turing.MultiTapeMachine
+
+variable {k : ℕ} {Symbol State : Type} [DecidableEq Symbol]
+
+/-- The choice-free tidy normal form: shadow an explicit machine, clear every work tape and its
+shadow, then rewind the input head. -/
+def tidy (m₀ m₁ : Symbol) (machine : MultiTapeMachine k Symbol State Empty Id) :
+    MultiTapeMachine (k + k) Symbol
+      ((Option State ⊕ MultiTapeTM.ClearListState (List.finRange k).length) ⊕
+        MultiTapeTM.RewindState) Empty Id :=
+  let rec clear :
+      (tapes : List (Fin k)) →
+        MultiTapeMachine (k + k) Symbol
+          (MultiTapeTM.ClearListState tapes.length) Empty Id
+    | [] =>
+        ofTr () fun _ _ _ =>
+          { inputTape := 0, workTapes := fun _ => (none, 0), output := none, state := none }
+    | tape :: tapes =>
+        let clearing : MultiTapeMachine 2 Symbol MultiTapeTM.ClearShadowedState Empty Id :=
+          clearShadowed m₀ m₁
+        let rest : MultiTapeMachine (k + k) Symbol
+            (MultiTapeTM.ClearListState tapes.length) Empty Id := clear tapes
+        (clearing.extendTapes (MultiTapeTM.pairEmb tape)).seq rest
+  let shadowed : MultiTapeMachine (k + k) Symbol (Option State) Empty Id :=
+    machine.shadow m₀ m₁
+  let cleared := clear (List.finRange k)
+  let rewound : MultiTapeMachine (k + k) Symbol MultiTapeTM.RewindState Empty Id :=
+    (rewindInput Symbol).extendTapes (MultiTapeTM.noTapes (k + k))
+  (shadowed.seq cleared).seq rewound
+
+/-- Clear each listed work tape together with its shadow, in list order. -/
+add_decl_doc tidy.clear
+
+/-- The local recursive cleanup has exactly the legacy deterministic semantics. -/
+private theorem toTM_clearList (m₀ m₁ : Symbol) (tapes : List (Fin k)) :
+    (tidy.clear m₀ m₁ tapes).toTM = MultiTapeTM.clearList m₀ m₁ tapes := by
+  induction tapes with
+  | nil =>
+      change (ofTr () fun _ _ _ =>
+        { inputTape := 0, workTapes := fun _ => (none, 0), output := none,
+          state := none }).toTM = MultiTapeTM.nop (k + k) Symbol
+      rw [toTM_ofTr, MultiTapeTM.nop]
+  | cons tape tapes ih =>
+      change (((clearShadowed m₀ m₁).extendTapes (MultiTapeTM.pairEmb tape)).seq
+          (tidy.clear m₀ m₁ tapes)).toTM =
+        ((MultiTapeTM.clearShadowed m₀ m₁).extendTapes
+          (MultiTapeTM.pairEmb tape)).seq (MultiTapeTM.clearList m₀ m₁ tapes)
+      rw [toTM_seq, toTM_extendTapes, toTM_clearShadowed, ih]
+
+variable {input : List Symbol} {m₀ m₁ : Symbol}
+
+/-- The explicit tidy table has the same exact running-time and workspace bounds as the legacy
+normal form. The proof runs the retained transition tables directly; it does not recover a table
+from a transition relation. -/
+private theorem exists_runPath_tidy {machine : MultiTapeMachine k Symbol State Empty Id}
+    (hm : m₀ ≠ m₁) {u : ℕ}
+    (hlt : ∀ m < u, ¬(machine.toTM.runFrom (machine.toTM.initCfg input) m).Halted)
+    (hu : (machine.toTM.runFrom (machine.toTM.initCfg input) u).Halted) :
+    ∃ p : (tidy m₀ m₁ machine).toTM.RunPath input,
+      p.head = (tidy m₀ m₁ machine).toTM.initCfg input ∧
+      p.last = wordsCfg input none (fun _ => [])
+        (machine.toTM.runFrom (machine.toTM.initCfg input) u).output ∧
+      p.time ≤ 2 * u +
+        3 * (MultiTapeNTM.RunPath.ofDeterministic machine.toTM
+          (machine.toTM.initCfg input) u).space + 2 * k + 4 ∧
+      p.space ≤ 2 * (MultiTapeNTM.RunPath.ofDeterministic machine.toTM
+          (machine.toTM.initCfg input) u).space +
+        2 * k * (3 * (MultiTapeNTM.RunPath.ofDeterministic machine.toTM
+          (machine.toTM.initCfg input) u).space + 2 * k + 3) := by
+  have htidy : (tidy m₀ m₁ machine).toTM =
+      ((MultiTapeTM.shadow m₀ m₁ machine.toTM).seq
+        (MultiTapeTM.clearList m₀ m₁ (List.finRange k))).seq
+        ((rewindInput Symbol).toTM.extendTapes (MultiTapeTM.noTapes (k + k))) := by
+    simp only [tidy, toTM_seq, toTM_shadow, toTM_clearList, toTM_extendTapes]
+  rw [htidy]
+  exact MultiTapeTM.exists_runPath_tidy_with_rewind
+    (rewind := (rewindInput Symbol).toTM)
+    _root_.Turing.MultiTapeMachine.runFrom_rewindInput hm hlt hu
+
+/-- What an explicit machine computes within `t` steps and `s` cells, its explicit tidy table
+computes tidily within `2 * t + 3 * s + 2 * k + 4` steps and
+`2 * s + 2 * k * (3 * s + 2 * k + 3)` cells. -/
+theorem ComputesInTimeAndSpace.computesTidily_tidy
+    {machine : MultiTapeMachine k Symbol State Empty Id} (hm : m₀ ≠ m₁) {output : List Symbol}
+    {t s : ℕ} (h : machine.toTM.ComputesInTimeAndSpace input output t s) :
+    (tidy m₀ m₁ machine).toTM.ComputesTidilyInTimeAndSpace input output
+      (2 * t + 3 * s + 2 * k + 4) (2 * s + 2 * k * (3 * s + 2 * k + 3)) := by
+  obtain ⟨⟨u', hu', hout⟩, ht, hs⟩ := h
+  obtain ⟨u, -, hu, hlt⟩ := MultiTapeTM.exists_haltsAt hu'
+  have hut : u ≤ t := Nat.le_of_not_lt fun h => hlt t h (MultiTapeTM.runsInTime_iff_halted.mp ht)
+  have hout' : (machine.toTM.runFrom (machine.toTM.initCfg input) u).output = output := by
+    rw [← hout, MultiTapeTM.runFrom_eq_of_halt _ _
+      (Nat.le_of_not_lt fun h => hlt u' h hu') hu]
+  have hS := MultiTapeTM.space_le_of_runsInSpace hs u
+  obtain ⟨p, hhead, hlast, htime, hspace⟩ := exists_runPath_tidy hm hlt hu
+  rw [MultiTapeTM.computesTidily_iff]
+  refine ⟨p, hhead.trans (MultiTapeTM.initCfg_eq_wordsCfg input),
+    hlast.trans (by rw [hout']), by omega,
+    hspace.trans (Nat.add_le_add (Nat.mul_le_mul_left 2 hS) (Nat.mul_le_mul_left _ ?_))⟩
+  omega
+
+end Turing.MultiTapeMachine
