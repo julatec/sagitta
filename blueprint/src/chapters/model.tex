@@ -1,0 +1,280 @@
+\chapter{The model and the classes}
+\label{chap:model}
+
+The argument is stated once for an abstract model and once for Turing machines. The abstract
+model only names the classes and the closure properties that the argument uses; the
+Turing-machine instance takes them from cslib and cslib-frontier, with their proofs.
+
+\section{The abstract model}
+
+\begin{definition}[Abstract complexity model]
+  \label{def:model}
+  \lean{Sagitta.Arrow.Model}
+  \leanok
+  A \emph{model} consists of a type of decision problems and a type of search problems; predicates
+  $\cP \subseteq \cNP$ on decision problems and $\cFP$, $\cFNP$ on search problems; a reflexive and
+  transitive relation $A \red B$ of reductions; and two maps $\dom$ and $\pre$ from search problems
+  to decision problems (the domain, ``does the instance have a solution?'', and the prefix problem,
+  ``does some solution of $a$ begin with $u$?''). They satisfy:
+  \begin{enumerate}
+    \item if $A \red B$ and $B \in \cP$ then $A \in \cP$ (an efficient procedure may call an
+      efficient subroutine);
+    \item if $R \in \cFNP$ then $\dom R \in \cNP$ and $\pre R \in \cNP$; if $R \in \cFP$ then
+      $\dom R \in \cP$;
+    \item every $A \in \cNP$ is $\dom R$ for some $R \in \cFNP$;
+    \item if $R \in \cFNP$ and $\pre R \in \cP$ then $R \in \cFP$ (search through prefixes).
+  \end{enumerate}
+  \own{} The closure properties are standard facts about the classes of the literature: see
+  \cite{AroraBarak} (Chapter~2) and \cite{Goldreich} (Chapter~2, search and decision).
+\end{definition}
+
+\begin{definition}[$\cP = \cNP$, easy search, completeness, intermediate problems]
+  \label{def:model-classes}
+  \lean{Sagitta.Arrow.Model.PeqNP, Sagitta.Arrow.Model.SearchEasy, Sagitta.Arrow.Model.NPComplete, Sagitta.Arrow.Model.Intermediate}
+  \leanok
+  \uses{def:model}
+  In a model $M$:
+  $\cP = \cNP$ means that every $A \in \cNP$ is in $\cP$;
+  \emph{search is easy} means that every $R \in \cFNP$ is in $\cFP$;
+  $B$ is \emph{$\cNP$-complete} when $B \in \cNP$ and $A \red B$ for every $A \in \cNP$;
+  $A$ is \emph{$\cNP$-intermediate} when $A \in \cNP$, $A \notin \cP$ and $A$ is not
+  $\cNP$-complete.
+  \own{}
+\end{definition}
+
+\section{Imported from cslib}
+\label{sec:cslib}
+
+The entries of this section are \textbf{not this project's work}. They are definitions and
+theorems of \href{https://github.com/leanprover/cslib}{cslib} (commit \texttt{98f9a62}) and
+\href{https://github.com/cslib-community/cslib-frontier}{cslib-frontier} (commit \texttt{99f0281}),
+copied into this repository without modification, under their original paths and module names,
+with their Apache-2.0 licenses and copyright headers (see
+\href{https://github.com/julatec/sagitta/blob/main/VENDORED.md}{\texttt{VENDORED.md}}). Each entry
+says where the copied file is. They are listed here so that the dependency graph shows on which
+part of cslib each result of this project rests.
+
+All problems are over instances $a$ of a type $\alpha$ with an injective binary encoding
+$\enc : \alpha \hookrightarrow \{0,1\}^*$.
+
+\subsection{The machines}
+
+\begin{definition}[Multi-tape Turing machines]
+  \label{def:cslib-tm}
+  \lean{Turing.MultiTapeTM, Turing.Cfg, Turing.Action, Turing.MultiTapeTM.runFrom}
+  \leanok
+  A deterministic multi-tape machine with $k$ work tapes has a transition that, from a state, the
+  symbol under the input head and the symbols under the work heads, gives an action: move the input
+  head, write and move on each work tape, append at most one symbol to the output, and go to a new
+  state or halt. A configuration records the state, the head positions, the work tapes and the
+  output; $\mathrm{runFrom}(c, t)$ is the configuration after $t$ steps.
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Deterministic.lean}
+  (configurations and actions in
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Configuration.lean}).
+  \notours{cslib}
+\end{definition}
+
+\begin{definition}[Time and space of a run]
+  \label{def:cslib-time-space}
+  \lean{Turing.MultiTapeNTM.RunsInTime, Turing.MultiTapeNTM.RunsInSpace, Turing.MultiTapeTM.ComputesFunInTimeAndSpace}
+  \leanok
+  \uses{def:cslib-tm}
+  A machine runs in time $t$ on an input when every run halts within $t$ steps, and in space $s$
+  when it stays within $s$ cells; it computes $f$ in time $t$ and space $s$ (for encodings
+  $\enc_{\mathrm{in}}, \enc_{\mathrm{out}}$) when on $\enc_{\mathrm{in}}(a)$ it halts with output
+  $\enc_{\mathrm{out}}(f(a))$ within those bounds.
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Nondeterministic.lean},
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Space.lean} and
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Deterministic.lean}.
+  \notours{cslib}
+\end{definition}
+
+\begin{definition}[Bounded configurations]
+  \label{def:cslib-configbound}
+  \lean{Turing.Cfg.core, Turing.Storage, Turing.storageBound}
+  \leanok
+  \uses{def:cslib-tm}
+  The core of a configuration forgets the output; a configuration whose work tapes fit in windows of
+  size $s$ is one of at most $\mathrm{storageBound}$ storages, a number exponential in $s$.
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/ConfigBound.lean}.
+  \notours{cslib}
+\end{definition}
+
+\begin{definition}[Plumbing: sequential composition, virtual input and output, rewinding]
+  \label{def:cslib-plumbing}
+  \lean{Turing.MultiTapeTM.seq, Turing.MultiTapeTM.inputFromTape, Turing.MultiTapeTM.outputToTape, Turing.MultiTapeTM.rewindWork}
+  \leanok
+  \uses{def:cslib-tm}
+  $\mathrm{seq}$ runs one machine and then another on the same tapes; $\mathrm{inputFromTape}$ makes
+  a machine read its input from a work tape; $\mathrm{outputToTape}$ writes its output on a fresh
+  work tape; $\mathrm{rewindWork}$ brings a work head back to the start of its word.
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Plumbing/Sequential.lean},
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Plumbing/InputFromTape.lean},
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Plumbing/OutputToTape.lean},
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/Plumbing/RewindWork.lean}.
+  \notours{cslib}
+\end{definition}
+
+\subsection{The classes}
+
+\begin{definition}[Polynomial-time computable function]
+  \label{def:polytime}
+  \lean{Turing.MultiTapeTM.ComputableInPolyTime}
+  \leanok
+  \uses{def:cslib-time-space}
+  $f : \alpha \to \beta$ is computable in polynomial time when some machine with binary alphabet and
+  finitely many states computes it within time and space bounded by polynomially bounded functions
+  of the length of the encoded input.
+  \cslibfile{CslibFrontier/Computability/Machines/Turing/MultiTape/PolyTime.lean}.
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{definition}[The class $\cP$]
+  \label{def:P}
+  \lean{Cslib.Complexity.P}
+  \leanok
+  \uses{def:polytime}
+  $A \in \cP$ when some Boolean function computable in polynomial time decides membership in $A$.
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/P.lean}.
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{definition}[The class $\cNP$, by verifiers]
+  \label{def:NP}
+  \lean{Cslib.Complexity.IsVerifier, Cslib.Complexity.NP}
+  \leanok
+  \uses{def:polytime}
+  $V$ verifies $A$ with polynomial $p$ when
+  $a \in A \iff \exists w,\ |w| = p(|\enc(a)|) \wedge V(a, w) = \mathrm{true}$; $A \in \cNP$ when it
+  has a verifier computable in polynomial time.
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/NP.lean}.
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{definition}[Polynomial-time reductions and $\cNP$-completeness]
+  \label{def:reduction}
+  \lean{Cslib.Complexity.PolyTimeReducible, Cslib.Complexity.PolyTimeReducible.trans, Cslib.Complexity.NPComplete, Cslib.Complexity.P_subset_NP}
+  \leanok
+  \uses{def:P, def:NP}
+  $A \red B$ when some $f$ computable in polynomial time satisfies $a \in A \iff f(a) \in B$;
+  reductions compose. $B$ is $\cNP$-complete when $B \in \cNP$ and every $\cNP$ problem reduces to
+  it. $\cP \subseteq \cNP$.
+  \cslibfile{CslibFrontier/Computability/Complexity/Reduction.lean}.
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{definition}[Search problems: $\cFNP$ and $\cFP$]
+  \label{def:FNP}
+  \lean{Cslib.Complexity.FNP, Cslib.Complexity.FPSearch}
+  \leanok
+  \uses{def:polytime}
+  A search problem is a relation $R(a, w)$. $R \in \cFNP$ when its solutions are polynomially short
+  and it is decided in polynomial time; $R \in \cFP$ when moreover a function computable in
+  polynomial time returns a solution whenever there is one.
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/TFNP.lean}.
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{theorem}[Search reduces to decision]
+  \label{thm:cslib-search-decision}
+  \lean{Cslib.Complexity.FNP_subset_FPSearch_iff}
+  \leanok
+  \uses{def:FNP, def:P, def:NP}
+  $\cFNP \subseteq \cFP$ for every encoding if and only if $\cNP \subseteq \cP$ for every encoding.
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/TFNP/SearchToDecision.lean}.
+  \notours{cslib-frontier}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  In cslib-frontier.
+\end{proof}
+
+\subsection{The problems}
+
+\begin{definition}[$\SAT$ and $\TSAT$]
+  \label{def:threesat}
+  \lean{Cslib.Complexity.SAT, Cslib.Complexity.encCNF, Cslib.Complexity.ThreeSAT}
+  \leanok
+  $\SAT$ is the set of satisfiable CNF formulas over $\mathbb{N}$, with a binary encoding of the
+  clause list; $\TSAT$ the satisfiable ones with at most three literals per clause.
+  \cslibfile{CslibFrontier/Computability/Complexity/Problems/SAT.lean},
+  \cslibfile{CslibFrontier/Computability/Complexity/Problems/ThreeSAT.lean}.
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{theorem}[Cook--Levin]
+  \label{thm:cook-levin}
+  \lean{Cslib.Complexity.CookLevin.SAT_npComplete, Cslib.Complexity.ThreeSAT_npComplete, Cslib.Complexity.polyTimeReducible_SAT_ThreeSAT}
+  \leanok
+  \uses{def:threesat, def:reduction}
+  $\SAT$ and $\TSAT$ are $\cNP$-complete, and $\SAT \red \TSAT$.
+  \cslibfile{CslibFrontier/Computability/Complexity/CookLevin/Completeness.lean},
+  \cslibfile{CslibFrontier/Computability/Complexity/Problems/ThreeSAT.lean}.
+  \notours{cslib-frontier}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  In cslib-frontier.
+\end{proof}
+
+\begin{theorem}[$\MAXCUT$ is $\cNP$-complete]
+  \label{thm:maxcut}
+  \lean{Cslib.Complexity.MaxCut, Cslib.Complexity.MaxCut_npComplete}
+  \leanok
+  \uses{def:reduction}
+  The weighted maximum-cut problem (is there a cut of weight at least $k$?) is $\cNP$-complete.
+  \cslibfile{CslibFrontier/Computability/Complexity/Problems/MaxCut.lean}.
+  \notours{cslib-frontier}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  In cslib-frontier.
+\end{proof}
+
+\begin{theorem}[Ladner]
+  \label{thm:ladner}
+  \lean{Cslib.Complexity.Ladner.exists_NP_not_P_not_npComplete}
+  \leanok
+  \uses{def:P, def:NP, def:reduction}
+  If $\cP \neq \cNP$ for some encoding, some problem over binary words is in $\cNP$, not in $\cP$
+  and not $\cNP$-complete.
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/Ladner.lean}.
+  \notours{cslib-frontier}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  In cslib-frontier.
+\end{proof}
+
+\section{Turing machines form a model}
+
+\begin{definition}[The Turing-machine model]
+  \label{def:tmModel}
+  \lean{Sagitta.Arrow.TM.tmModel, Sagitta.Arrow.TM.Problem, Sagitta.Arrow.TM.SearchProblem}
+  \leanok
+  \uses{def:model, def:P, def:NP, def:reduction, def:FNP, thm:cslib-search-decision}
+  Decision problems are triples $(\alpha, \enc, A)$, search problems triples $(\alpha, \enc, R)$,
+  reductions are polynomial-time many-one reductions, and the classes are those of cslib-frontier.
+  Every closure property of Definition~\ref{def:model} is a theorem of cslib-frontier, used with its
+  proof: composition of reductions, closure of $\cP$ under reductions, the domain of an $\cFNP$
+  relation in $\cNP$, every $\cNP$ problem the domain of its verifier relation, and search through
+  prefixes.
+\end{definition}
+
+\begin{lemma}[Completeness in the two vocabularies]
+  \label{lem:npComplete-iff}
+  \lean{Sagitta.Arrow.TM.npComplete_iff}
+  \leanok
+  \uses{def:tmModel, def:model-classes}
+  For a problem $(\beta, \enc, B)$, $\cNP$-completeness in the abstract model coincides with
+  cslib's $\cNP$-completeness.
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  Unfold both definitions; an $\cNP$ problem of the model is an $\cNP$ problem over some encoded type.
+\end{proof}

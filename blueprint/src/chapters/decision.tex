@@ -1,0 +1,112 @@
+\chapter{The decision hypothesis}
+\label{chap:decision}
+
+The central hypothesis is not stated as $\cP \neq \cNP$ but at the place where the localization
+says the asymmetry lives: reducing the final state to one bit is the boundary condition that breaks
+the symmetry of time, and that breaking has a cost. Everything in this chapter is this project's
+own.
+
+\begin{definition}[The decision hypothesis, HD]
+  \label{def:hd}
+  \lean{Sagitta.Arrow.Model.DecisionHypothesis}
+  \leanok
+  \uses{def:model}
+  In a model $M$, \emph{HD} says that some search problem $R \in \cFNP$ is not in $\cFP$: from the
+  one bit ``the instance is in $\dom R$'' no efficient procedure reconstructs a witness. A
+  \textbf{hypothesis}: a definition of type \texttt{Prop}, never an axiom.
+  \own{}
+\end{definition}
+
+\begin{theorem}[HD is equivalent to the arrow]
+  \label{thm:hd-iff-arrow}
+  \lean{Sagitta.Arrow.Model.decisionHypothesis_iff_not_searchEasy, Sagitta.Arrow.Model.decisionHypothesis_iff_arrow, Sagitta.Arrow.Model.DecisionHypothesis.arrow}
+  \leanok
+  \uses{def:hd, def:arrow, thm:kelvin, thm:searchEasy-iff}
+  In every model, HD holds if and only if search is not easy, if and only if the arrow holds. HD is
+  the conceptual formulation of $\cP \neq \cNP$ (worst case), not a stronger hypothesis.
+  \own{}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:kelvin, thm:searchEasy-iff}
+  HD is the negation of easy search, and Kelvin's form (through the localization, part 3) identifies
+  that with the arrow.
+\end{proof}
+
+\begin{theorem}[Where HD lives, on the boundary]
+  \label{thm:hd-boundary}
+  \lean{Sagitta.Arrow.decisionHypothesis_on_boundary}
+  \leanok
+  \uses{thm:full-boundary, thm:boundary-lower-bound, thm:hd-iff-arrow}
+  With the full boundary, going back is one verification; with nothing but the bit, a black-box
+  search over the $2^k$ completions asks about all of them in the worst case; and whether a
+  non-black-box procedure does better from that bit, for every verifier, is what HD denies, and HD
+  is the arrow.
+  \own{}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The conjunction of the cited results.
+\end{proof}
+
+\begin{theorem}[HD is independent of the closure properties; the consequences need it]
+  \label{thm:hd-independent}
+  \lean{Sagitta.Arrow.decisionHypothesis_independent, Sagitta.Arrow.consequences_need_decisionHypothesis}
+  \leanok
+  \uses{def:hd, def:two-models, thm:hd-iff-arrow}
+  HD fails in the collapsed model and holds in the separated one. In the collapsed model, where HD
+  fails, the only problem is $\cNP$-complete and in $\cP$.
+  \own{}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compute in both models.
+\end{proof}
+
+\begin{definition}[HD for Turing machines]
+  \label{def:hd-tm}
+  \lean{Sagitta.Arrow.TM.DecisionHypothesis}
+  \leanok
+  \uses{def:polytime, def:FNP}
+  For some encoded type, some polynomial $p$ and some verifier $V$ computable in polynomial time, no
+  function computable in polynomial time returns, from the instance alone, a certificate of length
+  $p(n)$ accepted by $V$ whenever there is one. A hypothesis, never an axiom.
+  \own{}
+\end{definition}
+
+\begin{theorem}[HD is equivalent to the arrow, for Turing machines]
+  \label{thm:hd-iff-arrow-tm}
+  \lean{Sagitta.Arrow.TM.decisionHypothesis_iff_arrow, Sagitta.Arrow.TM.DecisionHypothesis.arrow, Sagitta.Arrow.TM.decisionHypothesis_iff_model}
+  \leanok
+  \uses{def:hd-tm, def:arrow-tm, thm:oneBit, thm:hd-iff-arrow}
+  For Turing machines, HD holds if and only if the arrow holds, and HD coincides with the HD of the
+  Turing-machine model.
+  \own{}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:oneBit}
+  The localization, part 3, for Turing machines.
+\end{proof}
+
+\begin{theorem}[Irreversibility without loss of information]
+  \label{thm:irreversibility-without-loss}
+  \lean{Sagitta.Arrow.Dynamics.irreversibility_without_loss, Sagitta.Arrow.TM.irreversibility_without_loss_tm}
+  \leanok
+  \uses{def:hd, def:hd-tm, thm:card-image, thm:hd-iff-arrow, thm:hd-iff-arrow-tm, thm:sat-notmem-p}
+  Under HD, both hold at once: a reversible dynamics loses no information (it keeps the size of
+  every set of states, and its Koopman operator is unitary --- a theorem), and yet from the one bit
+  ``a witness exists'' the witness is not recovered cheaply for every search problem (HD, a
+  hypothesis). For Turing machines, moreover $\SAT \notin \cP$. The irreversibility lives in the
+  bit, not in the dynamics.
+  \own{}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The conjunction of Theorem~\ref{thm:card-image} with HD.
+\end{proof}

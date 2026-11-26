@@ -1,6 +1,12 @@
 # Builds the whole project from scratch on GitHub's machines, on every push and pull request.
 # Mathlib comes from its prebuilt cache; the vendored cslib files and ours are compiled.
 # A green check on a commit is a public, reproducible proof that that exact commit builds.
+#
+# The same job then builds the blueprint (`blueprint/src`, with leanblueprint, in a TeX Live
+# container), checks that every `\lean{...}` of the blueprint names a declaration of the compiled
+# project (`lake exe checkdecls blueprint/lean_decls`, which fails the build otherwise), builds the
+# API documentation with doc-gen4 (on pushes), and, on `main` only, publishes everything to GitHub
+# Pages: https://julatec.github.io/sagitta/
 name: Lean build
 
 on:
@@ -10,17 +16,31 @@ on:
 
 permissions:
   contents: read
+  pages: write     # deploy to GitHub Pages (only from main)
+  id-token: write  # required by actions/deploy-pages
 
 jobs:
   build:
-    name: lake build
+    name: lake build, blueprint and docs
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 300
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: leanprover/lean-action@v1
         with:
           use-mathlib-cache: true
           build: true
           test: false
           lint: false
+      # The landing page of the site; the action adds `blueprint/`, `blueprint.pdf` and `docs/`.
+      - name: Landing page
+        run: |
+          mkdir -p docs
+          cp blueprint/home/index.html docs/index.html
+      - uses: leanprover-community/docgen-action@dacc1acc2a3f532cc577266979ba9c36c7593f7c # main, 2026-10-05
+        with:
+          blueprint: true
+          build-page: false
+          deploy: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
