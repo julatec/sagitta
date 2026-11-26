@@ -20,25 +20,24 @@ named hypothesis, never an axiom.
 ## Fidelity notes: what is and is not proved (read first)
 
 An independent audit compared every central statement with the literature (40 statements: 33
-faithful, 2 weaker, 5 different). One of the two weaker ones, Bennett, has since been fixed (first
-item). The differences, stated plainly:
+faithful, 2 weaker, 5 different). One of the two weaker ones, Bennett, has since been fixed. The
+differences, stated plainly:
 
-* **Bennett (fixed).** The audit found that the old `Bennett` proposition did not require the
-  auxiliary tapes to end clean, which is the point of Bennett (1973): a history simulation that
-  never uncomputes (Lecerf, Landauer) satisfied it. `Bennett` now requires it (`ComputesCleanly`):
-  at the end the output is on the output tape, every work head is on cell `0`, and every work tape
-  is blank except a copy of the input and a constant mark, with the same role for every input
-  (nothing that depends on the run, such as a history, may remain). The time and space are linear
-  in `n + t(n)`, as in Bennett, not just polynomial. The old proposition is kept as `BennettWeak`,
-  and the check is proved both ways: the Lecerf–Landauer machine `histOnlyTM` (history, emit, stop)
-  proves `BennettWeak` (`bennett_of_history_only`) and fails the clean requirement
-  (`history_only_not_clean`). The exact time is `2n + 4t + 6|y| + 21` (`revTM_correct_clean`;
-  n = input length, t = steps of the simulated machine, y = output); the `4t` matches Bennett's
-  count. Remaining differences with Bennett's setting, not with his theorem: cslib's input tape is
-  read-only, so the input is copied once to a work tape and that copy (with its one-cell mark)
-  stays, playing the role of Bennett's reconstructed input; cslib's actions write and move in one
-  step (quintuples), Bennett's are quadruples; the space is `(k + 3 + h)(2T + 1)` with `h` one-hot
-  history tapes, a large constant against Bennett's three tapes.
+* **Bennett requires clean tapes.** `Bennett` (`TM/Instance.lean`, proved as `bennett_holds`)
+  requires what Bennett (1973) adds to Lecerf (1963): when the reversible machine halts, the output
+  is on the output tape, every work head is on cell `0`, and every work tape is blank except a copy
+  of the input and a constant mark, with the same role for every input (`ComputesCleanly`): nothing
+  that depends on the run, such as a history, remains. Time and space are linear in `n + t(n)`, as
+  in Bennett, not just polynomial. The old proposition, without clean tapes, is kept as the mutant
+  `BennettWeak`: the Lecerf–Landauer machine `histOnlyTM` (history, emit, stop) proves it
+  (`bennett_of_history_only`) and fails the clean requirement (`history_only_not_clean`). The exact
+  time is `2n + 4t + 6|y| + 21` (`revTM_correct_clean`; n = input length, t = steps of the simulated
+  machine, y = output); the `4t` matches Bennett's count. Remaining differences with Bennett's
+  setting, not with his theorem: cslib's input tape is read-only, so the input is copied once to a
+  work tape and that copy (with its one-cell mark) stays, playing the role of Bennett's
+  reconstructed input, and the input head ends on the blank after the input; cslib's actions write
+  and move in one step (quintuples), Bennett's are quadruples; the space is `(k + 3 + h)(2T + 1)`
+  with `h` one-hot history tapes, a large constant against Bennett's three tapes.
 * **ISING.** `ISING_npComplete` is NP-completeness on arbitrary graphs with integer couplings
   written in binary (via MAX-CUT). Barahona (1982) proves the much stronger result on 3D lattices
   with couplings in {−1, 0, 1}; that is not formalized here.
@@ -52,14 +51,46 @@ item). The differences, stated plainly:
   costed inverse.
 * **`decision_bennett_holds`.** Its conclusion follows from HD alone; Bennett adds the reversible
   verifier, not the arrow.
-* **Blind statements (`Sagitta/Fidelity`).** `Blind.lean` states five results from the literature
-  without reading this project; `Equiv.lean` compares them with ours, in Lean. Goldreich's
-  Theorem 2.6 follows from `FNP_subset_FPSearch_iff`, and HD is exactly `PC ⊄ PF`; the blind Ladner
-  and ISING statements are equivalent to ours. The blind Bennett statement is **false**
-  (`not_bennettPoly`): it asks the input head back at the origin, which no reversible cslib machine
-  computing the identity can do, since its input head cannot leave a blank. For Law 2.2 against the
-  weak ETH no implication is proved: the `n` (bits against variables) and the domain differ, and
-  the blind size form has a defect at the empty formula; the obstructions are proved.
+
+### Equivalences with independent statements (`Sagitta/Fidelity`)
+
+`Fidelity/Blind.lean` states five results from the literature without reading this project;
+`Fidelity/Equiv.lean` compares them with ours, in Lean.
+
+| Literature (blind statement) | Ours | Result |
+|---|---|---|
+| Goldreich, Thm. 2.6: `PC ⊆ PF ↔ P = NP` (`GoldreichThm2_6`) | `FNP_subset_FPSearch_iff`, `DecisionHypothesis` | **Proved** (`goldreichThm2_6`); HD is exactly `PC ⊄ PF` (`decisionHypothesis_iff_not_PC_subset_PF`) |
+| Ladner, Arora–Barak form with Karp reductions (`Ladner`) | `exists_intermediate` | **Proved equivalent** (`ladner`, `ladner_iff`); Ladner's stronger form with Turing reductions is not stated |
+| ISING decision problem is NP-complete (`IsingNPComplete`) | `ISING_npComplete` | **Proved equivalent** (`isingNPComplete_iff`); neither is Barahona's lattice theorem |
+| Bennett with the input head back at the origin (`BennettPoly`, `BennettLinear`) | `Bennett` | **One direction only, and the blind one is false** (`not_bennettPoly`, `not_bennettLinear`, `bennett_not_imp_bennettPoly`): a reversible cslib machine cannot move its input head off a blank, so it cannot both return it to the origin and compute the identity. Documented difference: ours leaves the head on the blank after the input, which is Bennett's own final state on a read-only input |
+| Weak ETH (`n` variables) and its size form (`WeakETH`, `WeakETHSize`) | `Law22` | **Documented difference, no implication proved**: `n` in bits against variables, all formulas against 3CNF inputs without repetitions, and a defect of the blind size form at the empty formula (`numVars_single`, `length_encCNF_single`, `weakETHSize_bound_nil`) |
+
+### The battery (`Sagitta/Fidelity.lean`, a default build target)
+
+* **Consequences the literature derives come out of our statements.** Bennett gives a reversible,
+  garbage-free verifier for every `NP` problem (`reversible_verifier_of_bennett`); Cook–Levin gives
+  the classical reductions (`reduces_to_SAT`, `SAT_reduces_ThreeSAT`, `SAT_reduces_ISING`,
+  `P_eq_NP_iff_SAT_mem_P`); SAT is self-reducible (`SAT_selfReducible`: SAT ∈ P iff its search
+  problem is in `FPSearch`).
+* **Mutants: every definition broken on purpose is caught by a sanity check.** `P` without
+  uniformity contains every set (`PNonUniform_eq_univ`) and, at the level of functions, a function
+  with exponentially long outputs that no polynomial-time machine computes
+  (`expOut_mem_FPNonUniform`, `not_computableInPolyTime_expOut`); "reversible" only on reachable
+  configurations accepts a machine that erases (`eraseTM_isReversibleReachable`), which the real
+  definition rejects (`eraseTM_not_isReversible`); an exponential bound in place of the polynomial
+  one accepts `2 ^ n` (`expBounded_two_pow`), which the real one rejects
+  (`not_polynomiallyBounded_two_pow`); Bennett without clean tapes holds for the history-only
+  simulation, which fails `ComputesCleanly` (`historyOnly_haltsNow_not_clean`). No mutant passed.
+* **Non-vacuity of the named hypotheses.** HD and Law 2.2 each imply `P ≠ NP`, so no model of them
+  for Turing machines can be built in Lean. What is proved: HD holds in a model of the core axioms
+  and fails in another (`decisionHypothesis_has_model`); for Turing machines HD is exactly
+  `P ≠ NP` on `{0,1}*` (`decisionHypothesis_iff_P_ne_NP`); the three hypotheses together say no more
+  than Law 2.2 alone (`law22_and_rest_iff`); and Law 2.2 is not empty: for every `ε ≥ 1` its
+  instance is a theorem (`law22_of_one_le`: no machine decides 3-SAT in constant time, by a
+  locality argument on the input head), so only the `0 < ε < 1` part is a hypothesis.
+* **Sanity checks.** A machine that erases is not reversible; one that copies between two tapes is,
+  one that copies a tape onto itself is not, and the machine that halts at once is; small ISING and
+  SAT instances are checked by `decide`.
 
 ## The first localization, complete: neither symmetry of time decides the arrow
 
@@ -245,8 +276,8 @@ lake exe cache get   # prebuilt Mathlib; Mathlib is never compiled here
 lake build
 ```
 
-A clean `lake build` compiles 345 vendored modules (312 from cslib-frontier, 33 from cslib) and 26
-modules of this project (nine of them the proof of Bennett's theorem), and no Mathlib module. On an Apple M1 Pro with `LEAN_NUM_THREADS=3` it
+A clean `lake build` compiles 345 vendored modules (312 from cslib-frontier, 33 from cslib) and 29
+modules of this project (nine of them the proof of Bennett's theorem, three the fidelity battery), and no Mathlib module. On an Apple M1 Pro with `LEAN_NUM_THREADS=3` it
 takes 5 min 47 s of wall-clock time (measured on 25 November 2026, before the two modules of the
 decision hypothesis, which add about 45 s, and the two of the complete first localization, which add
 about 1 min 10 s); the modules of this project
