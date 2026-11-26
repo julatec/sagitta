@@ -40,18 +40,22 @@ polynomial-time verifier runs on a reversible machine.
 
 \begin{definition}[Bennett's statement]
   \label{def:bennett}
-  \lean{Sagitta.Arrow.TM.Bennett}
+  \lean{Sagitta.Arrow.TM.Bennett, Sagitta.Arrow.TM.ComputesCleanly}
   \leanok
   \uses{def:isReversible, def:polytime}
-  \emph{Bennett}: every function computable in polynomial time is computed in polynomial time and
-  polynomial space by a reversible machine with finitely many states.
+  \emph{Bennett}: every machine that computes a function $f$ in time $t$ can be replaced by a
+  reversible machine with finitely many states that computes $f$ in time and space $O(n + t(n))$ and
+  \emph{computes cleanly}: when it halts, every work tape is blank, holds a copy of the input, or holds a
+  one-cell mark fixed for all inputs; every head is back at cell $0$; and the output tape holds $f(x)$.
   \source{\cite{Bennett73}.}
-  \fidelity{Bennett's theorem is stated for any computation, with linear overheads; here it is
-  restricted to polynomial-time functions, and the exported statement asks only for polynomial
-  bounds (the construction gives linear ones, Theorem~\ref{thm:bennett-holds}). The statement does not yet say
-  that the auxiliary tapes end clean, which is the point of Bennett (1973): a history simulation
-  that never uncomputes would satisfy it. Clean tapes are being added to the statement; see the
-  Fidelity notes of the README.}
+  \fidelity{Clean tapes and linear overheads are now part of the statement. The old statement, without
+  clean tapes, is kept as the mutant \texttt{BennettWeak}: a history simulation that never uncomputes
+  (Lecerf--Landauer) satisfies it but does not compute cleanly
+  (\texttt{bennett\_of\_history\_only}, \texttt{history\_only\_not\_clean}). One difference of form
+  remains: cslib's input tape is read-only, so a copy of the input plays the role of Bennett's
+  reconstructed input, and the input head ends on the blank after the input, not at the start (a
+  reversible machine cannot leave a blank of its input, Lemma~\ref{lem:staysOnBlank}). See the Fidelity
+  notes of the README.}
 \end{definition}
 
 \begin{lemma}[A reversible machine stays on a blank of its input]
@@ -375,9 +379,8 @@ polynomial-time verifier runs on a reversible machine.
   machine running in time $t$ with output $y$ on inputs of length $n$) and space linear in that
   time.
   \source{\cite{Bennett73}.}
-  \fidelity{clean tapes being added to the statement; see Definition~\ref{def:bennett} and the
-  Fidelity notes of the README. The construction itself uncomputes and leaves every work tape blank
-  (Theorem~\ref{thm:bennettTM}); the $4t$ matches Bennett's count.}
+  \fidelity{The proof exports the clean final configuration of the construction
+  (\texttt{revTM\_correct\_clean}); the $4t$ matches Bennett's count.}
 \end{theorem}
 
 \begin{proof}
