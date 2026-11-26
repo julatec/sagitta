@@ -15,6 +15,9 @@ import Sagitta.Arrow.TM.Bennett.Inverse
 import Sagitta.Arrow.TM.Bennett.Uncompute
 import Sagitta.Arrow.TM.Bennett.Compose
 import Sagitta.Arrow.TM.Bennett.Machine
+import Sagitta.Arrow.TM.Bennett.Prepare
+import Sagitta.Arrow.TM.Bennett.Normal
+import Sagitta.Arrow.TM.Bennett.Discharge
 
 /-!
 # Sagitta: the computational arrow of time

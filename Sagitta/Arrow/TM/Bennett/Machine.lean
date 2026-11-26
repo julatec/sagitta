@@ -29,10 +29,9 @@ composition (`Turing.MultiTapeTM.seq`):
 * A sharper space bound. `bennettTM_computesInTimeAndSpace` gives `(k + h) (2 T + 1)` with
   `T = 4 t + 2 |w| + 6` (a head moves one cell per step), which is `O(T)`; that the extra space is
   only the `h` history tapes over `t` cells is not stated.
-* Reducing an arbitrary machine to these hypotheses: a machine that never moves its input head
-  (copy the input to a work tape first, step 2b in `BENNETT.md`) and that leaves its result on a work
-  tape instead of the output (step 2c). Without them, the hypothesis `Bennett` of
-  `Sagitta.Arrow.TM.Instance` is not discharged yet (step 7).
+* Reducing an arbitrary machine to these hypotheses (a machine that never moves its input head and
+  leaves its result on a work tape): that is `Normal.lean` and `Prepare.lean`, and the statement
+  `Bennett` of `Sagitta.Arrow.TM.Instance` is proved in `Discharge.lean`.
 -/
 
 namespace Sagitta.Arrow.TM.Bennett

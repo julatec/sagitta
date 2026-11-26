@@ -68,8 +68,9 @@ HD  --(localization, part 3)-->  arrow (P ≠ NP)  -->  SAT, 3-SAT, ISING ∉ P;
   stronger hypothesis.
 * **The parallel with physics.** The past hypothesis plus reversible dynamics give the second law
   of thermodynamics; here HD plus Bennett's reversible simulation give the arrow and locate it
-  (`TM.decision_bennett`): the verifier runs on a reversible machine, and still the arrow holds,
-  because it is in the bit, not in the dynamics.
+  (`TM.decision_bennett_holds`): the verifier runs on a reversible machine, and still the arrow
+  holds, because it is in the bit, not in the dynamics. Bennett's simulation is a theorem for
+  cslib's machines (`TM.bennett_holds`), so only HD is assumed.
 * **Three senses of "decision".** The decision problem (a yes/no question), the erasure of the
   boundary down to that bit, and the choice of a witness that going back has to make again.
 * **Not an axiom.** HD is a definition of type `Prop`, taken as `(h : DecisionHypothesis)`. The end
@@ -112,12 +113,12 @@ The project has two layers, and both are default build targets.
 | **Decision hypothesis (central)** | `Core/Decision.lean`, `TM/Decision.lean` | `Model.DecisionHypothesis`, `TM.DecisionHypothesis`, `decisionHypothesis_iff_arrow`, `decisionHypothesis_on_boundary` | defines HD |
 | Second law 2.1 (Kelvin) | `Core/SecondLaw.lean`, `TM/Instance.lean` | `Model.Arrow`, `Model.kelvin`, `TM.kelvin`, `arrow_independent` | defines `Arrow` |
 | Second law 2.2 | `TM/Law22.lean` | `Law22`, `Law22.arrow` (2.2 implies 2.1) | defines `Law22` |
-| Bennett | `TM/Instance.lean` | `Bennett`, `reversible_verifier`, `IsReversible.runFrom_injective` | `Bennett` |
+| Bennett (1973), proved | `TM/Instance.lean`, `TM/Bennett/*.lean` | `Bennett`, `bennett_holds`, `reversible_verifier_holds`, `IsReversible.runFrom_injective` | none |
 | SAT, 3-SAT not in P | `TM/Consequences.lean` | `SAT_notMem_P`, `ThreeSAT_notMem_P` | `Arrow` |
 | An NP-intermediate problem | `TM/Consequences.lean` | `exists_intermediate` (Ladner) | `Arrow` |
 | ISING not in P | `TM/Ising.lean`, `TM/Consequences.lean` | `Ising.ISING_npComplete`, `ISING_notMem_P` | `Arrow` |
 | Consequences from HD | `TM/Decision.lean` | `SAT_notMem_P_of_decision`, `ThreeSAT_notMem_P_of_decision`, `exists_intermediate_of_decision`, `ISING_notMem_P_of_decision` | HD |
-| HD and Bennett | `TM/Decision.lean` | `decision_bennett` | HD, `Bennett` |
+| HD and Bennett | `TM/Decision.lean`, `TM/Bennett/Discharge.lean` | `decision_bennett_holds` (and `decision_bennett`, with `Bennett` as an argument) | HD |
 | 3-SAT not in TIME(2^(n^(1-ε))) | `TM/Consequences.lean` | `ThreeSAT_notMem_TIME` | `Law22` |
 
 ### The laws, as stated in the essay
@@ -134,10 +135,13 @@ The project has two layers, and both are default build targets.
 
 ### The hypotheses
 
-There are exactly four named hypotheses, and all four are definitions of type `Prop`, taken as
-explicit arguments `(h : DecisionHypothesis)`, `(h : Arrow)`, `(h : Law22)`, `(hB : Bennett)`. The
-first two are equivalent (`decisionHypothesis_iff_arrow`); HD is the central one, the arrow its
-statement as `P ≠ NP`. None is a Lean `axiom`. The end of
+The only named hypotheses are HD (equivalently, the arrow) and law 2.2: definitions of type `Prop`,
+taken as explicit arguments `(h : DecisionHypothesis)`, `(h : Arrow)`, `(h : Law22)`. The first two
+are equivalent (`decisionHypothesis_iff_arrow`); HD is the central one, the arrow its statement as
+`P ≠ NP`. None is a Lean `axiom`. `Bennett` used to be a fourth one; it is now a theorem
+(`bennett_holds`, below), and the statements that take `(hB : Bennett)` (`reversible_verifier`,
+`decision_bennett`) are kept, with versions without it (`reversible_verifier_holds`,
+`decision_bennett_holds`). The end of
 `TM/Consequences.lean` runs `#print axioms` on every main theorem under `#guard_msgs`, so the build
 fails if any of them depends on anything other than `propext`, `Classical.choice` and
 `Quot.sound`. The core also proves that the arrow is independent of the closure properties
@@ -145,11 +149,33 @@ fails if any of them depends on anything other than `propext`, `Classical.choice
 without the arrow the consequences fail (`consequences_need_arrow`); the same holds for HD (`decisionHypothesis_independent`,
 `consequences_need_decisionHypothesis`).
 
-`Bennett` (every polynomial-time function is computed in polynomial time and space by a reversible
-multi-tape machine, whose step is injective on running configurations) is not proved for cslib's
-machines: that needs Bennett's construction (compute with a history tape, copy the output,
-uncompute) as a cslib machine with injective transitions, with its time analysis. Its abstract
-shadow is proved in the core (`historyDynamics`, `history_simulates`, `history_recovers`).
+**Bennett's theorem is proved for cslib's machines** (`TM.bennett_holds : Bennett`, in
+`TM/Bennett/Discharge.lean`): every function computable in polynomial time is computed in
+polynomial time and space by a multi-tape machine with finitely many states whose step is injective
+on **every** running configuration, not only the reachable ones. The construction, one file per
+step of the plan (`BENNETT.md`):
+
+* `History.lean`: the machine with a history tape (a record per step, written on blank cells; a
+  sink for the configurations no run reaches). A reversible machine never moves its input head off
+  a blank (`IsReversible.staysOnBlank`), and that condition is necessary.
+* `Copy.lean`: copying a word with the swap of the blank and the symbol (Bennett's XOR), and
+  emitting it to the output tape.
+* `Inverse.lean`, `Uncompute.lean`: the reversible inverse of the history machine, `3 t + 2` steps
+  for `t`.
+* `Compose.lean`: cslib's sequential composition keeps reversibility when the hand-off is
+  distinguishable (and the condition is necessary).
+* `Machine.lean`: Bennett's machine, compute, emit, uncompute, in `4 t + 2 |w| + 6` steps, with
+  every work tape blank at the end.
+* `Prepare.lean`, `Normal.lean`: a reversible machine writes the input on a virtual input tape
+  (cslib's `inputFromTape`, used unchanged), and every machine has a normal form that never moves
+  nor reads its input head and leaves its result on a work tape (cslib's `outputToTape` and
+  `rewindWork`, used unchanged).
+* `Discharge.lean`: the two together; the time is `2 n + 10 t(n) + 21` for a machine running in
+  time `t`, and the space is linear in the time.
+
+The abstract shadow of the construction is also proved in the core (`historyDynamics`,
+`history_simulates`, `history_recovers`). Every file of `TM/Bennett` ends with `#print axioms`
+under `#guard_msgs` and one mutant per central theorem.
 
 The end of `TM/Dynamics.lean` does the same for the 37 central theorems of the complete first
 localization (both layers), and contains one mutant per central theorem (18 in all: a hypothesis
@@ -169,8 +195,8 @@ lake exe cache get   # prebuilt Mathlib; Mathlib is never compiled here
 lake build
 ```
 
-A clean `lake build` compiles 345 vendored modules (312 from cslib-frontier, 33 from cslib) and 17
-modules of this project, and no Mathlib module. On an Apple M1 Pro with `LEAN_NUM_THREADS=3` it
+A clean `lake build` compiles 345 vendored modules (312 from cslib-frontier, 33 from cslib) and 26
+modules of this project (nine of them the proof of Bennett's theorem), and no Mathlib module. On an Apple M1 Pro with `LEAN_NUM_THREADS=3` it
 takes 5 min 47 s of wall-clock time (measured on 25 November 2026, before the two modules of the
 decision hypothesis, which add about 45 s, and the two of the complete first localization, which add
 about 1 min 10 s); the modules of this project

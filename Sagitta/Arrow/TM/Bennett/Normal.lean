@@ -64,7 +64,7 @@ theorem step_setInputPos (hfix : InputFixed tm) (hb : InputBlind tm) (c : Cfg k 
     have hw : ({ c with inputPos := p } : Cfg k Bool S input).workTapeSymbols =
       c.workTapeSymbols := rfl
     rw [step_of_state hq', step_of_state hq, hb q _ c.inputSymbol, hw]
-    apply Cfg.ext <;> simp [hfix q, Cfg.workTapeSymbols]
+    apply Cfg.ext <;> simp [hfix q]
 
 /-- **Runs ignore the input head**, for a machine that never moves nor reads it. -/
 theorem runFrom_setInputPos (hfix : InputFixed tm) (hb : InputBlind tm) (c : Cfg k Bool S input)
@@ -201,15 +201,15 @@ theorem inCfg_outCfg_initCfg :
     | left j =>
       induction j using Fin.lastCases with
       | last =>
-        simp [prepTapes, Function.update_apply, Fin.ext_iff, outCfg, tapeOfList_nil] <;> omega
+        simp [prepTapes, Function.update_apply, Fin.ext_iff, outCfg, tapeOfList_nil]; omega
       | cast j =>
         simp [prepTapes, Function.update_apply, Fin.ext_iff, outCfg, MultiTapeNTM.initCfg,
           Cfg.init]
-        rw [if_neg (by omega), if_neg (by omega)]
+        rw [ite_eq_right (by omega), ite_eq_right (by omega)]
     | right j =>
       fin_cases j
       · simp [prepTapes, vipTape, flagTape, Fin.ext_iff]
-      · simp [prepTapes, vipTape, flagTape, Fin.ext_iff]
+      · simp [prepTapes, vipTape, flagTape]
   · funext i
     induction i using Fin.addCases with
     | left j =>
@@ -285,7 +285,7 @@ theorem normTM_run (p : Fin (input.length + 2)) (t : ℕ)
     · funext i
       by_cases hi : i = outTape k
       · subst hi; simp [hE, hF, hy]
-      · simp [hi, hF] <;> rfl
+      · simp [hi, hF]; rfl
     · rfl
     · rfl
   have hFh : F.Halted := rfl
@@ -296,8 +296,8 @@ theorem normTM_run (p : Fin (input.length + 2)) (t : ℕ)
       F.mapState (Option.map .inr) := by
     have := seq_runFrom_of_le (tm₀ := redirTM tm) (tm₁ := rewindOut k)
       (⟨some tm.q₀, p, prepTapes k input, fun _ => 0, []⟩ : Cfg (k + 1 + 2) Bool S input)
-      (t₀ := t) (t₁ := y.length + 2) (by rw [hrun]; try exact hEh)
-      (by rw [hrun, hR]; try exact hFh)
+      (t₀ := t) (t₁ := y.length + 2) (by rw [hrun]; exact hEh)
+      (by rw [hrun, hR])
       le_rfl
     rw [hrun, hR] at this
     exact this
@@ -313,8 +313,8 @@ theorem normTM_run (p : Fin (input.length + 2)) (t : ℕ)
         Cfg (k + 1 + 2) Bool (S ⊕ RewindWorkState) input) := rfl
   have hW := seq_runFrom_of_le (tm₀ := nopTM (k + 1 + 2)) (tm₁ := X)
     (⟨some (), p, prepTapes k input, fun _ => 0, []⟩ : Cfg (k + 1 + 2) Bool Unit input)
-    (t₀ := 1) (t₁ := t + (y.length + 2)) (by rw [hnop]; try rfl)
-    (by rw [hnop, hXq, hXrun]; try rfl) le_rfl
+    (t₀ := 1) (t₁ := t + (y.length + 2)) (by rw [hnop])
+    (by rw [hnop, hXq, hXrun]; rfl) le_rfl
   rw [hnop] at hW
   have hstart : (⟨some (normTM tm).q₀, p, prepTapes k input, fun _ => 0, []⟩ :
       Cfg (k + 1 + 2) Bool (Unit ⊕ (S ⊕ RewindWorkState)) input) =
@@ -328,5 +328,103 @@ theorem normTM_run (p : Fin (input.length + 2)) (t : ℕ)
     simp
 
 end Run
+
+/-! ## Checks: the axioms, and one mutant per central theorem -/
+
+/-- info: 'Sagitta.Arrow.TM.Bennett.runFrom_setInputPos' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.runFrom_setInputPos
+/-- info: 'Sagitta.Arrow.TM.Bennett.seq_noReentry' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.seq_noReentry
+/-- info: 'Sagitta.Arrow.TM.Bennett.histTM_noReentry' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.histTM_noReentry
+/-- info: 'Sagitta.Arrow.TM.Bennett.normTM_inputFixed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.normTM_inputFixed
+/-- info: 'Sagitta.Arrow.TM.Bennett.normTM_inputBlind' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.normTM_inputBlind
+/-- info: 'Sagitta.Arrow.TM.Bennett.normTM_noReentry' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.normTM_noReentry
+/-- info: 'Sagitta.Arrow.TM.Bennett.inCfg_outCfg_initCfg' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.inCfg_outCfg_initCfg
+/-- info: 'Sagitta.Arrow.TM.Bennett.redirTM_run' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.redirTM_run
+/-- info: 'Sagitta.Arrow.TM.Bennett.normTM_run' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.normTM_run
+
+section Mutants
+
+set_option linter.unusedVariables false
+
+/-- Mutant of `runFrom_setInputPos`: without blindness to the input. -/
+example {S : Type} (tm : MultiTapeTM k Bool S) (hfix : InputFixed tm) {input : List Bool}
+    (c : Cfg k Bool S input) (p : Fin (input.length + 2)) (t : ℕ) : True := by
+  fail_if_success
+    have := runFrom_setInputPos hfix (by assumption) c p t
+  trivial
+
+/-- Mutant of `seq_noReentry`: without the hypothesis on the first machine. -/
+example {S₀ S₁ : Type} (tm₀ : MultiTapeTM k Bool S₀) (tm₁ : MultiTapeTM k Bool S₁) : True := by
+  fail_if_success
+    have : NoReentry (tm₀.seq tm₁) := seq_noReentry (by assumption)
+  trivial
+
+/-- Mutant of `histTM_noReentry`: without the hypothesis on `tm`. -/
+example {State : Type} {h : ℕ} (tm : MultiTapeTM k Bool State)
+    (code : Record k State → Fin h → Bool) : True := by
+  fail_if_success
+    have : NoReentry (histTM tm code) := histTM_noReentry code (by assumption)
+  trivial
+
+/-- Mutant of `normTM_inputFixed`: the redirected machine alone is not claimed for the input head
+of `tm`; `tm` itself may move it. -/
+example {S : Type} (tm : MultiTapeTM k Bool S) : True := by
+  fail_if_success
+    have : InputFixed tm := normTM_inputFixed tm
+  trivial
+
+/-- Mutant of `normTM_inputBlind`: `tm` itself may read its input. -/
+example {S : Type} (tm : MultiTapeTM k Bool S) : True := by
+  fail_if_success
+    have : InputBlind tm := normTM_inputBlind tm
+  trivial
+
+/-- Mutant of `normTM_noReentry`: `tm` itself may re-enter its initial state. -/
+example {S : Type} (tm : MultiTapeTM k Bool S) : True := by
+  fail_if_success
+    have : NoReentry tm := normTM_noReentry tm
+  trivial
+
+/-- Mutant of `inCfg_outCfg_initCfg`: the input head is at `1`, not at the end. -/
+example {S : Type} (tm : MultiTapeTM k Bool S) (input : List Bool) : True := by
+  fail_if_success
+    have : inCfg true (outCfg (tm.initCfg input)) input =
+        ⟨some tm.q₀, Fin.last _, prepTapes k input, fun _ => 0, []⟩ := inCfg_outCfg_initCfg
+  trivial
+
+/-- Mutant of `redirTM_run`: the virtual input is not the empty word. -/
+example {S : Type} (tm : MultiTapeTM k Bool S) (input : List Bool) (p : Fin (input.length + 2))
+    (t : ℕ) : True := by
+  fail_if_success
+    have : (redirTM tm).runFrom ⟨some tm.q₀, p, prepTapes k [], fun _ => 0, []⟩ t =
+        { inCfg true (outCfg (tm.runFrom (tm.initCfg input) t)) input with inputPos := p } :=
+      redirTM_run p t
+  trivial
+
+/-- Mutant of `normTM_run`: without the halting of `tm`. -/
+example {S : Type} (tm : MultiTapeTM k Bool S) (input : List Bool) (p : Fin (input.length + 2))
+    (t : ℕ) : True := by
+  fail_if_success
+    have := normTM_run (tm := tm) p t (by assumption)
+  trivial
+
+end Mutants
 
 end Sagitta.Arrow.TM.Bennett

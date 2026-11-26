@@ -26,7 +26,8 @@ cslib-frontier, satisfy the axioms of the abstract `Sagitta.Arrow.Model`:
 
 The result is `tmModel`, and every theorem of the core holds for it. This file also states the
 zeroth law, the arrow and the one-bit part of the localization in the vocabulary of cslib, and the
-hypothesis `Bennett` (a reversible simulation with polynomial overhead) with what it gives.
+statement `Bennett` (a reversible simulation with polynomial overhead, proved in
+`Sagitta.Arrow.TM.Bennett.Discharge`) with what it gives.
 -/
 
 namespace Sagitta.Arrow.TM
@@ -165,11 +166,11 @@ def IsReversible {k : ℕ} {State : Type} (tm : MultiTapeTM k Bool State) : Prop
   ∀ (input : List Bool) (c c' : Cfg k Bool State input), ¬c.Halted → ¬c'.Halted →
     tm.step c = tm.step c' → c = c'
 
-/-- **Bennett's hypothesis** (Bennett, 1973, for Turing machines): every function computable in
-polynomial time is computed in polynomial time and space by a reversible machine. It is a named
-HYPOTHESIS here, not proved in cslib's model: proving it needs the construction of Bennett's
-machine (compute keeping a history tape, copy the output, uncompute) as a multi-tape machine of
-cslib with injective transitions, and its time analysis. -/
+/-- **Bennett's statement** (Bennett, 1973, for Turing machines): every function computable in
+polynomial time is computed in polynomial time and space by a reversible machine. It is stated
+here as a `Prop` and proved in `Sagitta.Arrow.TM.Bennett.Discharge` (`bennett_holds`), with the
+construction of Bennett's machine (compute keeping a history tape, copy the output, uncompute) as a
+multi-tape machine of cslib with injective transitions, and its time analysis. -/
 def Bennett : Prop :=
   ∀ {α β : Type} (f : α → β) (encIn : α ↪ List Bool) (encOut : β ↪ List Bool),
     ComputableInPolyTime f encIn encOut →

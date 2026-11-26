@@ -7,6 +7,7 @@ import Sagitta.Arrow.TM.Bennett.Machine
 import Sagitta.Arrow.TM.Bennett.Normal
 import CslibFrontier.Computability.Machines.Turing.MultiTape.Deterministic
 import CslibFrontier.Foundations.Data.Nat.PolynomialBound.Closure
+import Sagitta.Arrow.TM.Decision
 
 /-!
 # Bennett, step 7: the hypothesis is a theorem
@@ -221,8 +222,8 @@ theorem revTM_correct (x : List Bool) (t : ℕ) (hhalt : (M.runFrom (M.initCfg x
     · rfl
     · rfl
   have hall := seq_runFrom_of_le (tm₀ := P) (tm₁ := B) (P.initCfg x)
-    (t₀ := 2 * x.length + 3) (t₁ := 4 * τ + 2 * y.length + 6) (by rw [hD]; try rfl)
-    (by rw [hstart]; unfold B; rw [hB]; try rfl) (T := T) (by omega)
+    (t₀ := 2 * x.length + 3) (t₁ := 4 * τ + 2 * y.length + 6) (by rw [hD])
+    (by rw [hstart]; unfold B; rw [hB]) (T := T) (by omega)
   rw [show (revTM M).initCfg x = (P.initCfg x).mapState (handOver B.q₀) from rfl]
   unfold revTM
   rw [hall, hstart]
@@ -233,3 +234,166 @@ theorem revTM_correct (x : List Bool) (t : ℕ) (hhalt : (M.runFrom (M.initCfg x
 end Rev
 
 end Sagitta.Arrow.TM.Bennett
+
+namespace Sagitta.Arrow.TM
+
+open Cslib Cslib.Complexity Turing Turing.MultiTapeTM Bennett
+
+/-- A machine that runs in time `t` on an input has halted at time `t`. -/
+theorem halted_of_runsInTime {k : ℕ} {S : Type} {M : MultiTapeTM k Bool S} {x : List Bool}
+    {t : ℕ} (h : M.RunsInTime x t) : (M.runFrom (M.initCfg x) t).Halted :=
+  h (MultiTapeNTM.ComputationPath.ofDeterministic M x t) le_rfl
+
+/-- **Bennett's theorem (1973), for the machines of cslib.** Every function computable in
+polynomial time is computed in polynomial time and space by a reversible machine with finitely
+many states. The hypothesis `Bennett` of `Sagitta.Arrow.TM.Instance` is a theorem. -/
+theorem bennett_holds : Bennett := by
+  intro α β f encIn encOut hf
+  obtain ⟨tB, sB, htB, -, k, S, hS, M, hM⟩ := hf
+  set T : ℕ → ℕ := fun n => 2 * n + 10 * tB n + 21 with hT
+  have hTp : PolynomiallyBounded T :=
+    (((PolynomiallyBounded.const 2).mul PolynomiallyBounded.id).add
+      ((PolynomiallyBounded.const 10).mul htB)).add (PolynomiallyBounded.const 21)
+  refine ⟨k + 1 + 2 + histCount k S, _, inferInstance, revTM M, T,
+    fun n => (k + 1 + 2 + histCount k S) * (2 * T n + 1), revTM_isReversible M, hTp,
+    (PolynomiallyBounded.const _).mul
+      (((PolynomiallyBounded.const 2).mul hTp).add (PolynomiallyBounded.const 1)), fun a => ?_⟩
+  obtain ⟨⟨u, hu, hout⟩, htime, -⟩ := hM a
+  set x := encIn a
+  have hhalt : (M.runFrom (M.initCfg x) (tB x.length)).Halted := halted_of_runsInTime htime
+  have heq : M.runFrom (M.initCfg x) (tB x.length) = M.runFrom (M.initCfg x) u := by
+    rcases le_total u (tB x.length) with hle | hle
+    · exact runFrom_eq_of_halt M _ hle hu
+    · exact (runFrom_eq_of_halt M _ hle hhalt).symm
+  have hy : (M.runFrom (M.initCfg x) (tB x.length)).output = encOut (f a) := by rw [heq, hout]
+  have hlen : (M.runFrom (M.initCfg x) (tB x.length)).output.length ≤ tB x.length := by
+    have := length_output_runFrom_le M (M.initCfg x) (tB x.length)
+    simpa [MultiTapeNTM.initCfg, Cfg.init] using this
+  obtain ⟨hH, hO⟩ := revTM_correct M x (tB x.length) hhalt (T := T x.length) (by simp only [hT]; omega)
+  rw [hy] at hO
+  exact ⟨⟨_, hH, hO⟩, runsInTime_of_halted hH, runsInSpace_of_halted _ hH⟩
+
+/-- **Every `NP` verifier runs on a reversible machine**, with no hypothesis: `reversible_verifier`
+with Bennett's theorem. -/
+theorem reversible_verifier_holds {α : Type} {enc : α ↪ List Bool} {A : Set α}
+    (hA : A ∈ NP enc) :
+    ∃ (p : Polynomial ℕ) (V : α × List Bool → Bool), IsVerifier enc p V A ∧
+      ∃ (k : ℕ) (State : Type) (_ : Finite State) (tm : MultiTapeTM k Bool State) (t s : ℕ → ℕ),
+        IsReversible tm ∧ PolynomiallyBounded t ∧ PolynomiallyBounded s ∧
+          tm.ComputesFunInTimeAndSpace (encPair enc encBits) encBool V
+            (fun a => t ((encPair enc encBits) a).length)
+            (fun a => s ((encPair enc encBits) a).length) :=
+  reversible_verifier bennett_holds hA
+
+/-- **HD and the reversible dynamics**, with Bennett now a theorem: from HD alone, the arrow holds
+and every `NP` verifier runs on a reversible machine in polynomial time and space. -/
+theorem decision_bennett_holds (h : DecisionHypothesis) :
+    Arrow ∧
+      ∀ {α : Type} {enc : α ↪ List Bool} {A : Set α}, A ∈ NP enc →
+        ∃ (p : Polynomial ℕ) (V : α × List Bool → Bool), IsVerifier enc p V A ∧
+          ∃ (k : ℕ) (State : Type) (_ : Finite State) (tm : MultiTapeTM k Bool State)
+            (t s : ℕ → ℕ),
+            IsReversible tm ∧ PolynomiallyBounded t ∧ PolynomiallyBounded s ∧
+              tm.ComputesFunInTimeAndSpace (encPair enc encBits) encBool V
+                (fun a => t ((encPair enc encBits) a).length)
+                (fun a => s ((encPair enc encBits) a).length) :=
+  decision_bennett h bennett_holds
+
+
+/-! ## Checks: the axioms, and one mutant per central theorem -/
+
+/-- info: 'Sagitta.Arrow.TM.Bennett.bennettTM_correct_from' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.bennettTM_correct_from
+/-- info: 'Sagitta.Arrow.TM.Bennett.bennettTM_noReentry'' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.bennettTM_noReentry'
+/-- info: 'Sagitta.Arrow.TM.Bennett.revTM_isReversible' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.revTM_isReversible
+/-- info: 'Sagitta.Arrow.TM.Bennett.revTM_correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.revTM_correct
+/-- info: 'Sagitta.Arrow.TM.halted_of_runsInTime' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.halted_of_runsInTime
+/-- info: 'Sagitta.Arrow.TM.bennett_holds' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.bennett_holds
+/-- info: 'Sagitta.Arrow.TM.reversible_verifier_holds' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.reversible_verifier_holds
+/-- info: 'Sagitta.Arrow.TM.decision_bennett_holds' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.decision_bennett_holds
+
+section Mutants
+
+set_option linter.unusedVariables false
+
+open Sagitta.Arrow.TM.Bennett
+
+/-- Mutant of `bennettTM_correct_from`: without blank history tapes. -/
+example {k h : ℕ} {State : Type} (tm : MultiTapeTM k Bool State)
+    (code : Record k State → Fin h → Bool) (hfix : InputFixed tm)
+    (hcode : Function.Injective code) (hh : 0 < h) (src : Fin k) {input : List Bool}
+    (c₀ : Cfg (k + h) Bool (State ⊕ State) input) (hq₀ : c₀.state = some (.inl tm.q₀)) (t : ℕ)
+    (hrun : ∀ i < t, ¬(tm.runFrom (proj c₀) i).Halted)
+    (hhalt : (tm.runFrom (proj c₀) t).Halted) (w : List Bool)
+    (hsrc : ∀ i : ℕ, i ≤ w.length →
+      (tm.runFrom (proj c₀) t).workTapes src ((tm.runFrom (proj c₀) t).workTapePos src + i) =
+        w[i]?)
+    (hleft : (tm.runFrom (proj c₀) t).workTapes src
+      ((tm.runFrom (proj c₀) t).workTapePos src - 1) = none) : True := by
+  fail_if_success
+    have := bennettTM_correct_from (code := code) hfix hcode hh src c₀ hq₀ (by assumption) t hrun
+      hhalt w hsrc hleft le_rfl
+  trivial
+
+/-- Mutant of `bennettTM_noReentry'`: without the hypothesis on `tm`. -/
+example {k h : ℕ} {State : Type} (tm : MultiTapeTM k Bool State)
+    (code : Record k State → Fin h → Bool) (src : Fin k) : True := by
+  fail_if_success
+    have : NoReentry (bennettTM tm code src) := bennettTM_noReentry' (by assumption) src
+  trivial
+
+/-- Mutant of `revTM_isReversible`: the machine `M` itself is not claimed reversible. -/
+example {k : ℕ} {S : Type} [Finite S] (M : MultiTapeTM k Bool S) : True := by
+  fail_if_success
+    have : IsReversible M := revTM_isReversible M
+  trivial
+
+/-- Mutant of `revTM_correct`: without the halting of `M`. -/
+example {k : ℕ} {S : Type} [Finite S] (M : MultiTapeTM k Bool S) (x : List Bool) (t : ℕ) :
+    True := by
+  fail_if_success
+    have := revTM_correct M x t (by assumption) le_rfl
+  trivial
+
+/-- Mutant of `halted_of_runsInTime`: without the time bound. -/
+example {k : ℕ} {S : Type} (M : MultiTapeTM k Bool S) (x : List Bool) (t : ℕ) : True := by
+  fail_if_success
+    have := halted_of_runsInTime (M := M) (x := x) (t := t) (by assumption)
+  trivial
+
+/-- Mutant of `bennett_holds`: a function not known to be computable in polynomial time. -/
+example {α β : Type} (f : α → β) (encIn : α ↪ List Bool) (encOut : β ↪ List Bool) : True := by
+  fail_if_success
+    have := bennett_holds f encIn encOut (by assumption)
+  trivial
+
+/-- Mutant of `reversible_verifier_holds`: a set not known to be in `NP`. -/
+example {α : Type} (enc : α ↪ List Bool) (A : Set α) : True := by
+  fail_if_success
+    have := reversible_verifier_holds (enc := enc) (A := A) (by assumption)
+  trivial
+
+/-- Mutant of `decision_bennett_holds`: without HD. -/
+example : True := by
+  fail_if_success
+    have := decision_bennett_holds (by assumption)
+  trivial
+
+end Mutants
+
+end Sagitta.Arrow.TM

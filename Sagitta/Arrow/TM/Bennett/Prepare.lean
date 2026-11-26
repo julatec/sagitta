@@ -163,7 +163,7 @@ theorem prep_fwd_inj {vip flag : Fin k} {input : List Bool} {c c' : Cfg k Bool P
       · left
         by_cases hif : i = flag
         · subst hif; simp [prepAct, hi]
-        · simp [prepAct, hi, hif]) hstep
+        · simp [prepAct, hi]) hstep
 
 /-- **The preparing machine is reversible** when `vip` and `flag` are different tapes. -/
 theorem prepTM_isReversible {vip flag : Fin k} (hvf : vip ≠ flag) :
@@ -328,7 +328,7 @@ theorem prepTM_correct (hvf : vip ≠ flag) (c : Cfg k Bool PrepState input)
     have hr : d₁.inputSymbol = none :=
       inputSymbol_eq_none_of_boundary (.inr (by simp [hd₁, hn]; omega))
     have hvs : d₁.workTapeSymbols vip = none := by
-      simp [hd₁, Cfg.workTapeSymbols, tapeOfList_eq_none_iff] <;> omega
+      simp [hd₁, Cfg.workTapeSymbols]; omega
     rw [step_of_state (q := .fwd) hst, prepTM, tr_ofTr]
     simp only [prepTr, hr, hvs]
     apply Cfg.ext
@@ -357,7 +357,7 @@ theorem prepTM_correct (hvf : vip ≠ flag) (c : Cfg k Bool PrepState input)
     workTapePos := Function.update (Function.update c.workTapePos vip 0) flag (-1) } with hd₄
   have h4 : (prepTM vip flag).step d₃ = d₄ := by
     have hvs : d₃.workTapeSymbols vip = none := by
-      simp [Cfg.workTapeSymbols, hp₃, hd₃, hd₂, hd₁] <;> rfl
+      simp [Cfg.workTapeSymbols, hd₃, hd₂, hd₁]; rfl
     rw [step_of_state (q := .back) rfl, prepTM, tr_ofTr]
     simp only [prepTr, hvs]
     apply Cfg.ext
@@ -393,7 +393,7 @@ theorem prepTM_correct (hvf : vip ≠ flag) (c : Cfg k Bool PrepState input)
       · subst hi; simp [hd₄, hd₃, hd₂, hd₁, hvf]
       · by_cases hfl : i = flag
         · subst hfl
-          simp [hi, hd₄, hd₃, hd₂, hd₁, Function.update_of_ne hvf.symm, hf, swapCell]
+          simp [hi, hd₄, hd₃, hd₂, hd₁, hf, swapCell]
         · simp [hi, hfl, hd₄, hd₃, hd₂, hd₁]
     · funext i
       simp only [Action.apply_workTapePos, prepAct, hd₄, hd₃, hd₂, hd₁]
@@ -409,5 +409,34 @@ theorem prepTM_correct (hvf : vip ≠ flag) (c : Cfg k Bool PrepState input)
     show (prepTM vip flag).step^[n] d₂ = (prepTM vip flag).runFrom d₂ n from rfl, h3, h4, h5]
 
 end Correct
+
+/-! ## Checks: the axioms, and one mutant per central theorem -/
+
+/-- info: 'Sagitta.Arrow.TM.Bennett.prepTM_isReversible' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.prepTM_isReversible
+/-- info: 'Sagitta.Arrow.TM.Bennett.prepTM_correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.prepTM_correct
+
+section Mutants
+
+set_option linter.unusedVariables false
+
+/-- Mutant of `prepTM_isReversible`: without `vip ≠ flag`. -/
+example (vip flag : Fin k) : True := by
+  fail_if_success
+    have := prepTM_isReversible (vip := vip) (flag := flag) (by assumption)
+  trivial
+
+/-- Mutant of `prepTM_correct`: without a blank flag tape. -/
+example (vip flag : Fin k) (hvf : vip ≠ flag) {input : List Bool} (c : Cfg k Bool PrepState input)
+    (hst : c.state = some .fwd) (hip : (c.inputPos : ℕ) = 1) (hv : c.workTapes vip = fun _ => none)
+    (hpv : c.workTapePos vip = 0) (hpf : c.workTapePos flag = 0) : True := by
+  fail_if_success
+    have := prepTM_correct hvf c hst hip hv (by assumption) hpv hpf
+  trivial
+
+end Mutants
 
 end Sagitta.Arrow.TM.Bennett
