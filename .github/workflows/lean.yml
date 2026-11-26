@@ -34,6 +34,17 @@ jobs:
           build: true
           test: false
           lint: false
+      # doc-gen4 analyses every imported Mathlib module in parallel and ran out of memory on the
+      # 16 GB runner; a swap file on the larger /mnt disk gives it room.
+      - name: Swap for doc-gen4
+        run: |
+          df -h / /mnt || true
+          sudo swapoff -a || true
+          sudo fallocate -l 24G /mnt/docgen.swap
+          sudo chmod 600 /mnt/docgen.swap
+          sudo mkswap /mnt/docgen.swap
+          sudo swapon /mnt/docgen.swap
+          free -h
       # The landing page of the site; the action adds `blueprint/`, `blueprint.pdf` and `docs/`.
       - name: Landing page
         run: |
