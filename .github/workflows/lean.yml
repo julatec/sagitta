@@ -1,0 +1,26 @@
+# Builds the whole project from scratch on GitHub's machines, on every push and pull request.
+# Mathlib comes from its prebuilt cache; the vendored cslib files and ours are compiled.
+# A green check on a commit is a public, reproducible proof that that exact commit builds.
+name: Lean build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: lake build
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          use-mathlib-cache: true
+          build: true
+          test: false
+          lint: false

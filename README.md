@@ -1,5 +1,7 @@
 # Sagitta: the computational arrow of time, in Lean
 
+[![Lean build](https://github.com/julatec/sagitta/actions/workflows/lean.yml/badge.svg)](https://github.com/julatec/sagitta/actions/workflows/lean.yml)
+
 This is the Lean 4 artifact of the essay *The Computational Arrow of Time: Locating the Second Law
 of Computation* (in preparation). It formalizes one chain of reasoning, and nothing else:
 
