@@ -1,26 +1,39 @@
 # Vendored code
 
 This project does not depend on the full `cslib-frontier` or `cslib` packages, which are very
-large. Instead it contains **only the import closure** of the three modules it needs, copied
+large. Instead it contains **only the import closure** of the modules it needs, copied
 **without modification**, under their original paths and module names:
 
 | Source | Repository | Commit | License | Files |
 |---|---|---|---|---|
-| cslib-frontier | https://github.com/cslib-community/cslib-frontier | `99f0281153004afe3285d36b4e05303c96ea9e6a` | Apache-2.0 (`vendor/LICENSE-cslib-frontier`) | 310 |
+| cslib-frontier | https://github.com/cslib-community/cslib-frontier | `99f0281153004afe3285d36b4e05303c96ea9e6a` | Apache-2.0 (`vendor/LICENSE-cslib-frontier`) | 312 |
 | cslib | https://github.com/leanprover/cslib | `98f9a62ac1fafa0d5091bbd78bc24091c5923aab` | Apache-2.0 (`vendor/LICENSE-cslib`) | 33 |
 
-The three target modules are:
+The target modules are:
 
 - `CslibFrontier.Computability.Complexity.Classes.TFNP.SearchToDecision` (`FNP_subset_FPSearch_iff`)
 - `CslibFrontier.Computability.Complexity.Classes.Ladner` (`exists_NP_not_P_not_npComplete`)
-- `CslibFrontier.Computability.Complexity.Problems.MaxCut`
+- `CslibFrontier.Computability.Complexity.Problems.MaxCut` (`MaxCut_npComplete`)
+- `CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.Int.Binary`
+  (`encIntBin`, the signed binary encoding of the Ising couplings; it adds two files to the
+  closure of the first three: itself and `...MultiTape.Encodings.IntBinary`)
+
+together with modules already in their closure (`CookLevin.Completeness`, `Problems.ThreeSAT`,
+`Reduction` and the `PolyTime` lemmas for lists, membership, naturals and plain functions).
 
 All credit for these files belongs to their authors, as stated in the copyright header that each
 file keeps intact. The NOTICE of cslib-frontier is reproduced in full in
-`vendor/NOTICE-cslib-frontier`. Modifications: **none**.
+`vendor/NOTICE-cslib-frontier` (cslib has no NOTICE file at that commit).
 
-The closure was computed from the import graph of the targets (343 modules, about 2% of
-cslib-frontier). Full list of vendored modules:
+**Modifications: none.** Every file is copied without modification (checked with `cmp` against
+both sources). The only adaptation is in `lakefile.toml`: each vendored library gets the Lean
+options of its own upstream lakefile (cslib keeps Lean's default `autoImplicit = true`, which some
+of its files rely on; cslib-frontier sets `autoImplicit = false`), so that every file compiles
+exactly as it does upstream.
+
+The closure was computed from the import graph of the `import` lines of `Sagitta/Arrow/TM`
+(including `public` and `meta` imports): 345 modules, about 56,000 lines, against about 9,250
+files and 2.7 million lines of the full cslib-frontier package. Full list of vendored modules:
 
 ```
 Cslib.Computability.Machines.Turing.MultiTape.Combinators.AlmostConstant
@@ -134,6 +147,7 @@ CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.Course
 CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.Finite
 CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.Fold
 CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.Int
+CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.Int.Binary
 CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.Iteration
 CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.Length
 CslibFrontier.Computability.Machines.Turing.MultiTape.Complexity.PolyTime.List
@@ -163,6 +177,7 @@ CslibFrontier.Computability.Machines.Turing.MultiTape.Encodings.Decoder.Nat
 CslibFrontier.Computability.Machines.Turing.MultiTape.Encodings.Decoder.Sum
 CslibFrontier.Computability.Machines.Turing.MultiTape.Encodings.Frame.Basic
 CslibFrontier.Computability.Machines.Turing.MultiTape.Encodings.Frame.Lookup
+CslibFrontier.Computability.Machines.Turing.MultiTape.Encodings.IntBinary
 CslibFrontier.Computability.Machines.Turing.MultiTape.Encodings.Length
 CslibFrontier.Computability.Machines.Turing.MultiTape.Encodings.List
 CslibFrontier.Computability.Machines.Turing.MultiTape.Encodings.List.Index

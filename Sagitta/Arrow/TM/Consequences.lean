@@ -3,7 +3,7 @@ Copyright (c) 2026 Jose-de-Jesus Ulate-Cardenas. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jose-de-Jesus Ulate-Cardenas
 -/
-import Sagitta.Arrow.TM.Instance
+import Sagitta.Arrow.TM.Law22
 import Sagitta.Arrow.TM.Ising
 import CslibFrontier.Computability.Complexity.Classes.Ladner
 import CslibFrontier.Computability.Complexity.Problems.ThreeSAT
@@ -86,24 +86,91 @@ theorem localizationTM :
 
 /-! ## Law 2.2 -/
 
-/-- `A` is decidable within time `T` up to a constant factor, `TIME(T)`: some machine decides it
-within `C · T(n) + C` steps on inputs of length `n`, with any space. -/
-def InTIME {α : Type} (A : Set α) (enc : α ↪ List Bool) (T : ℕ → ℕ) : Prop :=
-  ∃ (C : ℕ) (s : α → ℕ),
-    DecidableInTimeAndSpace A enc (fun a => C * T (enc a).length + C) s
-
-/-- The time bound `2 ^ (n ^ (1 - ε))`, rounded up. -/
-noncomputable def subexpBound (ε : ℝ) (n : ℕ) : ℕ := ⌈(2 : ℝ) ^ ((n : ℝ) ^ (1 - ε))⌉₊
-
-/-- **Law 2.2: the weak exponential-time hypothesis**, equivalently SH of Stearns and Hunt
-(arXiv 2611.02650, Theorem 2.4): for every `ε > 0`, 3-SAT is not in `TIME(2 ^ (n ^ (1 - ε)))`.
-A HYPOTHESIS: a `Prop`, never an axiom. -/
-def Law22 : Prop := ∀ ε : ℝ, 0 < ε → ¬InTIME ThreeSAT encCNF (subexpBound ε)
-
 /-- **With law 2.2, 3-SAT is not in `TIME(2 ^ (n ^ (1 - ε)))`**: the definition, unfolded. -/
 theorem ThreeSAT_notMem_TIME (h : Law22) (ε : ℝ) (hε : 0 < ε) :
     ¬∃ (C : ℕ) (s : CNF ℕ → ℕ), DecidableInTimeAndSpace ThreeSAT encCNF
       (fun φ => C * ⌈(2 : ℝ) ^ (((encCNF φ).length : ℝ) ^ (1 - ε))⌉₊ + C) s :=
   h ε hε
 
+/-- **Law 2.2 is stronger than law 2.1**: with it, the arrow holds, and so do all the consequences
+above. -/
+theorem arrow_of_law22 (h : Law22) : Arrow := Law22.arrow h
+
 end Sagitta.Arrow.TM
+
+/-! ## Axioms
+
+`#print axioms` for every main theorem, checked by `#guard_msgs`: the build fails if any of them
+starts to depend on something other than `propext`, `Classical.choice` and `Quot.sound`. In
+particular the arrow (`Sagitta.Arrow.TM.Arrow`), law 2.2 and Bennett's hypothesis never appear:
+they are definitions of type `Prop`, taken as explicit arguments, not axioms. -/
+
+/-- info: 'Sagitta.Arrow.Model.lawZero' does not depend on any axioms -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.Model.lawZero
+/-- info: 'Sagitta.Arrow.conservation' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.conservation
+/-- info: 'Sagitta.Arrow.free_table_breaks' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.free_table_breaks
+/-- info: 'Sagitta.Arrow.localization' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.localization
+/-- info: 'Sagitta.Arrow.Model.kelvin' does not depend on any axioms -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.Model.kelvin
+/-- info: 'Sagitta.Arrow.Model.not_InP_of_NPComplete' does not depend on any axioms -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.Model.not_InP_of_NPComplete
+/-- info: 'Sagitta.Arrow.TM.lawZero' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.lawZero
+/-- info: 'Sagitta.Arrow.TM.oneBit' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.oneBit
+/-- info: 'Sagitta.Arrow.TM.kelvin' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.kelvin
+/-- info: 'Sagitta.Arrow.TM.localizationTM' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.localizationTM
+/-- info: 'Sagitta.Arrow.TM.IsReversible.runFrom_injective' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.IsReversible.runFrom_injective
+/-- info: 'Sagitta.Arrow.TM.reversible_verifier' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.reversible_verifier
+/-- info: 'Sagitta.Arrow.TM.SAT_notMem_P' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.SAT_notMem_P
+/-- info: 'Sagitta.Arrow.TM.ThreeSAT_notMem_P' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.ThreeSAT_notMem_P
+/-- info: 'Sagitta.Arrow.TM.exists_intermediate' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.exists_intermediate
+/-- info: 'Sagitta.Arrow.TM.exists_intermediate_model' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.exists_intermediate_model
+/-- info: 'Sagitta.Arrow.TM.ISING_notMem_P' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.ISING_notMem_P
+/-- info: 'Sagitta.Arrow.TM.Ising.P_eq_NP_iff_ISING_mem_P' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Ising.P_eq_NP_iff_ISING_mem_P
+/-- info: 'Sagitta.Arrow.TM.not_searchEasy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.not_searchEasy
+/-- info: 'Sagitta.Arrow.TM.Law22.arrow' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Law22.arrow
+/-- info: 'Sagitta.Arrow.TM.ThreeSAT_notMem_TIME' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.ThreeSAT_notMem_TIME
+/-- info: 'Sagitta.Arrow.arrow_independent' does not depend on any axioms -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.arrow_independent
+/-- info: 'Sagitta.Arrow.consequences_need_arrow' does not depend on any axioms -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.consequences_need_arrow
