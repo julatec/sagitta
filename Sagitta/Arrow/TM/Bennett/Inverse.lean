@@ -58,10 +58,9 @@ output goes to a work tape (step 2c of the log) and only the copy reaches the re
 
 ## Not done here
 
-* The **reversibility of the inverse** (`IsReversible (invTM tm code)`), which step 5 needs to
-  compose `M₁`, the copy and `M₁⁻¹` into one reversible machine. As with the history machine, the
-  configurations that no run reaches (a record that does not match the tapes) will need a guard
-  and a sink.
+* The **reversibility of the inverse**, which step 5 needs to compose `M₁`, the copy and `M₁⁻¹`
+  into one reversible machine. `invTM` is not built for it: it forgets the state of the forward
+  machine. The reversible inverse is `uncTM`, in `Uncompute.lean`.
 * The general lemma (above).
 -/
 
