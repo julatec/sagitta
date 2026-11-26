@@ -10,6 +10,7 @@ import Sagitta.Arrow.TM.Decision
 import Sagitta.Arrow.Core.Dynamics
 import Sagitta.Arrow.TM.Dynamics
 import Sagitta.Arrow.TM.Bennett.History
+import Sagitta.Arrow.TM.Bennett.Copy
 
 /-!
 # Sagitta: the computational arrow of time

@@ -89,3 +89,74 @@ alcanza desde la configuración inicial, no ensucia la salida de ninguna corrida
   así que la etapa de deshacer no puede «desescribir» la salida. Hay que decidir si `M₁` simula la
   salida de `M` en una cinta de trabajo (y la salida real se escribe solo en la copia).
 - Luego 4 (la inversa), 5 (componer), 6–7.
+
+## Paso 3 — 26 nov 2026 (cerrado)
+
+Archivo: `Sagitta/Arrow/TM/Bennett/Copy.lean`, importado por `Sagitta.lean`. Cero `sorry`;
+`#print axioms` de los cinco teoremas centrales: solo `propext`, `Classical.choice`, `Quot.sound`;
+un mutante por teorema (cinco, con `fail_if_success`). `lake build Sagitta` pasa.
+
+### La máquina de copia
+
+`copyTM src dst : MultiTapeTM k Bool CopyState` (dos estados, `fwd` y `back`; `Finite`):
+
+- **Ida** (`fwd`): mientras `src` lee un símbolo `b`, aplica a la celda de `dst` el
+  **intercambio** del blanco con `b` (`Equiv.swap none (some b)`, la versión de tres valores del
+  XOR de Bennett) y mueve las dos cabezas a la derecha. Sobre un destino limpio el intercambio
+  escribe `b`; sobre cualquier otra celda sigue siendo una biyección, así que no se olvida nada y
+  **no hace falta guarda ni sumidero** (a diferencia de la máquina con historia). Al leer el blanco
+  del final, retrocede uno y pasa a `back`.
+- **Vuelta** (`back`): mientras `src` lee un símbolo, retrocede las dos cabezas. Al leer el blanco
+  de antes de la palabra, avanza uno y se detiene. Las cabezas quedan donde empezaron, que es lo
+  que necesita la inversa del paso 4 (`M₁⁻¹` arranca con las cabezas de `M₁` en su lugar).
+- La cabeza de entrada nunca se mueve (cumple `StaysOnBlank` trivialmente); `src` nunca se escribe.
+
+**Por qué es reversible.** El sucesor dice el estado y la dirección; la celda de `src` que se dejó
+atrás (no se escribe) dice el símbolo leído, y con él el intercambio de `dst` se deshace. El cruce
+«ida que lee blanco» contra «vuelta que lee símbolo» (las dos van a `back` retrocediendo) lo separa
+la misma celda de `src`.
+
+### La salida de cslib
+
+La salida de cslib es solo de agregar y `ComputesFunInTimeAndSpace` la lee. Se resolvió la duda del
+paso 2: en Bennett, `M₁` tiene que dejar la salida simulada de `M` en una **cinta de trabajo**, y
+la copia es lo único que toca la salida real. Por eso hay una segunda máquina, `emitTM src`: la
+misma, con la cinta de salida como destino (la cinta limpia es la salida vacía de la configuración
+inicial). Agregar es inyectivo, así que tampoco necesita guarda.
+
+### Teoremas (rama `bennett`)
+
+- `Sagitta.Arrow.TM.Bennett.copyTM_isReversible` — `src ≠ dst` ⟹ `IsReversible (copyTM src dst)`,
+  en todas las configuraciones en marcha, no solo las alcanzables.
+- `Sagitta.Arrow.TM.Bennett.copyTM_self_not_isReversible` — y la hipótesis es necesaria:
+  `¬IsReversible (copyTM i i)`.
+- `Sagitta.Arrow.TM.Bennett.copyTM_correct` — con `w` en `src` desde la cabeza, blanco antes y
+  después, y `|w|` celdas en blanco en `dst` desde la cabeza: tras `2|w| + 2` pasos la máquina está
+  detenida, `dst` tiene `w` desde su cabeza (`copyTape`) y todo lo demás (cabezas, `src`, otras
+  cintas, entrada, salida) quedó igual. Igualdad de configuraciones completa.
+- `Sagitta.Arrow.TM.Bennett.emitTM_isReversible` — sin hipótesis.
+- `Sagitta.Arrow.TM.Bennett.emitTM_correct` — lo mismo con la salida: tras `2|w| + 2` pasos,
+  `output = output ++ w` y nada más cambió.
+- Auxiliares: `copy_fwd`, `copy_back`, `emit_fwd`, `emit_back` (las dos fases),
+  `workTapePos_eq_of_apply`, `workTapes_eq_of_apply`, `copyTape_step`.
+
+### Lo que no está
+
+- No se probó que la máquina siga en marcha antes del paso `2|w| + 2` (no hace falta para
+  `RunsInTime`, que solo pide estar detenida a tiempo).
+- Espacio: la copia usa las celdas `p - 1 … p + |w|` de `src` y `d … d + |w| - 1` de `dst`; no se
+  enunció como cota.
+- Las máquinas están sobre `k` cintas con `src`/`dst` como índices; empalmarlas con `histTM` (que
+  usa `Fin (k + h)`) es trabajo del paso 5.
+
+### Siguiente
+
+- **2b.** Sigue pendiente: la forma normal de la entrada (`StaysOnBlank`) para cualquier `M`.
+- **2c (nuevo, sale de este paso).** Que `M₁` escriba la salida de `M` en una cinta de trabajo,
+  con blanco antes y después y la cabeza al principio al terminar, para que `emitTM` la copie. O
+  bien: una variante de `histTM` que redirija `Action.output` a una cinta de trabajo (el registro
+  ya guarda lo leído; escribir y avanzar en una cinta limpia es otra escritura sobre blanco).
+- **4.** La inversa: de `IsReversible` (inyectividad de `step`) a una máquina que deshace los
+  pasos. `copyTM` es casi su propia inversa (el intercambio es involutivo), que sirve de caso de
+  prueba.
+- Luego 5 (componer `M₁`, `emitTM`, `M₁⁻¹`), 6–7.
