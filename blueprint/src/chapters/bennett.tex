@@ -1,0 +1,423 @@
+\chapter{Bennett's theorem for cslib's machines}
+\label{chap:bennett}
+
+Bennett showed in 1973 that every computation can be simulated by a logically reversible one
+\cite{Bennett73}: compute keeping a history of what each step forgets, copy the result, and
+uncompute. Here the statement is proved for the multi-tape machines of cslib, one file of
+\texttt{Sagitta/Arrow/TM/Bennett} per step of the construction. With it, the reversible
+dynamics of Chapter~\ref{chap:localization} is not an assumption about machines: every
+polynomial-time verifier runs on a reversible machine.
+
+\section{The statement}
+
+\begin{definition}[Reversible machine]
+  \label{def:isReversible}
+  \lean{Sagitta.Arrow.TM.IsReversible}
+  \leanok
+  \uses{def:cslib-tm}
+  A machine is \emph{reversible} when its step is injective on running configurations: every
+  running configuration has at most one running predecessor. The condition is on \emph{every}
+  configuration, not only the reachable ones, and the configuration includes the output.
+  \source{\cite{Bennett73}, logical reversibility.}
+  \fidelity{Bennett's machines are quadruple machines on one or three tapes; here reversibility is
+  injectivity of the step of a cslib multi-tape machine, with its read-only input and its
+  append-only output.}
+\end{definition}
+
+\begin{lemma}[A reversible machine can be traced back]
+  \label{lem:runFrom-injective}
+  \lean{Sagitta.Arrow.TM.IsReversible.runFrom_injective}
+  \leanok
+  \uses{def:isReversible}
+  If two runs of $n$ steps of a reversible machine do not halt before the end and reach the same
+  configuration, they started from the same configuration.
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  Induction on $n$, using injectivity of the step.
+\end{proof}
+
+\begin{definition}[Bennett's statement]
+  \label{def:bennett}
+  \lean{Sagitta.Arrow.TM.Bennett}
+  \leanok
+  \uses{def:isReversible, def:polytime}
+  \emph{Bennett}: every function computable in polynomial time is computed in polynomial time and
+  polynomial space by a reversible machine with finitely many states.
+  \source{\cite{Bennett73}.}
+  \fidelity{Bennett's theorem is stated for any computation, with linear overheads; here it is
+  restricted to polynomial-time functions, and the exported statement asks only for polynomial
+  bounds (the construction gives linear ones, Theorem~\ref{thm:bennett-holds}). The statement does not yet say
+  that the auxiliary tapes end clean, which is the point of Bennett (1973): a history simulation
+  that never uncomputes would satisfy it. Clean tapes are being added to the statement; see the
+  Fidelity notes of the README.}
+\end{definition}
+
+\begin{lemma}[A reversible machine stays on a blank of its input]
+  \label{lem:staysOnBlank}
+  \lean{Sagitta.Arrow.TM.Bennett.StaysOnBlank, Sagitta.Arrow.TM.IsReversible.staysOnBlank}
+  \leanok
+  \uses{def:isReversible}
+  A machine \emph{stays on a blank} when it never moves its input head while it reads a blank (the
+  two boundary cells). Every reversible machine does: on the empty input, two configurations that
+  differ only in the input head (on cell $0$ or $1$) take the same action, and any move sends both
+  to the same cell.
+  \own{} (a constraint that cslib's input-tape conventions impose on reversibility).
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  Exhibit the two configurations and use injectivity.
+\end{proof}
+
+\section{Step 2: the machine with a history}
+
+\begin{lemma}[Local reversibility of an action]
+  \label{lem:apply-injective}
+  \lean{Sagitta.Arrow.TM.Bennett.apply_injective}
+  \leanok
+  \uses{def:cslib-tm}
+  The same action, applied to two configurations in the same state that read the same symbols where
+  it writes, and whose input head does not move from a blank, gives the same result only if the two
+  configurations were equal.
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  Compare tape by tape.
+\end{proof}
+
+\begin{definition}[The history machine]
+  \label{def:histTM}
+  \lean{Sagitta.Arrow.TM.Bennett.Record, Sagitta.Arrow.TM.Bennett.histTM, Sagitta.Arrow.TM.Bennett.proj, Sagitta.Arrow.TM.Bennett.oneHot}
+  \leanok
+  \uses{def:cslib-tm}
+  A \emph{record} is what a step forgets: the state and the symbols read. The history machine of
+  $M$ has the $k$ tapes of $M$ and $h$ history tapes; on a clean history cell it takes the action of
+  $M$ and writes the code of the record, one bit per history tape, moving the history heads right.
+  On a configuration with garbage in the history (which no run reaches) it goes to a sink that
+  appends to the output forever. The projection forgets the history tapes.
+  \source{\cite{Bennett73}, the history tape.}
+\end{definition}
+
+\begin{theorem}[The history machine simulates $M$]
+  \label{thm:histTM-simulates}
+  \lean{Sagitta.Arrow.TM.Bennett.histTM_simulates, Sagitta.Arrow.TM.Bennett.histTM_halted_iff, Sagitta.Arrow.TM.Bennett.runFrom_clean}
+  \leanok
+  \uses{def:histTM}
+  After $t$ steps from the initial configuration, the projection of the history machine is $M$
+  after $t$ steps, and one halts exactly when the other does.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $t$: the history stays clean.
+\end{proof}
+
+\begin{theorem}[The history machine is reversible]
+  \label{thm:histTM-reversible}
+  \lean{Sagitta.Arrow.TM.Bennett.histTM_isReversible, Sagitta.Arrow.TM.Bennett.histTM_isReversible_iff}
+  \leanok
+  \uses{def:histTM, lem:apply-injective, lem:staysOnBlank}
+  If $M$ stays on a blank of its input and the code of the records is injective, the history
+  machine is reversible. Conversely, for an injective code, the history machine is reversible only
+  if $M$ stays on a blank: the hypothesis is necessary.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Two running configurations with the same successor took the same kind of step (the state and the
+  last output symbol tell); two good steps wrote the same code, hence the same record, hence the
+  same action on the same symbols, which is locally reversible.
+\end{proof}
+
+\begin{theorem}[Step 2, packaged]
+  \label{thm:history}
+  \lean{Sagitta.Arrow.TM.Bennett.history}
+  \leanok
+  \uses{thm:histTM-simulates, thm:histTM-reversible}
+  A machine with finitely many states that stays on a blank of its input has a reversible machine
+  with more tapes and finitely many states that projects to it step by step.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The history machine with the one-hot code.
+\end{proof}
+
+\section{Step 3: the copy}
+
+\begin{definition}[The copying and the emitting machines]
+  \label{def:copyTM}
+  \lean{Sagitta.Arrow.TM.Bennett.copyTM, Sagitta.Arrow.TM.Bennett.emitTM}
+  \leanok
+  \uses{def:cslib-tm}
+  The copying machine walks a word on a source tape and applies to each cell of a destination tape
+  the swap of the blank with the symbol read (the three-valued version of Bennett's exclusive or),
+  then walks back. The emitting machine does the same with the output tape as destination.
+  \source{\cite{Bennett73}, the copy of the output.}
+\end{definition}
+
+\begin{theorem}[The copy is reversible and correct]
+  \label{thm:copy}
+  \lean{Sagitta.Arrow.TM.Bennett.copyTM_isReversible, Sagitta.Arrow.TM.Bennett.copyTM_self_not_isReversible, Sagitta.Arrow.TM.Bennett.copyTM_correct, Sagitta.Arrow.TM.Bennett.emitTM_isReversible, Sagitta.Arrow.TM.Bennett.emitTM_correct}
+  \leanok
+  \uses{def:copyTM, def:isReversible}
+  The copying machine is reversible when source and destination differ (and not when they are the
+  same tape). Started on a word $w$ with blanks around it and $|w|$ blank destination cells, after
+  $2|w| + 2$ steps it has halted with $w$ copied and nothing else changed. The emitting machine is
+  reversible and appends $w$ to the output in $2|w| + 2$ steps.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The successor tells the state and the direction; the untouched source cell tells the symbol, and
+  with it the swap is undone.
+\end{proof}
+
+\section{Step 4: the inverse}
+
+\begin{definition}[The inverse machines]
+  \label{def:invTM}
+  \lean{Sagitta.Arrow.TM.Bennett.invTM, Sagitta.Arrow.TM.Bennett.InputFixed, Sagitta.Arrow.TM.Bennett.uncTM}
+  \leanok
+  \uses{def:histTM}
+  The inverse of the history machine reads the last record, undoes the action of $M$ and erases the
+  record, moving back. The \emph{uncomputing} machine is a reversible version of it, for machines
+  that never move their input head (\emph{input-fixed}).
+  \source{\cite{Bennett73}, the uncomputation.}
+\end{definition}
+
+\begin{theorem}[The inverse is correct]
+  \label{thm:inverse}
+  \lean{Sagitta.Arrow.TM.Bennett.invTM_correct, Sagitta.Arrow.TM.Bennett.inverse}
+  \leanok
+  \uses{def:invTM, thm:histTM-simulates, lem:staysOnBlank}
+  If the history machine runs $t$ steps without halting before, its inverse, started on the
+  configuration reached, comes back to the initial configuration, halted, in $2t + 2$ steps, with
+  the output untouched.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $t$, one record per step.
+\end{proof}
+
+\begin{theorem}[The uncomputation is reversible and correct]
+  \label{thm:uncompute}
+  \lean{Sagitta.Arrow.TM.Bennett.InputFixed.staysOnBlank, Sagitta.Arrow.TM.Bennett.uncTM_isReversible, Sagitta.Arrow.TM.Bennett.uncTM_correct, Sagitta.Arrow.TM.Bennett.uncompute}
+  \leanok
+  \uses{def:invTM, def:isReversible, thm:histTM-simulates}
+  The uncomputing machine is reversible and, for an input-fixed $M$, from the mirror of the
+  configuration reached after $t$ running steps it returns to the initial configuration, halted, in
+  $3t + 2$ steps.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Reversibility by cases on the state; correctness by induction on $t$.
+\end{proof}
+
+\section{Step 5: composition}
+
+\begin{definition}[A distinguishable hand-off]
+  \label{def:handoff}
+  \lean{Sagitta.Arrow.TM.Bennett.HandOff, Sagitta.Arrow.TM.Bennett.NoReentry}
+  \leanok
+  \uses{def:cslib-plumbing}
+  The hand-off from $M_0$ to $M_1$ is \emph{distinguishable} when no running step of $M_1$ reaches a
+  configuration where a halting step of $M_0$ hands over to $M_1$. A machine has \emph{no re-entry}
+  when no transition enters its initial state.
+  \own{}
+\end{definition}
+
+\begin{theorem}[Composition keeps reversibility]
+  \label{thm:seq-reversible}
+  \lean{Sagitta.Arrow.TM.Bennett.seq_isReversible, Sagitta.Arrow.TM.Bennett.seq_not_isReversible, Sagitta.Arrow.TM.Bennett.HandOff.of_noReentry, Sagitta.Arrow.TM.Bennett.seq_runFrom}
+  \leanok
+  \uses{def:handoff, def:isReversible, def:cslib-plumbing}
+  cslib's sequential composition of two reversible machines is reversible when the hand-off is
+  distinguishable (no re-entry suffices), and a clash at the hand-off breaks reversibility: the
+  condition is necessary. The run of the composition is the run of $M_0$ followed by the run of
+  $M_1$.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Case analysis on the side of the sum of states.
+\end{proof}
+
+\begin{lemma}[The gate before the emission]
+  \label{lem:gate}
+  \lean{Sagitta.Arrow.TM.Bennett.gateTM, Sagitta.Arrow.TM.Bennett.gateTM_isReversible, Sagitta.Arrow.TM.Bennett.gate_emit_handOff, Sagitta.Arrow.TM.Bennett.uncTM_noReentry}
+  \leanok
+  \uses{def:handoff, def:copyTM, def:invTM}
+  A reversible gate before the emitting machine makes that hand-off distinguishable, and the
+  uncomputing machine never re-enters its initial state.
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  After the gate the cell left of the source head is blank; after a forward step of the emission it
+  holds a symbol.
+\end{proof}
+
+\section{Step 6: Bennett's machine}
+
+\begin{definition}[Bennett's machine]
+  \label{def:bennettTM}
+  \lean{Sagitta.Arrow.TM.Bennett.emitStage, Sagitta.Arrow.TM.Bennett.bennettTM}
+  \leanok
+  \uses{def:histTM, def:copyTM, def:invTM, lem:gate}
+  Compute with a history, emit the result, uncompute.
+  \source{\cite{Bennett73}.}
+\end{definition}
+
+\begin{theorem}[Bennett's machine is reversible and correct]
+  \label{thm:bennettTM}
+  \lean{Sagitta.Arrow.TM.Bennett.bennettTM_isReversible, Sagitta.Arrow.TM.Bennett.bennettTM_correct, Sagitta.Arrow.TM.Bennett.bennettTM_computesInTimeAndSpace}
+  \leanok
+  \uses{def:bennettTM, thm:histTM-reversible, thm:copy, thm:uncompute, thm:seq-reversible, def:cslib-time-space}
+  Bennett's machine is reversible. If an input-fixed $M$ halts at time $t$ with a word $w$ on a work
+  tape, Bennett's machine halts by time $4t + 2|w| + 6$ with every work tape blank, every head back
+  where it started, and the output of $M$ followed by $w$; it does so in space linear in the time.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compose the three stages and add their times.
+\end{proof}
+
+\section{Step 7: preparing the input, the normal form, and the theorem}
+
+\begin{definition}[The preparing machine]
+  \label{def:prepTM}
+  \lean{Sagitta.Arrow.TM.Bennett.prepTM}
+  \leanok
+  \uses{def:cslib-tm}
+  It copies the input onto a work tape (the virtual input) and leaves a mark on a flag tape, so that
+  the rest of the computation never moves the real input head.
+  \own{}
+\end{definition}
+
+\begin{theorem}[The preparation is reversible and correct]
+  \label{thm:prepTM}
+  \lean{Sagitta.Arrow.TM.Bennett.prepTM_isReversible, Sagitta.Arrow.TM.Bennett.prepTM_correct}
+  \leanok
+  \uses{def:prepTM, def:isReversible}
+  The preparing machine is reversible and, after $2|x| + 3$ steps, has halted with the input $x$ on
+  the virtual input tape, the mark on the flag tape, both heads back at $0$, and nothing else changed.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Two phases, forward and back, each an induction on the position.
+\end{proof}
+
+\begin{definition}[The normal form]
+  \label{def:normTM}
+  \lean{Sagitta.Arrow.TM.Bennett.normTM, Sagitta.Arrow.TM.Bennett.InputBlind}
+  \leanok
+  \uses{def:cslib-plumbing}
+  The normal form of $M$ does nothing for one step, then runs $M$ reading its input from the virtual
+  input tape (cslib's $\mathrm{inputFromTape}$) and writing its output on a work tape (cslib's
+  $\mathrm{outputToTape}$), then rewinds that tape (cslib's $\mathrm{rewindWork}$). It never moves
+  nor reads its real input head.
+  \own{}
+\end{definition}
+
+\begin{theorem}[The normal form is input-fixed and correct]
+  \label{thm:normTM}
+  \lean{Sagitta.Arrow.TM.Bennett.normTM_inputFixed, Sagitta.Arrow.TM.Bennett.normTM_inputBlind, Sagitta.Arrow.TM.Bennett.normTM_noReentry, Sagitta.Arrow.TM.Bennett.normTM_run}
+  \leanok
+  \uses{def:normTM, def:invTM, def:handoff}
+  The normal form is input-fixed, input-blind and has no re-entry. If $M$ has halted by time $t$ with
+  output $y$, the normal form, started on the prepared tapes, has halted by time $1 + t + |y| + 2$
+  with $y$ on its output work tape from cell $0$, its head at $0$, and nothing on the real output.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  cslib's lemmas on the plumbing, plus a simulation lemma for the moved input head.
+\end{proof}
+
+\begin{definition}[The reversible machine for $M$]
+  \label{def:revTM}
+  \lean{Sagitta.Arrow.TM.Bennett.revTM}
+  \leanok
+  \uses{def:prepTM, def:normTM, def:bennettTM}
+  Prepare the virtual input, then run Bennett's machine on the normal form of $M$.
+  \own{}
+\end{definition}
+
+\begin{theorem}[The reversible machine for $M$ is reversible and correct]
+  \label{thm:revTM}
+  \lean{Sagitta.Arrow.TM.Bennett.revTM_isReversible, Sagitta.Arrow.TM.Bennett.revTM_correct}
+  \leanok
+  \uses{def:revTM, thm:prepTM, thm:normTM, thm:bennettTM, thm:seq-reversible}
+  It is reversible, and if $M$ halts on $x$ by time $t$ with output $y$, it halts with output $y$ by
+  time $2|x| + 3 + 4(1 + t + |y| + 2) + 2|y| + 6$.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compose the preparation with Bennett's machine on the normal form.
+\end{proof}
+
+\begin{theorem}[Bennett's theorem (1973), for cslib's machines]
+  \label{thm:bennett-holds}
+  \lean{Sagitta.Arrow.TM.bennett_holds}
+  \leanok
+  \uses{def:bennett, thm:revTM, def:polytime}
+  Bennett's statement holds: every function computable in polynomial time is computed by a
+  reversible machine with finitely many states in time $2n + 4t + 6|y| + 21 \le 2n + 10\,t + 21$ (for a
+  machine running in time $t$ with output $y$ on inputs of length $n$) and space linear in that
+  time.
+  \source{\cite{Bennett73}.}
+  \fidelity{clean tapes being added to the statement; see Definition~\ref{def:bennett} and the
+  Fidelity notes of the README. The construction itself uncomputes and leaves every work tape blank
+  (Theorem~\ref{thm:bennettTM}); the $4t$ matches Bennett's count.}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:revTM}
+  Apply Theorem~\ref{thm:revTM} to a machine that computes the function, at its time bound.
+\end{proof}
+
+\section{Bennett and the arrow}
+
+\begin{theorem}[Every $\cNP$ verifier runs on a reversible machine]
+  \label{thm:reversible-verifier}
+  \lean{Sagitta.Arrow.TM.reversible_verifier, Sagitta.Arrow.TM.reversible_verifier_holds}
+  \leanok
+  \uses{thm:bennett-holds, def:NP}
+  For every problem in $\cNP$ there is a verifier computed in polynomial time and space by a
+  reversible machine: the dynamics of checking a witness carries no arrow.
+  \own{}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Apply Bennett's theorem to a polynomial-time verifier.
+\end{proof}
+
+\begin{theorem}[HD and Bennett]
+  \label{thm:decision-bennett}
+  \lean{Sagitta.Arrow.TM.decision_bennett, Sagitta.Arrow.TM.decision_bennett_holds}
+  \leanok
+  \uses{thm:reversible-verifier, thm:hd-iff-arrow-tm}
+  From HD alone: the arrow holds, and every $\cNP$ verifier runs on a reversible machine in
+  polynomial time and space. As the past hypothesis and reversible dynamics give the second law of
+  thermodynamics, HD and Bennett give the arrow and locate it: it is in the reduction to one bit, not
+  in the dynamics.
+  \own{}
+  \fidelity{the arrow follows from HD alone (Theorem~\ref{thm:hd-iff-arrow-tm}); Bennett adds the
+  reversible verifier, not the arrow.}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The conjunction of Theorems~\ref{thm:hd-iff-arrow-tm} and~\ref{thm:reversible-verifier}.
+\end{proof}

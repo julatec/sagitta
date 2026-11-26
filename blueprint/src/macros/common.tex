@@ -1,0 +1,41 @@
+% Macros and settings for both the pdf and the web version.
+
+% The theorem-like environments that appear in the dependency graph.
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+
+% Complexity classes and problems.
+\newcommand{\cP}{\mathsf{P}}
+\newcommand{\cNP}{\mathsf{NP}}
+\newcommand{\cFP}{\mathsf{FP}}
+\newcommand{\cFNP}{\mathsf{FNP}}
+\newcommand{\cPSPACE}{\mathsf{PSPACE}}
+\newcommand{\SAT}{\mathsf{SAT}}
+\newcommand{\TSAT}{3\mathsf{SAT}}
+\newcommand{\ISING}{\mathsf{ISING}}
+\newcommand{\MAXCUT}{\mathsf{MAXCUT}}
+\newcommand{\TIME}{\mathsf{TIME}}
+\newcommand{\red}{\le_{\mathrm{p}}}
+\newcommand{\dom}{\operatorname{dom}}
+\newcommand{\pre}{\operatorname{pre}}
+\newcommand{\HD}{\mathrm{HD}}
+\newcommand{\Arrow}{\mathrm{Arrow}}
+\newcommand{\poly}{\mathrm{poly}}
+\newcommand{\enc}{\mathrm{enc}}
+
+% Where a statement comes from, and how faithful the Lean statement is to the source.
+\newcommand{\source}[1]{\par\smallskip\noindent\textit{Source.} #1}
+\newcommand{\own}{\par\smallskip\noindent\textit{Source.} Own (this project); it has no literature source.}
+\newcommand{\fidelity}[1]{\par\smallskip\noindent\textit{Fidelity.} #1}
+
+% Entries imported from cslib and cslib-frontier: where the copied file is, and that it is not ours.
+\newcommand{\cslibfile}[1]{\par\smallskip\noindent\textit{Where.}
+  \href{https://github.com/julatec/sagitta/blob/main/#1}{\texttt{#1}}}
+\newcommand{\notours}[1]{\par\smallskip\noindent\textit{Not this project's work.} Copied without
+  modification from #1 (repository and commit in \texttt{VENDORED.md}), under its Apache-2.0
+  license.}

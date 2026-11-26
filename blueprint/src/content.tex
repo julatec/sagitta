@@ -1,0 +1,47 @@
+% The content of the blueprint, shared by the web and the print version.
+%
+% Every entry gives the statement in LaTeX next to the exact Lean name (\lean{...}), which
+% `lake exe checkdecls blueprint/lean_decls` checks against the compiled project. \leanok marks a
+% statement that is formalized and a proof that is complete (the project has no `sorry`).
+% Named hypotheses (the arrow, the decision hypothesis, law 2.2) are definitions of type `Prop`:
+% \leanok on them means that the definition exists, never that the hypothesis is proved.
+
+\chapter*{Introduction}
+
+This blueprint accompanies the Lean 4 artifact of the essay \emph{The Computational Arrow of Time:
+Locating the Second Law of Computation} (in preparation). It puts every definition and theorem of the
+chain
+\[
+  \text{decisions} \to \text{laws} \to \text{localization} \to \text{second law} \to
+  \text{consequences for } \cNP
+\]
+next to its name in Lean, so that a reader can check that the theorem verified is the theorem
+stated, and not one that only looks like it.
+
+Two layers carry the argument. The \emph{core} (\texttt{Sagitta.Arrow}, library
+\texttt{SagittaCore}, only Mathlib) proves it for every abstract model with a few closure
+properties. The \emph{Turing-machine layer} (\texttt{Sagitta.Arrow.TM}, library
+\texttt{SagittaTM}) shows that the multi-tape machines of cslib, with the classes of
+cslib-frontier, form such a model, proves Bennett's theorem for them, and derives the
+consequences with the vendored proofs of Cook--Levin, Ladner and search-to-decision.
+
+\textbf{What a green node means.} Every node of the dependency graph is formalized, and every proof
+is complete: the project has no \texttt{sorry}, and each main file ends with
+\texttt{\#print axioms} under \texttt{\#guard\_msgs}, so only \texttt{propext},
+\texttt{Classical.choice} and \texttt{Quot.sound} are used. The three named hypotheses --- the
+arrow ($\cP \neq \cNP$), the decision hypothesis and law 2.2 --- are \emph{definitions} of type
+\texttt{Prop}, taken as explicit arguments; a green node for one of them says that the definition
+exists, not that the hypothesis holds. None of them is a Lean \texttt{axiom}.
+
+\textbf{Sources.} An entry that formalizes a result of the literature names its source; when the
+Lean statement differs from the source (another machine model, another encoding, a weaker or a
+stronger form), a \emph{Fidelity} note says how. The laws, the localization and the decision
+hypothesis are this project's own; they are marked as such and have no source.
+
+\input{chapters/model}
+\input{chapters/laws}
+\input{chapters/localization}
+\input{chapters/decision}
+\input{chapters/bennett}
+\input{chapters/consequences}
+\input{chapters/references}

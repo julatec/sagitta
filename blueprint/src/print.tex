@@ -1,0 +1,22 @@
+% The printable version of the blueprint (xelatex, letter paper).
+\documentclass[letterpaper]{report}
+
+\usepackage{geometry}
+
+\usepackage{expl3}
+
+\usepackage{amssymb, amsthm, mathtools}
+\usepackage[unicode,colorlinks=true,linkcolor=blue,urlcolor=magenta, citecolor=blue]{hyperref}
+
+\usepackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
+
+\input{macros/common}
+\input{macros/print}
+
+\title{The Computational Arrow of Time: blueprint}
+\author{Jose-de-Jesus Ulate-Cardenas}
+
+\begin{document}
+\maketitle
+\input{content}
+\end{document}

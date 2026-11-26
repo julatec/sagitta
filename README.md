@@ -2,6 +2,11 @@
 
 [![Lean build](https://github.com/julatec/sagitta/actions/workflows/lean.yml/badge.svg)](https://github.com/julatec/sagitta/actions/workflows/lean.yml)
 
+**Blueprint:** <https://julatec.github.io/sagitta/blueprint/> (every definition and theorem in LaTeX
+next to its Lean name, with the [dependency graph](https://julatec.github.io/sagitta/blueprint/dep_graph_document.html)
+and a [PDF](https://julatec.github.io/sagitta/blueprint.pdf); the build checks that every Lean name
+it cites exists).
+
 This is the Lean 4 artifact of the essay *The Computational Arrow of Time: Locating the Second Law
 of Computation* (in preparation). It formalizes one chain of reasoning, and nothing else:
 

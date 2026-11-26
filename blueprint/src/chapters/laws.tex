@@ -1,0 +1,228 @@
+\chapter{The laws}
+\label{chap:laws}
+
+The essay states three laws of computation, by analogy with thermodynamics. The zeroth and the
+first are theorems; the second is a named hypothesis in two strengths.
+
+\section{The zeroth law}
+
+\begin{theorem}[Zeroth law]
+  \label{thm:lawZero}
+  \lean{Sagitta.Arrow.Model.lawZero}
+  \leanok
+  \uses{def:model}
+  In every model, reductions are transitive: if $A \red B$ and $B \red C$ then $A \red C$.
+  \own{} (the name and the reading as a law; transitivity itself is standard,
+  \cite{AroraBarak}, Chapter~2).
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the closure property ``reductions compose'' of the model.
+\end{proof}
+
+\begin{corollary}[Zeroth law for Turing machines]
+  \label{cor:lawZero-tm}
+  \lean{Sagitta.Arrow.TM.lawZero, Cslib.Complexity.PolyTimeReducible.trans}
+  \leanok
+  \uses{thm:lawZero, def:tmModel, def:reduction}
+  Polynomial-time many-one reductions between encoded problems compose.
+\end{corollary}
+
+\begin{proof}
+  \leanok
+  Theorem~\ref{thm:lawZero} applied to the Turing-machine model; the field is cslib-frontier's
+  \texttt{PolyTimeReducible.trans}.
+\end{proof}
+
+\begin{lemma}[Completeness travels along reductions]
+  \label{lem:npcomplete-reduces}
+  \lean{Sagitta.Arrow.Model.NPComplete.of_reduces, Sagitta.Arrow.Model.NPComplete.InP_iff}
+  \leanok
+  \uses{thm:lawZero, def:model-classes}
+  If $B$ is $\cNP$-complete, $C \in \cNP$ and $B \red C$, then $C$ is $\cNP$-complete. An
+  $\cNP$-complete $B$ is in $\cP$ if and only if $\cP = \cNP$.
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  Compose the reductions; for the second part use the closure of $\cP$ under reductions.
+\end{proof}
+
+\section{The first law}
+
+A \emph{query tree} over a finite set of options $\alpha$ asks, at each node, whether an option is
+good, and answers yes or no at the leaves; its cost on an oracle $f : \alpha \to \{0,1\}$ is the
+number of questions on the path that $f$ selects.
+
+\begin{definition}[Query trees that decide existence]
+  \label{def:querytree}
+  \lean{Sagitta.Arrow.QueryTree, Sagitta.Arrow.QueryTree.cost, Sagitta.Arrow.QueryTree.DecidesExists}
+  \leanok
+  A query tree $t$ \emph{decides existence} when, for every oracle $f$, it answers yes exactly when
+  $f(i) = 1$ for some option $i$.
+\end{definition}
+
+\begin{lemma}[The adversary]
+  \label{lem:adversary}
+  \lean{Sagitta.Arrow.QueryTree.adversary, Sagitta.Arrow.QueryTree.cost_adversary}
+  \leanok
+  \uses{def:querytree}
+  A query tree that decides existence asks, on the all-zero oracle, about every option; so its cost
+  there is at least $|\alpha|$.
+  \source{the adversary argument for unstructured search; see \cite{AroraBarak}, Chapter~12
+  (decision trees).}
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  If an option $i$ is never asked on the all-zero oracle, the oracle that is $1$ only at $i$ follows
+  the same path and gets the same answer, which is wrong for one of the two.
+\end{proof}
+
+\begin{theorem}[First law: work is conserved in a black box]
+  \label{thm:conservation}
+  \lean{Sagitta.Arrow.DependsOnlyOnAsked, Sagitta.Arrow.conservation}
+  \leanok
+  \uses{lem:adversary}
+  Let a filling phase build a table $\mathrm{fill}(f)$ asking the options $\mathrm{asked}(f)$, and let
+  the table depend only on the answers to those options (the system is closed). If a query phase
+  $Q(\mathrm{fill}(f))$, reading the table for free, decides whether some option is good for every
+  oracle $f$, then on the all-zero oracle
+  \[
+    |\alpha| \le |\mathrm{asked}(0)| + \mathrm{cost}(Q(\mathrm{fill}(0)), 0).
+  \]
+  What is hard is neither created nor destroyed: it is only moved between the phases.
+  \own{} (the statement as a conservation law; the proof is the adversary argument).
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{lem:adversary}
+  Every option is asked by one of the two phases on the all-zero oracle; otherwise flip it and both
+  phases behave the same.
+\end{proof}
+
+\begin{proposition}[Control: information from outside breaks the first law]
+  \label{prop:free-table}
+  \lean{Sagitta.Arrow.free_table, Sagitta.Arrow.free_table_not_closed, Sagitta.Arrow.free_table_breaks}
+  \leanok
+  \uses{thm:conservation}
+  If the table is the oracle itself, the query phase decides at cost $0$ and the filling phase asks
+  nothing; the table then does not depend only on what was asked, and the inequality of
+  Theorem~\ref{thm:conservation} fails.
+  \own{}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  Direct computation.
+\end{proof}
+
+\section{The second law}
+
+\begin{definition}[The arrow, law 2.1]
+  \label{def:arrow}
+  \lean{Sagitta.Arrow.Model.Arrow}
+  \leanok
+  \uses{def:model-classes}
+  The \emph{arrow} of a model is $\neg(\cP = \cNP)$, the worst-case version. It is a
+  \textbf{hypothesis}: a definition of type \texttt{Prop}, taken as an explicit argument by every
+  theorem that uses it, never an axiom.
+  \own{} (the reading as a second law; the statement is $\cP \neq \cNP$).
+\end{definition}
+
+\begin{theorem}[Kelvin's form]
+  \label{thm:kelvin}
+  \lean{Sagitta.Arrow.Model.kelvin}
+  \leanok
+  \uses{def:arrow, thm:searchEasy-iff}
+  The arrow holds if and only if search is not easy: there is no efficient process whose only
+  effect is to convert every ``yes'' into its witness.
+  \own{}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:searchEasy-iff}
+  The localization, part (3): search is easy exactly when $\cP = \cNP$.
+\end{proof}
+
+\begin{definition}[Two models]
+  \label{def:two-models}
+  \lean{Sagitta.Arrow.collapsedModel, Sagitta.Arrow.separatedModel}
+  \leanok
+  \uses{def:model}
+  The \emph{collapsed} model has one problem, in $\cP$, and every search problem easy; the
+  \emph{separated} model satisfies the closure properties with $\cP \neq \cNP$.
+  \own{}
+\end{definition}
+
+\begin{theorem}[The arrow is independent of the closure properties]
+  \label{thm:arrow-independent}
+  \lean{Sagitta.Arrow.arrow_independent}
+  \leanok
+  \uses{def:arrow, def:two-models}
+  The arrow fails in the collapsed model and holds in the separated model.
+  \own{}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compute in both models.
+\end{proof}
+
+\begin{definition}[The arrow for Turing machines]
+  \label{def:arrow-tm}
+  \lean{Sagitta.Arrow.TM.Arrow}
+  \leanok
+  \uses{def:arrow, def:tmModel}
+  The arrow of the Turing-machine model: for some encoded type, $\cNP \not\subseteq \cP$. A
+  hypothesis, never an axiom.
+\end{definition}
+
+\begin{theorem}[The arrow, unfolded]
+  \label{thm:arrow-iff-tm}
+  \lean{Sagitta.Arrow.TM.arrow_iff, Sagitta.Arrow.TM.arrow_iff_exists, Sagitta.Arrow.TM.arrow_iff_SAT, Sagitta.Arrow.TM.kelvin}
+  \leanok
+  \uses{def:arrow-tm, thm:kelvin, thm:cook-levin, thm:oneBit}
+  For Turing machines the arrow is equivalent to each of: not every $\cNP$ class is contained in
+  $\cP$; $\cP \neq \cNP$ for some encoding; $\SAT \notin \cP$; and (Kelvin's form) not every $\cFNP$
+  search problem is in $\cFP$.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:cook-levin, thm:oneBit}
+  The third equivalence is the Cook--Levin theorem; the fourth is cslib-frontier's
+  search-to-decision theorem.
+\end{proof}
+
+\begin{definition}[Law 2.2]
+  \label{def:law22}
+  \lean{Sagitta.Arrow.TM.InTIME, Sagitta.Arrow.TM.subexpBound, Sagitta.Arrow.TM.Law22}
+  \leanok
+  \uses{def:tmModel, def:threesat}
+  \emph{Law 2.2}: for every $\varepsilon > 0$, $\TSAT \notin \TIME(2^{n^{1-\varepsilon}})$, where
+  $\TIME(T)$ allows $C \cdot T(n) + C$ steps for a constant $C$ and $n$ is the length of the encoded
+  formula. A hypothesis, never an axiom.
+  \source{the weak exponential-time hypothesis, shown equivalent to Stearns and Hunt's satisfiability
+  hypothesis SH in \cite{ETHdead} (as cited in the Lean source, Theorem~2.4).}
+  \fidelity{$n$ is measured in bits of the CNF encoding (the size form of SH), not in variables. It is
+  equivalent to the weak ETH ($n$ variables) only by Theorem~2.4 of \cite{ETHdead}, which is not
+  formalized here.}
+\end{definition}
+
+\begin{theorem}[Law 2.2 implies law 2.1]
+  \label{thm:law22-arrow}
+  \lean{Sagitta.Arrow.TM.Law22.arrow, Sagitta.Arrow.TM.poly_le_subexp}
+  \leanok
+  \uses{def:law22, def:arrow-tm, def:threesat}
+  Law 2.2 implies the arrow.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $\cP = \cNP$ then $\TSAT$ is decided in polynomial time, hence in time
+  $C \cdot 2^{n^{1/2}} + C$, which law 2.2 forbids with $\varepsilon = 1/2$.
+\end{proof}

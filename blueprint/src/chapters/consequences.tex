@@ -1,0 +1,177 @@
+\chapter{The consequences}
+\label{chap:consequences}
+
+Every consequence takes its hypothesis as an explicit argument: the arrow, HD (equivalent to it)
+or law 2.2 (stronger). None of the hypotheses is proved, and none is an axiom.
+
+\section{In every model}
+
+\begin{theorem}[Consequences of the arrow, in every model]
+  \label{thm:model-consequences}
+  \lean{Sagitta.Arrow.Model.not_InP_of_NPComplete, Sagitta.Arrow.Model.not_searchEasy, Sagitta.Arrow.Model.not_reduces_of_InP}
+  \leanok
+  \uses{def:arrow, thm:kelvin, lem:npcomplete-reduces}
+  Assume the arrow. Then no $\cNP$-complete problem is in $\cP$, search is not easy, and no
+  $\cNP$-complete problem reduces to a problem in $\cP$.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An $\cNP$-complete problem in $\cP$ gives $\cP = \cNP$ (Lemma~\ref{lem:npcomplete-reduces}).
+\end{proof}
+
+\begin{theorem}[Consequences of HD, in every model]
+  \label{thm:model-consequences-hd}
+  \lean{Sagitta.Arrow.Model.not_InP_of_NPComplete_of_decision, Sagitta.Arrow.Model.not_searchEasy_of_decision, Sagitta.Arrow.Model.not_reduces_of_InP_of_decision}
+  \leanok
+  \uses{def:hd, thm:hd-iff-arrow, thm:model-consequences}
+  The same consequences follow from HD.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  HD implies the arrow.
+\end{proof}
+
+\begin{proposition}[Control: without the arrow the consequences fail]
+  \label{prop:consequences-need-arrow}
+  \lean{Sagitta.Arrow.consequences_need_arrow}
+  \leanok
+  \uses{def:two-models, def:arrow}
+  In the collapsed model the only problem is $\cNP$-complete and in $\cP$, and every search problem
+  is easy.
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  Compute.
+\end{proof}
+
+\section{SAT and 3-SAT}
+
+\begin{theorem}[$\SAT$ and $\TSAT$ are not in $\cP$]
+  \label{thm:sat-notmem-p}
+  \lean{Sagitta.Arrow.TM.SAT_notMem_P, Sagitta.Arrow.TM.ThreeSAT_notMem_P}
+  \leanok
+  \uses{def:arrow-tm, thm:arrow-iff-tm, thm:cook-levin}
+  Assume the arrow. Then $\SAT \notin \cP$ and $\TSAT \notin \cP$.
+  \source{the Cook--Levin theorem \cite{Cook71, Levin73} and the reduction of $\SAT$ to $\TSAT$
+  \cite{Karp72}, both proved in cslib-frontier.}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:cook-levin}
+  $\SAT$ is $\cNP$-complete and reduces to $\TSAT$.
+\end{proof}
+
+\begin{theorem}[From HD]
+  \label{thm:sat-notmem-p-hd}
+  \lean{Sagitta.Arrow.TM.SAT_notMem_P_of_decision, Sagitta.Arrow.TM.ThreeSAT_notMem_P_of_decision, Sagitta.Arrow.TM.not_searchEasy_of_decision}
+  \leanok
+  \uses{def:hd-tm, thm:hd-iff-arrow-tm, thm:sat-notmem-p}
+  Assume HD. Then $\SAT, \TSAT \notin \cP$, and some $\cFNP$ search problem is not in $\cFP$.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  HD implies the arrow.
+\end{proof}
+
+\section{An $\cNP$-intermediate problem}
+
+\begin{theorem}[Ladner, under the arrow]
+  \label{thm:intermediate}
+  \lean{Sagitta.Arrow.TM.exists_intermediate, Sagitta.Arrow.TM.exists_intermediate_model}
+  \leanok
+  \uses{def:arrow-tm, thm:arrow-iff-tm, thm:ladner, lem:npComplete-iff}
+  Assume the arrow. Then some problem over binary words is in $\cNP$, not in $\cP$ and not
+  $\cNP$-complete; in the vocabulary of the model, the Turing-machine model has an intermediate
+  problem.
+  \source{\cite{Ladner75}; the proof is cslib-frontier's (Theorem~\ref{thm:ladner}).}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:ladner}
+  The arrow gives an encoding with $\cP \neq \cNP$; apply Ladner's theorem.
+\end{proof}
+
+\begin{theorem}[From HD]
+  \label{thm:intermediate-hd}
+  \lean{Sagitta.Arrow.TM.exists_intermediate_of_decision, Sagitta.Arrow.TM.exists_intermediate_model_of_decision}
+  \leanok
+  \uses{def:hd-tm, thm:hd-iff-arrow-tm, thm:intermediate}
+  Assume HD. Then there is an $\cNP$-intermediate problem.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  HD implies the arrow.
+\end{proof}
+
+\section{The Ising ground state}
+
+\begin{definition}[$\ISING$]
+  \label{def:ising}
+  \lean{Sagitta.Arrow.TM.Ising.Coupling, Sagitta.Arrow.TM.Ising.IsingInstance, Sagitta.Arrow.TM.Ising.energy, Sagitta.Arrow.TM.Ising.ISING}
+  \leanok
+  An instance is a list of couplings $J_e$ between sites $u_e, v_e \in \mathbb{N}$ and a threshold
+  $t \in \mathbb{Z}$. The energy of a configuration $\sigma : \mathbb{N} \to \{\pm 1\}$ is
+  $H_J(\sigma) = -\sum_e J_e\, \sigma_{u_e} \sigma_{v_e}$ (no external field). $\ISING$ is the set of
+  instances with some configuration of energy at most $t$.
+  \source{\cite{Barahona82}.}
+\end{definition}
+
+\begin{theorem}[$\ISING$ is $\cNP$-complete]
+  \label{thm:ising-npcomplete}
+  \lean{Sagitta.Arrow.TM.Ising.ISING_mem_NP, Sagitta.Arrow.TM.Ising.maxCut_iff_ising, Sagitta.Arrow.TM.Ising.polyTimeReducible_MaxCut_ISING, Sagitta.Arrow.TM.Ising.ISING_npComplete, Sagitta.Arrow.TM.Ising.P_eq_NP_iff_ISING_mem_P, Sagitta.Arrow.TM.Ising.ISING_mem_P_iff_SAT_mem_P}
+  \leanok
+  \uses{def:ising, thm:maxcut, def:reduction, thm:cook-levin}
+  $\ISING \in \cNP$; $\MAXCUT \red \ISING$ through Barahona's identity
+  $H_J(\sigma) = 2\,\mathrm{cut}_J(\sigma) - \sum_e J_e$; hence $\ISING$ is $\cNP$-complete,
+  $\cP = \cNP$ if and only if $\ISING \in \cP$, and $\ISING \in \cP$ if and only if $\SAT \in \cP$.
+  \source{\cite{Barahona82}.}
+  \fidelity{this is $\cNP$-completeness on arbitrary graphs, with integer couplings written in
+  binary and no field, by the reduction from $\MAXCUT$ (from \textsc{Partition}): $\cNP$-hardness in the weak sense. Barahona proves the much stronger result on
+  three-dimensional lattices with couplings in $\{-1, 0, 1\}$, which is not formalized here.}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:maxcut}
+  A verifier checks the energy of the configuration given by the endpoints in the certificate; the
+  reduction turns every edge of weight $w$ into the antiferromagnetic coupling $J = -w$, with
+  threshold $W - 2k$ ($W$ the total weight, $k$ the cut bound).
+\end{proof}
+
+\begin{theorem}[$\ISING$ is not in $\cP$]
+  \label{thm:ising-notmem-p}
+  \lean{Sagitta.Arrow.TM.ISING_notMem_P, Sagitta.Arrow.TM.ISING_notMem_P_of_decision}
+  \leanok
+  \uses{thm:ising-npcomplete, thm:sat-notmem-p, def:hd-tm, thm:hd-iff-arrow-tm}
+  Under the arrow, and so under HD, $\ISING \notin \cP$.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  $\ISING \in \cP$ would put $\SAT$ in $\cP$.
+\end{proof}
+
+\section{Under law 2.2}
+
+\begin{theorem}[Consequences of law 2.2]
+  \label{thm:law22-consequences}
+  \lean{Sagitta.Arrow.TM.ThreeSAT_notMem_TIME, Sagitta.Arrow.TM.arrow_of_law22, Sagitta.Arrow.TM.decisionHypothesis_of_law22}
+  \leanok
+  \uses{def:law22, thm:law22-arrow, thm:hd-iff-arrow-tm}
+  Assume law 2.2. Then for every $\varepsilon > 0$, $\TSAT$ is not decided within
+  $C \cdot \lceil 2^{n^{1-\varepsilon}} \rceil + C$ steps for any constant $C$; the arrow holds; and
+  HD holds. All the consequences above follow.
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first statement is the definition, unfolded; the others are Theorem~\ref{thm:law22-arrow} and
+  the equivalence of HD with the arrow.
+\end{proof}
