@@ -394,4 +394,127 @@ theorem gate_emit_noReentry (src : Fin k) : NoReentry ((gateTM src).seq (emitTM 
     generalize ((emitTM src).tr q r w).state = o
     rcases o with _ | o <;> simp
 
+/-- **The emitting machine re-enters its initial state** (a forward step goes back to `fwd`), so
+it needs the gate. -/
+theorem emitTM_not_noReentry (src : Fin k) : ¬NoReentry (emitTM src) := by
+  intro h
+  exact h .fwd none (fun _ => some true) (by simp [emitTM, emitTr, emitAct])
+
+/-! ## Checks: the axioms, and one mutant per central theorem -/
+
+/-- info: 'Sagitta.Arrow.TM.Bennett.seq_isReversible' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.seq_isReversible
+/-- info: 'Sagitta.Arrow.TM.Bennett.seq_not_isReversible' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.seq_not_isReversible
+/-- info: 'Sagitta.Arrow.TM.Bennett.HandOff.of_noReentry' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.HandOff.of_noReentry
+/-- info: 'Sagitta.Arrow.TM.Bennett.seq_runFrom' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.seq_runFrom
+/-- info: 'Sagitta.Arrow.TM.Bennett.seq_runFrom_of_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.seq_runFrom_of_le
+/-- info: 'Sagitta.Arrow.TM.Bennett.uncTM_noReentry' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.uncTM_noReentry
+/-- info: 'Sagitta.Arrow.TM.Bennett.emitTM_not_noReentry' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.emitTM_not_noReentry
+/-- info: 'Sagitta.Arrow.TM.Bennett.gateTM_isReversible' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.gateTM_isReversible
+/-- info: 'Sagitta.Arrow.TM.Bennett.gateTM_run' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.gateTM_run
+/-- info: 'Sagitta.Arrow.TM.Bennett.gate_emit_handOff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.gate_emit_handOff
+/-- info: 'Sagitta.Arrow.TM.Bennett.gate_emit_noReentry' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.gate_emit_noReentry
+
+section Mutants
+
+set_option linter.unusedVariables false
+
+/-- Mutant of `seq_isReversible`: without the hand-off hypothesis. -/
+example (tm₀ : MultiTapeTM k Bool S₀) (tm₁ : MultiTapeTM k Bool S₁) (h₀ : IsReversible tm₀)
+    (h₁ : IsReversible tm₁) : True := by
+  fail_if_success
+    have : IsReversible (tm₀.seq tm₁) := seq_isReversible h₀ h₁ (by assumption)
+  trivial
+
+/-- Mutant of `seq_not_isReversible`: the first step does not halt. -/
+example (tm₀ : MultiTapeTM k Bool S₀) (tm₁ : MultiTapeTM k Bool S₁) {input : List Bool}
+    (c : Cfg k Bool S₀ input) (c' : Cfg k Bool S₁ input) (hc : ¬c.Halted) (hc' : ¬c'.Halted)
+    (he : tm₁.step c' = (tm₀.step c).withState (some tm₁.q₀)) : True := by
+  fail_if_success
+    have : ¬IsReversible (tm₀.seq tm₁) := seq_not_isReversible hc hc' (by assumption) he
+  trivial
+
+/-- Mutant of `HandOff.of_noReentry`: no re-entry of the first machine instead of the second. -/
+example (tm₀ : MultiTapeTM k Bool S₀) (tm₁ : MultiTapeTM k Bool S₁) (h : NoReentry tm₀) :
+    True := by
+  fail_if_success
+    have : HandOff tm₀ tm₁ := HandOff.of_noReentry h
+  trivial
+
+/-- Mutant of `seq_runFrom`: without the running hypothesis on `tm₀`. -/
+example (tm₀ : MultiTapeTM k Bool S₀) (tm₁ : MultiTapeTM k Bool S₁) {input : List Bool}
+    (c : Cfg k Bool S₀ input) (t₀ t₁ : ℕ) (hhalt : (tm₀.runFrom c t₀).Halted) : True := by
+  fail_if_success
+    have := seq_runFrom (tm₁ := tm₁) c t₀ t₁ (by assumption) hhalt
+  trivial
+
+/-- Mutant of `seq_runFrom_of_le`: one step before the bound. -/
+example (tm₀ : MultiTapeTM k Bool S₀) (tm₁ : MultiTapeTM k Bool S₁) {input : List Bool}
+    (c : Cfg k Bool S₀ input) (t₀ t₁ : ℕ) (hhalt : (tm₀.runFrom c t₀).Halted)
+    (hhalt₁ : (tm₁.runFrom ((tm₀.runFrom c t₀).withState (some tm₁.q₀)) t₁).Halted)
+    (hpos : 0 < t₀ + t₁) : True := by
+  fail_if_success
+    have := seq_runFrom_of_le c hhalt hhalt₁ (T := t₀ + t₁ - 1) (by omega)
+  trivial
+
+/-- Mutant of `uncTM_noReentry`: the emitting machine in its place. -/
+example (src : Fin k) : True := by
+  fail_if_success
+    have : NoReentry (emitTM src) := uncTM_noReentry (h := 0) (emitTM src) (fun _ => Fin.elim0)
+  trivial
+
+/-- Mutant of `emitTM_not_noReentry`: the gate in its place. -/
+example (src : Fin k) : True := by
+  fail_if_success
+    have : ¬NoReentry (gateTM src) := emitTM_not_noReentry src
+  trivial
+
+/-- Mutant of `gateTM_isReversible`: the copying machine onto its own source. -/
+example (src : Fin k) : True := by
+  fail_if_success
+    have : IsReversible (copyTM src src) := gateTM_isReversible src
+  trivial
+
+/-- Mutant of `gateTM_run`: without the blank to the left. -/
+example (src : Fin k) {input : List Bool} (c : Cfg k Bool GateState input)
+    (hst : c.state = some .start) : True := by
+  fail_if_success
+    have := gateTM_run (src := src) c hst (by assumption)
+  trivial
+
+/-- Mutant of `gate_emit_handOff`: the emitting machine without the gate. -/
+example (src : Fin k) : True := by
+  fail_if_success
+    have : HandOff (emitTM src) (emitTM src) := gate_emit_handOff src
+  trivial
+
+/-- Mutant of `gate_emit_noReentry`: the emitting machine alone. -/
+example (src : Fin k) : True := by
+  fail_if_success
+    have : NoReentry (emitTM src) := gate_emit_noReentry src
+  trivial
+
+end Mutants
+
 end Sagitta.Arrow.TM.Bennett
