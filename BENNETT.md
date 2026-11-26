@@ -251,3 +251,90 @@ salida simulada en una cinta de trabajo.
   de estados (los finales de una fase son los iniciales de la siguiente) tiene que conservar la
   inyectividad; mirar antes el PR de composición TM2 de Mathlib (#44441). Ojo: `copyTM` deja la
   cabeza donde empezó, y `uncTM` espera las cabezas de `histTM` donde las dejó la corrida.
+
+## Pasos 5 y 6 — 26 nov 2026 (cerrados, con las hipótesis de 2b y 2c como hipótesis)
+
+Archivos: `Sagitta/Arrow/TM/Bennett/Compose.lean` (paso 5) y `Sagitta/Arrow/TM/Bennett/Machine.lean`
+(paso 6), importados por `Sagitta.lean`. Cero `sorry`; `#print axioms` de los dieciséis teoremas
+centrales: solo `propext`, `Classical.choice`, `Quot.sound`; un mutante por teorema (dieciséis, con
+`fail_if_success`). `lake build Sagitta` pasa. No se vendorizó nada nuevo: `Turing.MultiTapeTM.seq`
+(`Cslib/.../Plumbing/Sequential.lean`, con `combine` y `handOver` de `Deterministic.lean`) ya estaba
+en la clausura vendorizada.
+
+### Qué había hecho
+
+- **cslib ya tiene la composición secuencial**: `MultiTapeTM.seq` redirige el paso de detención de la
+  primera máquina al estado inicial de la segunda, sin paso extra. Se usa **sin modificar**. Sus
+  teoremas (`exists_runPath_seq`, `transformsTapes_seq`) hablan de corridas, tiempo y espacio, nunca
+  de inyectividad; la nota de la bitácora sobre `Sequential`/`ClearWork` se confirma: no la preservan
+  por sí solas.
+- **El PR #44441 de Mathlib no sirve aquí**: es `TM2ComputableInPolyTime.comp` sobre el modelo TM2
+  de pilas de Mathlib (abierto, bloqueado por #44440), no sobre `MultiTapeTM` de cslib, y no dice
+  nada de reversibilidad ni inyectividad (leído en GitHub el 26 nov 2026).
+
+### Paso 5: cuándo `seq` conserva la reversibilidad
+
+Dentro de cada máquina la compuesta da el mismo paso con los estados reetiquetados de forma
+inyectiva; la inyectividad solo puede romperse en la **entrega**: un paso de detención de `tm₀`
+(redirigido a `tm₁.q₀`) contra un paso de `tm₁` que **entra** a `tm₁.q₀`.
+
+- `HandOff tm₀ tm₁`: ninguna configuración de entrega es también imagen de un paso en marcha de
+  `tm₁`. `seq_isReversible`: `tm₀`, `tm₁` reversibles y `HandOff` ⟹ `seq` reversible.
+  `seq_not_isReversible`: la hipótesis es necesaria (un choque da dos configuraciones en marcha con
+  el mismo sucesor).
+- `NoReentry tm₁` (ninguna transición entra al estado inicial) implica `HandOff`
+  (`HandOff.of_noReentry`). `uncTM_noReentry`: la inversa lo cumple (nada vuelve a `back none`).
+- **Hallazgo: la emisión vuelve a entrar a su estado inicial** (`emitTM_not_noReentry`: `fwd → fwd`),
+  y ningún envoltorio genérico lo arregla: un estado previo que no hace nada choca con los pasos de
+  `tm₁` hacia `q₀` en configuraciones basura, porque `IsReversible` mira todas. La salida es local,
+  como la de Bennett: una **compuerta** `gateTM src` (tres estados: `start` mueve la cabeza de `src`
+  a la izquierda; `check` exige blanco y vuelve, si no va a un sumidero que agrega `false` y luego
+  `true`). Tras la compuerta, la celda a la izquierda de la cabeza de `src` es blanca; tras un paso
+  `fwd` de la emisión, tiene el símbolo emitido: `gate_emit_handOff`. `gateTM_isReversible`,
+  `gateTM_run` (2 pasos, nada cambia), `gate_emit_noReentry`.
+- Corridas: `seq_runFrom_left`, `seq_runFrom_right`, `seq_runFrom` (exacta, con la primera detención
+  en `t₀`) y `seq_runFrom_of_le` (con cotas: si `tm₀` se detuvo para `t₀` y `tm₁` para `t₁`, la
+  compuesta se detuvo para `t₀ + t₁`; usa la primera detención con `Nat.find`, así que no hace falta
+  saber que la emisión sigue en marcha antes de su último paso).
+
+### Paso 6: la máquina de Bennett
+
+`bennettTM tm code src := ((histTM tm code).seq (emitStage (mainTape h src))).seq (uncTM tm code)`,
+con `emitStage src := (gateTM src).seq (emitTM src)`; estados finitos si los de `tm` lo son.
+
+- `bennettTM_isReversible`: `StaysOnBlank tm` y código inyectivo ⟹ reversible.
+- `bennettTM_correct`: si `tm` nunca mueve la cabeza de entrada (`InputFixed`), se detiene en el paso
+  `t` (en marcha antes) y deja `w` en su cinta de trabajo `src` desde la cabeza, con blanco antes y
+  después, entonces para todo `T ≥ 4 t + 2 |w| + 6` la máquina de Bennett está en
+  `⟨none, 1, todo en blanco, cabezas en 0, salida de tm ++ w⟩`: **cintas auxiliares limpias**, la
+  de historia incluida. El tiempo es el `4n + 4l + 5` de Bennett con la copia de un solo sentido:
+  `t` (historia) + 2 (compuerta) + `2|w| + 2` (emisión) + `3t + 2` (deshacer).
+- `runsInSpace_of_halted`: toda máquina que se detiene para `T` corre en espacio `k (2T + 1)`
+  (una cabeza avanza una celda por paso).
+- `bennettTM_computesInTimeAndSpace`: lo mismo en el vocabulario de cslib,
+  `ComputesInTimeAndSpace input (salida ++ w) T ((k + h)(2T + 1))` con `T = 4t + 2|w| + 6`:
+  **tiempo O(T) y espacio O(T)**.
+- Auxiliar: `emitStage_run`, `natAbs_workTapePos_runFrom_le`, `seq_tr_inl`, `seq_tr_inr`,
+  `seq_step_left`, `seq_step_right`, `apply_relabel`, `mapState_injective`.
+
+### Lo que no está (el bloqueo para el paso 7)
+
+La hipótesis `Bennett` habla de **cualquier** `M` con `ComputableInPolyTime`, y el teorema pide dos
+cosas que una `M` cualquiera no cumple:
+
+- **2b**: `InputFixed M`. Hace falta la forma normal: copiar la entrada a una cinta de trabajo y
+  simular `M` sobre la copia. Esa copia mueve la cabeza de entrada y no se deshace (paso 4): queda
+  al final, y la configuración final de Bennett tendrá la cabeza de entrada en el blanco del final y
+  la copia de la entrada en una cinta (o hay que borrarla con otra copia reversible, el `XOR`).
+- **2c**: que `M` deje `w = encOut (f a)` en una cinta de trabajo, con salida vacía y blanco antes
+  y después, en vez de en la cinta de salida. Una variante de `histTM` que redirija
+  `Action.output` a una cinta de trabajo (escribir y avanzar sobre blanco) lo resuelve; la
+  condición de blanco a la izquierda la da la cinta limpia.
+- Además, `ComputesFunInTimeAndSpace` pide la salida **exacta** `encOut (f a)`: con 2c la salida de
+  `M` simulada es vacía y la de Bennett es `w`. Las cotas polinomiales salen de
+  `4t + 2|w| + 6` con `|w| ≤ t` (lo escribe `M` en `t` pasos; no se probó).
+
+### Siguiente
+
+- **2c** primero (es local a `histTM`), después **2b** (la forma normal de la entrada), y con eso
+  el **paso 7**: probar `Bennett` de `Sagitta/Arrow/TM/Instance.lean`.
