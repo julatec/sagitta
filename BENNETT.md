@@ -440,3 +440,23 @@ Ninguno.
 - **8 (si sale, otro proyecto).** Bennett 1989: usar `bennettMoves` de los guijarros reversibles de
   cslib-frontier para elegir qué configuraciones guardar (espacio `O(S log T)`), el puente entre los
   guijarros y las máquinas.
+
+## Fidelidad: cintas limpias en el enunciado (26 nov 2026, rama `fidelidad`)
+
+La auditoría de fidelidad encontró que el `Prop` `Bennett` era **más débil** que Bennett (1973): no
+pedía que las cintas auxiliares quedaran limpias, así que una simulación con historia sin deshacer
+(Lecerf–Landauer) lo cumplía. Arreglo:
+
+- `ComputesCleanly` (`TM/Instance.lean`): al tiempo `t a` la configuración es exactamente
+  `⟨none, Fin.last _, fun i => (role i).tape (encIn a), fun _ => 0, encOut (f a)⟩`, con
+  `role : Fin k → Residue` fijo para todas las entradas (`blank`, `input` = copia de la entrada,
+  `mark` = la marca constante en la celda −1). Nada que dependa de la corrida puede quedar.
+- `Bennett` ahora: para toda máquina que calcula `f` en tiempo `t`, una máquina reversible que la
+  calcula en tiempo y espacio `c · (n + t(n) + 1)` (lineal, como Bennett) y `ComputesCleanly`.
+- `revTM_correct_clean`: la configuración final exacta en `2 n + 4 t + 6 |y| + 21` pasos (el
+  tiempo exacto, expuesto). `revTM_correct` se deriva de él.
+- El mutante: `BennettWeak` (el enunciado viejo), `histOnlyTM` (historia, emitir, parar),
+  `bennett_of_history_only : BennettWeak` y `history_only_not_clean` (reversible pero no limpia: las
+  cabezas de historia terminan fuera de la celda 0, `histTM_histPos`).
+- `reversible_verifier(_holds)` y `decision_bennett(_holds)` agregan `ComputesCleanly` a su
+  conclusión.

@@ -6,6 +6,8 @@ Authors: Jose-de-Jesus Ulate-Cardenas
 import Sagitta.Arrow.Core.Consequences
 import CslibFrontier.Computability.Complexity.Classes.TFNP.SearchToDecision
 import CslibFrontier.Computability.Complexity.Reduction
+import CslibFrontier.Foundations.Data.Nat.PolynomialBound.Closure
+import Cslib.Computability.Machines.Turing.MultiTape.Plumbing.WordsCfg
 
 /-!
 # The Turing-machine instance
@@ -26,8 +28,8 @@ cslib-frontier, satisfy the axioms of the abstract `Sagitta.Arrow.Model`:
 
 The result is `tmModel`, and every theorem of the core holds for it. This file also states the
 zeroth law, the arrow and the one-bit part of the localization in the vocabulary of cslib, and the
-statement `Bennett` (a reversible simulation with polynomial overhead, proved in
-`Sagitta.Arrow.TM.Bennett.Discharge`) with what it gives.
+statement `Bennett` (a reversible simulation with linear overhead that leaves no garbage, proved
+in `Sagitta.Arrow.TM.Bennett.Discharge`) with what it gives.
 -/
 
 namespace Sagitta.Arrow.TM
@@ -166,12 +168,62 @@ def IsReversible {k : ℕ} {State : Type} (tm : MultiTapeTM k Bool State) : Prop
   ∀ (input : List Bool) (c c' : Cfg k Bool State input), ¬c.Halted → ¬c'.Halted →
     tm.step c = tm.step c' → c = c'
 
-/-- **Bennett's statement** (Bennett, 1973, for Turing machines): every function computable in
-polynomial time is computed in polynomial time and space by a reversible machine. It is stated
-here as a `Prop` and proved in `Sagitta.Arrow.TM.Bennett.Discharge` (`bennett_holds`), with the
-construction of Bennett's machine (compute keeping a history tape, copy the output, uncompute) as a
-multi-tape machine of cslib with injective transitions, and its time analysis. -/
+/-- What a work tape may hold when a garbage-free run ends: nothing, a copy of the input from cell
+`0` on (Bennett's reconstructed input), or the single mark `true` at cell `-1`, which is the same for
+every input and so carries no information. -/
+inductive Residue where
+  /-- A blank tape. -/
+  | blank
+  /-- The input, from cell `0` on. -/
+  | input
+  /-- The mark `true` at cell `-1`, blank elsewhere. -/
+  | mark
+  deriving DecidableEq
+
+/-- The tape that a residue stands for, on the input `x`. -/
+def Residue.tape (x : List Bool) : Residue → ℤ → Option Bool
+  | .blank => fun _ => none
+  | .input => Turing.tapeOfList x
+  | .mark => Function.update (fun _ => none) (-1) (some true)
+
+/-- **A clean computation of `f`** (Bennett's "no garbage"): on every input `a`, by time `t a` the
+machine has halted with `encOut (f a)` on the output tape, every work head back on cell `0`, the
+input head on the blank after the input, and every work tape holding what a fixed role
+(`role : Fin k → Residue`, the same for every input) says: blank, a copy of the input, or a
+constant mark. Nothing that depends on the computation itself (a history, an intermediate result)
+is left. The input of cslib is read-only, so it is intact by construction. -/
+def ComputesCleanly {k : ℕ} {State : Type} (tm : MultiTapeTM k Bool State) {α β : Type}
+    (encIn : α ↪ List Bool) (encOut : β ↪ List Bool) (f : α → β) (t : α → ℕ) : Prop :=
+  ∃ role : Fin k → Residue, ∀ a,
+    tm.runFrom (tm.initCfg (encIn a)) (t a) =
+      ⟨none, Fin.last _, fun i => (role i).tape (encIn a), fun _ => 0, encOut (f a)⟩
+
+/-- **Bennett's theorem** (Bennett, 1973, *Logical reversibility of computation*, for the machines
+of cslib): for every machine computing `f` in time `t` there is a **reversible** machine (with
+finitely many states) that computes `f` in time and space **linear** in `n + t(n)` and leaves **no
+garbage**: when it halts, the output is on the output tape, the input is intact, and every work tape
+is blank except for copies of the input and constant marks (`ComputesCleanly`). Bennett's final
+configuration is "history tape blank, input reconstructed, output written"; a history simulation
+that never uncomputes (Lecerf 1963, Landauer 1961) does **not** satisfy this statement (see
+`BennettWeak` and `histOnlyTM_not_computesCleanly`). It is proved in
+`Sagitta.Arrow.TM.Bennett.Discharge` (`bennett_holds`) by Bennett's construction (compute keeping a
+history, copy the output, uncompute). -/
 def Bennett : Prop :=
+  ∀ {α β : Type} (f : α → β) (encIn : α ↪ List Bool) (encOut : β ↪ List Bool) (t s : ℕ → ℕ),
+    ComputableInTimeAndSpaceOfLength f encIn encOut t s →
+    ∃ (k : ℕ) (State : Type) (_ : Finite State) (tm : MultiTapeTM k Bool State) (c : ℕ),
+      IsReversible tm ∧
+        tm.ComputesFunInTimeAndSpace encIn encOut f
+          (fun a => c * ((encIn a).length + t (encIn a).length + 1))
+          (fun a => c * ((encIn a).length + t (encIn a).length + 1)) ∧
+        ComputesCleanly tm encIn encOut f
+          (fun a => c * ((encIn a).length + t (encIn a).length + 1))
+
+/-- **The old, weaker statement**, kept as a documented mutant: a reversible machine computes `f`
+in polynomial time and space, with **nothing said about the work tapes at the end**. A history
+simulation that never uncomputes (Lecerf–Landauer) already satisfies it
+(`Sagitta.Arrow.TM.bennett_of_history_only`), so it does not express Bennett's theorem. -/
+def BennettWeak : Prop :=
   ∀ {α β : Type} (f : α → β) (encIn : α ↪ List Bool) (encOut : β ↪ List Bool),
     ComputableInPolyTime f encIn encOut →
     ∃ (k : ℕ) (State : Type) (_ : Finite State) (tm : MultiTapeTM k Bool State) (t s : ℕ → ℕ),
@@ -198,9 +250,10 @@ theorem IsReversible.runFrom_injective {k : ℕ} {State : Type} {tm : MultiTapeT
       · simpa only [MultiTapeTM.runFrom, Function.iterate_succ_apply] using h
     exact hrev input c c' (hc 0 (by omega)) (hc' 0 (by omega)) hstep
 
-/-- **With Bennett, every `NP` verifier runs on a reversible machine.** For every problem in `NP`
-there is a verifier computed in polynomial time and space by a reversible machine: the dynamics of
-checking a witness carries no arrow. -/
+/-- **With Bennett, every `NP` verifier runs on a reversible machine without garbage.** For every
+problem in `NP` there is a verifier computed in polynomial time and space by a reversible machine
+that ends with clean work tapes (`ComputesCleanly`): the dynamics of checking a witness carries no
+arrow and leaves no trace of the check. -/
 theorem reversible_verifier (hB : Bennett) {α : Type} {enc : α ↪ List Bool} {A : Set α}
     (hA : A ∈ NP enc) :
     ∃ (p : Polynomial ℕ) (V : α × List Bool → Bool), IsVerifier enc p V A ∧
@@ -208,8 +261,14 @@ theorem reversible_verifier (hB : Bennett) {α : Type} {enc : α ↪ List Bool} 
         IsReversible tm ∧ PolynomiallyBounded t ∧ PolynomiallyBounded s ∧
           tm.ComputesFunInTimeAndSpace (encPair enc encBits) encBool V
             (fun a => t ((encPair enc encBits) a).length)
-            (fun a => s ((encPair enc encBits) a).length) := by
-  obtain ⟨p, V, hV, hAV⟩ := hA
-  exact ⟨p, V, hAV, hB V _ _ hV⟩
+            (fun a => s ((encPair enc encBits) a).length) ∧
+          ComputesCleanly tm (encPair enc encBits) encBool V
+            (fun a => t ((encPair enc encBits) a).length) := by
+  obtain ⟨p, V, ⟨tV, sV, htV, -, hV⟩, hAV⟩ := hA
+  obtain ⟨k, S, hS, tm, c, hrev, hcomp, hclean⟩ := hB V _ _ tV sV hV
+  have hp : PolynomiallyBounded fun n => c * (n + tV n + 1) :=
+    (PolynomiallyBounded.const c).mul
+      ((PolynomiallyBounded.id.add htV).add (PolynomiallyBounded.const 1))
+  exact ⟨p, V, hAV, k, S, hS, tm, _, _, hrev, hp, hp, hcomp, hclean⟩
 
 end Sagitta.Arrow.TM

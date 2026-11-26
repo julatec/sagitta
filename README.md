@@ -20,16 +20,25 @@ named hypothesis, never an axiom.
 ## Fidelity notes: what is and is not proved (read first)
 
 An independent audit compared every central statement with the literature (40 statements: 33
-faithful, 2 weaker, 5 different). The differences, stated plainly:
+faithful, 2 weaker, 5 different). One of the two weaker ones, Bennett, has since been fixed (first
+item). The differences, stated plainly:
 
-* **Bennett.** `bennett_holds` proves a *reversible* machine (step injective on every running
-  configuration) that halts with the right output in polynomial time. It does **not yet** state
-  that the auxiliary tapes end clean, which is the point of Bennett (1973): a history simulation
-  that never uncomputes (Lecerf, Landauer) would satisfy the current `Bennett` proposition. The
-  construction *does* uncompute and leaves the tapes clean (`bennettTM_correct`), but that is not
-  yet part of the exported statement. Strengthening `Bennett` to require clean tapes is in progress.
-  The exact time is `2n + 4t + 6|y| + 21` (n = input length, t = steps of the simulated machine,
-  y = output); the `4t` matches Bennett's count.
+* **Bennett (fixed).** The audit found that the old `Bennett` proposition did not require the
+  auxiliary tapes to end clean, which is the point of Bennett (1973): a history simulation that
+  never uncomputes (Lecerf, Landauer) satisfied it. `Bennett` now requires it (`ComputesCleanly`):
+  at the end the output is on the output tape, every work head is on cell `0`, and every work tape
+  is blank except a copy of the input and a constant mark, with the same role for every input
+  (nothing that depends on the run, such as a history, may remain). The time and space are linear
+  in `n + t(n)`, as in Bennett, not just polynomial. The old proposition is kept as `BennettWeak`,
+  and the check is proved both ways: the Lecerf–Landauer machine `histOnlyTM` (history, emit, stop)
+  proves `BennettWeak` (`bennett_of_history_only`) and fails the clean requirement
+  (`history_only_not_clean`). The exact time is `2n + 4t + 6|y| + 21` (`revTM_correct_clean`;
+  n = input length, t = steps of the simulated machine, y = output); the `4t` matches Bennett's
+  count. Remaining differences with Bennett's setting, not with his theorem: cslib's input tape is
+  read-only, so the input is copied once to a work tape and that copy (with its one-cell mark)
+  stays, playing the role of Bennett's reconstructed input; cslib's actions write and move in one
+  step (quintuples), Bennett's are quadruples; the space is `(k + 3 + h)(2T + 1)` with `h` one-hot
+  history tapes, a large constant against Bennett's three tapes.
 * **ISING.** `ISING_npComplete` is NP-completeness on arbitrary graphs with integer couplings
   written in binary (via MAX-CUT). Barahona (1982) proves the much stronger result on 3D lattices
   with couplings in {−1, 0, 1}; that is not formalized here.
@@ -99,7 +108,7 @@ HD  --(localization, part 3)-->  arrow (P ≠ NP)  -->  SAT, 3-SAT, ISING ∉ P;
   of thermodynamics; here HD plus Bennett's reversible simulation give the arrow and locate it
   (`TM.decision_bennett_holds`): the verifier runs on a reversible machine, and still the arrow
   holds, because it is in the bit, not in the dynamics. A reversible simulation is a theorem for
-  cslib's machines (`TM.bennett_holds`; clean tapes not yet in the statement), so only HD is assumed.
+  cslib's machines, with clean tapes (`TM.bennett_holds`), so only HD is assumed.
 * **Three senses of "decision".** The decision problem (a yes/no question), the erasure of the
   boundary down to that bit, and the choice of a witness that going back has to make again.
 * **Not an axiom.** HD is a definition of type `Prop`, taken as `(h : DecisionHypothesis)`. The end
@@ -142,7 +151,7 @@ The project has two layers, and both are default build targets.
 | **Decision hypothesis (central)** | `Core/Decision.lean`, `TM/Decision.lean` | `Model.DecisionHypothesis`, `TM.DecisionHypothesis`, `decisionHypothesis_iff_arrow`, `decisionHypothesis_on_boundary` | defines HD |
 | Second law 2.1 (Kelvin) | `Core/SecondLaw.lean`, `TM/Instance.lean` | `Model.Arrow`, `Model.kelvin`, `TM.kelvin`, `arrow_independent` | defines `Arrow` |
 | Second law 2.2 | `TM/Law22.lean` | `Law22`, `Law22.arrow` (2.2 implies 2.1) | defines `Law22` |
-| Bennett-style reversible simulation (clean tapes not yet in the statement; see Fidelity notes) | `TM/Instance.lean`, `TM/Bennett/*.lean` | `Bennett`, `bennett_holds`, `reversible_verifier_holds`, `IsReversible.runFrom_injective` | none |
+| Bennett's reversible simulation, linear time, clean tapes | `TM/Instance.lean`, `TM/Bennett/*.lean` | `Bennett`, `ComputesCleanly`, `bennett_holds`, `revTM_correct_clean`, `reversible_verifier_holds`, `IsReversible.runFrom_injective`; mutant `BennettWeak`, `bennett_of_history_only`, `history_only_not_clean` | none |
 | SAT, 3-SAT not in P | `TM/Consequences.lean` | `SAT_notMem_P`, `ThreeSAT_notMem_P` | `Arrow` |
 | An NP-intermediate problem | `TM/Consequences.lean` | `exists_intermediate` (Ladner) | `Arrow` |
 | ISING not in P (arbitrary graphs, binary weights; not Barahona's lattices) | `TM/Ising.lean`, `TM/Consequences.lean` | `Ising.ISING_npComplete`, `ISING_notMem_P` | `Arrow` |
@@ -178,11 +187,12 @@ fails if any of them depends on anything other than `propext`, `Classical.choice
 without the arrow the consequences fail (`consequences_need_arrow`); the same holds for HD (`decisionHypothesis_independent`,
 `consequences_need_decisionHypothesis`).
 
-**A Bennett-style reversible simulation is proved for cslib's machines** (`TM.bennett_holds : Bennett`, in
-`TM/Bennett/Discharge.lean`): every function computable in polynomial time is computed in
-polynomial time and space by a multi-tape machine with finitely many states whose step is injective
-on **every** running configuration, not only the reachable ones. The construction, one file per
-step of the plan (`BENNETT.md`):
+**Bennett's theorem is proved for cslib's machines** (`TM.bennett_holds : Bennett`, in
+`TM/Bennett/Discharge.lean`): every function computed by a machine in time `t` is computed in time
+and space linear in `n + t(n)` by a multi-tape machine with finitely many states whose step is
+injective on **every** running configuration, not only the reachable ones, and which halts with
+clean work tapes (`ComputesCleanly`: blank except a copy of the input and a constant mark, heads on
+cell `0`). The construction, one file per step of the plan (`BENNETT.md`):
 
 * `History.lean`: the machine with a history tape (a record per step, written on blank cells; a
   sink for the configurations no run reaches). A reversible machine never moves its input head off
@@ -199,8 +209,11 @@ step of the plan (`BENNETT.md`):
   (cslib's `inputFromTape`, used unchanged), and every machine has a normal form that never moves
   nor reads its input head and leaves its result on a work tape (cslib's `outputToTape` and
   `rewindWork`, used unchanged).
-* `Discharge.lean`: the two together; the time is `2 n + 10 t(n) + 21` for a machine running in
-  time `t`, and the space is linear in the time.
+* `Discharge.lean`: the two together, with the final configuration exactly (`revTM_correct_clean`,
+  in `2 n + 4 t + 6 |y| + 21` steps; at most `2 n + 10 t(n) + 21` for a machine running in time
+  `t`), and the space linear in the time. Also the mutant: the same machine without the
+  uncomputation (`histOnlyTM`) is reversible and correct but leaves its history, so it proves the
+  old `BennettWeak` and not `Bennett`.
 
 The abstract shadow of the construction is also proved in the core (`historyDynamics`,
 `history_simulates`, `history_recovers`). Every file of `TM/Bennett` ends with `#print axioms`

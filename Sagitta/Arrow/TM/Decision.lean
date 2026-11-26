@@ -122,9 +122,9 @@ theorem decisionHypothesis_of_law22 (h : Law22) : DecisionHypothesis :=
 
 /-- **HD and Bennett: the boundary condition and the reversible dynamics.** As the past hypothesis
 and reversible dynamics give the second law, HD and Bennett give the arrow and locate it: every
-`NP` problem has a verifier run by a reversible machine in polynomial time and space (the dynamics
-carries no arrow), and still `P ≠ NP` (the arrow is in the reduction to one bit). The arrow itself
-already follows from HD alone; Bennett says where it is not. -/
+`NP` problem has a verifier run by a reversible machine in polynomial time and space that leaves
+no garbage (the dynamics carries no arrow), and still `P ≠ NP` (the arrow is in the reduction to
+one bit). The arrow itself already follows from HD alone; Bennett says where it is not. -/
 theorem decision_bennett (h : DecisionHypothesis) (hB : Bennett) :
     Arrow ∧
       ∀ {α : Type} {enc : α ↪ List Bool} {A : Set α}, A ∈ NP enc →
@@ -134,7 +134,9 @@ theorem decision_bennett (h : DecisionHypothesis) (hB : Bennett) :
             IsReversible tm ∧ PolynomiallyBounded t ∧ PolynomiallyBounded s ∧
               tm.ComputesFunInTimeAndSpace (encPair enc encBits) encBool V
                 (fun a => t ((encPair enc encBits) a).length)
-                (fun a => s ((encPair enc encBits) a).length) :=
+                (fun a => s ((encPair enc encBits) a).length) ∧
+              ComputesCleanly tm (encPair enc encBits) encBool V
+                (fun a => t ((encPair enc encBits) a).length) :=
   ⟨h.arrow, fun hA => reversible_verifier hB hA⟩
 
 end Sagitta.Arrow.TM
