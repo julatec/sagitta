@@ -26,8 +26,9 @@ composition (`Turing.MultiTapeTM.seq`):
 
 ## Not done here
 
-* The space bound. Every cell the machine visits is visited by the run of `tm` or by its history
-  (at most `t` cells per history tape), so the space is `O(t)`; it is not stated here.
+* A sharper space bound. `bennettTM_computesInTimeAndSpace` gives `(k + h) (2 T + 1)` with
+  `T = 4 t + 2 |w| + 6` (a head moves one cell per step), which is `O(T)`; that the extra space is
+  only the `h` history tapes over `t` cells is not stated.
 * Reducing an arbitrary machine to these hypotheses: a machine that never moves its input head
   (copy the input to a work tape first, step 2b in `BENNETT.md`) and that leaves its result on a work
   tape instead of the output (step 2c). Without them, the hypothesis `Bennett` of
@@ -136,6 +137,65 @@ theorem bennettTM_correct (hfix : InputFixed tm) (hcode : Function.Injective cod
 
 end Correctness
 
+/-! ## Time and space -/
+
+section Space
+
+variable {S : Type} {input : List Bool}
+
+/-- A head moves at most one cell per step: after `n` steps from the initial configuration, every
+work head is within `n` cells of the origin. -/
+theorem natAbs_workTapePos_runFrom_le (tm : MultiTapeTM k Bool S) (n : ℕ) (i : Fin k) :
+    ((tm.runFrom (tm.initCfg input) n).workTapePos i).natAbs ≤ n := by
+  induction n with
+  | zero => simp [runFrom]
+  | succ n ih =>
+    rw [runFrom, Function.iterate_succ_apply', ← runFrom]
+    rcases hq : (tm.runFrom (tm.initCfg input) n).state with _ | q
+    · rw [step_of_halt hq]; omega
+    · rw [step_of_state hq]
+      have := workTapePos_apply_le (tm.tr q (tm.runFrom (tm.initCfg input) n).inputSymbol
+        (tm.runFrom (tm.initCfg input) n).workTapeSymbols) (tm.runFrom (tm.initCfg input) n) i
+      rw [abs_le] at this
+      omega
+
+/-- **A machine that halts by time `T` runs in space `k (2 T + 1)`**: its heads never leave the
+window `[-T, T]`. -/
+theorem runsInSpace_of_halted (tm : MultiTapeTM k Bool S) {T : ℕ}
+    (hT : (tm.runFrom (tm.initCfg input) T).Halted) : tm.RunsInSpace input (k * (2 * T + 1)) := by
+  intro p
+  apply MultiTapeNTM.RunPath.InWindow.space_le
+  rintro _ ⟨n, rfl⟩ i
+  rw [runPath_apply_eq_runFrom, p.head_eq, mem_window]
+  rcases le_or_gt n.val T with h | h
+  · exact (natAbs_workTapePos_runFrom_le tm _ i).trans h
+  · rw [runFrom_eq_of_halt tm _ h.le hT]
+    exact natAbs_workTapePos_runFrom_le tm _ i
+
+end Space
+
+/-- **Step 6, in cslib's vocabulary.** Under the hypotheses of `bennettTM_correct`, Bennett's
+machine computes the output of `tm` followed by `w` in time `T = 4 t + 2 |w| + 6` and space
+`(k + h) (2 T + 1)`, linear in `T`; it is reversible (`bennettTM_isReversible`) and leaves every
+work tape blank (`bennettTM_correct`). -/
+theorem bennettTM_computesInTimeAndSpace {tm : MultiTapeTM k Bool State}
+    {code : Record k State → Fin h → Bool} {input : List Bool} (hfix : InputFixed tm)
+    (hcode : Function.Injective code) (hh : 0 < h) (src : Fin k) (t : ℕ)
+    (hrun : ∀ i < t, ¬(tm.runFrom (tm.initCfg input) i).Halted)
+    (hhalt : (tm.runFrom (tm.initCfg input) t).Halted) (w : List Bool)
+    (hsrc : ∀ i : ℕ, i ≤ w.length →
+      (tm.runFrom (tm.initCfg input) t).workTapes src
+        ((tm.runFrom (tm.initCfg input) t).workTapePos src + i) = w[i]?)
+    (hleft : (tm.runFrom (tm.initCfg input) t).workTapes src
+      ((tm.runFrom (tm.initCfg input) t).workTapePos src - 1) = none) :
+    (bennettTM tm code src).ComputesInTimeAndSpace input
+      ((tm.runFrom (tm.initCfg input) t).output ++ w) (4 * t + 2 * w.length + 6)
+      ((k + h) * (2 * (4 * t + 2 * w.length + 6) + 1)) := by
+  have e := bennettTM_correct (code := code) hfix hcode hh src t hrun hhalt w hsrc hleft le_rfl
+  have hH : ((bennettTM tm code src).runFrom ((bennettTM tm code src).initCfg input)
+      (4 * t + 2 * w.length + 6)).Halted := by rw [e]
+  exact ⟨⟨_, hH, by rw [e]⟩, runsInTime_of_halted hH, runsInSpace_of_halted _ hH⟩
+
 /-! ## Checks: the axioms, and one mutant per central theorem -/
 
 /-- info: 'Sagitta.Arrow.TM.Bennett.bennettTM_isReversible' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -147,6 +207,12 @@ end Correctness
 /-- info: 'Sagitta.Arrow.TM.Bennett.emitStage_run' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Sagitta.Arrow.TM.Bennett.emitStage_run
+/-- info: 'Sagitta.Arrow.TM.Bennett.runsInSpace_of_halted' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.runsInSpace_of_halted
+/-- info: 'Sagitta.Arrow.TM.Bennett.bennettTM_computesInTimeAndSpace' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Sagitta.Arrow.TM.Bennett.bennettTM_computesInTimeAndSpace
 
 section Mutants
 
@@ -180,6 +246,28 @@ example (tm : MultiTapeTM k Bool State) (code : Record k State → Fin h → Boo
   fail_if_success
     have := bennettTM_correct (code := code) hfix hcode hh src t hrun hhalt w hsrc hleft
       (T := 4 * t + 2 * w.length + 5) (by omega)
+  trivial
+
+/-- Mutant of `runsInSpace_of_halted`: a window of `T - 1` cells on each side. -/
+example (tm : MultiTapeTM k Bool State) {input : List Bool} {T : ℕ}
+    (hT : (tm.runFrom (tm.initCfg input) T).Halted) : True := by
+  fail_if_success
+    have : tm.RunsInSpace input (k * (2 * (T - 1) + 1)) := runsInSpace_of_halted tm hT
+  trivial
+
+/-- Mutant of `bennettTM_computesInTimeAndSpace`: without the history tape (`0 < h`). -/
+example (tm : MultiTapeTM k Bool State) (code : Record k State → Fin h → Bool)
+    (hfix : InputFixed tm) (hcode : Function.Injective code) (src : Fin k)
+    {input : List Bool} (t : ℕ) (hrun : ∀ i < t, ¬(tm.runFrom (tm.initCfg input) i).Halted)
+    (hhalt : (tm.runFrom (tm.initCfg input) t).Halted) (w : List Bool)
+    (hsrc : ∀ i : ℕ, i ≤ w.length →
+      (tm.runFrom (tm.initCfg input) t).workTapes src
+        ((tm.runFrom (tm.initCfg input) t).workTapePos src + i) = w[i]?)
+    (hleft : (tm.runFrom (tm.initCfg input) t).workTapes src
+      ((tm.runFrom (tm.initCfg input) t).workTapePos src - 1) = none) : True := by
+  fail_if_success
+    have := bennettTM_computesInTimeAndSpace (code := code) hfix hcode (by assumption) src t hrun
+      hhalt w hsrc hleft
   trivial
 
 end Mutants
