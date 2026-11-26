@@ -35,5 +35,5 @@ leanOptions = {autoImplicit = false, relaxedAutoImplicit = false}
 [[lean_lib]]
 name = "SagittaTM"
 roots = ["Sagitta"]
-globs = ["Sagitta", "Sagitta.Arrow.TM.+", "Sagitta.Fidelity.+"]
+globs = ["Sagitta", "Sagitta.Arrow.TM.+", "Sagitta.Fidelity", "Sagitta.Fidelity.+"]
 leanOptions = {autoImplicit = false, relaxedAutoImplicit = false}
