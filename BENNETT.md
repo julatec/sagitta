@@ -160,3 +160,94 @@ inicial). Agregar es inyectivo, así que tampoco necesita guarda.
   pasos. `copyTM` es casi su propia inversa (el intercambio es involutivo), que sirve de caso de
   prueba.
 - Luego 5 (componer `M₁`, `emitTM`, `M₁⁻¹`), 6–7.
+
+## Paso 4 — 26 nov 2026 (cerrado, solo para M₁)
+
+Archivos: `Sagitta/Arrow/TM/Bennett/Inverse.lean` y `Sagitta/Arrow/TM/Bennett/Uncompute.lean`,
+importados por `Sagitta.lean`. Cero `sorry`; `#print axioms` de los trece teoremas centrales: solo
+`propext`, `Classical.choice`, `Quot.sound`; un mutante por teorema (trece, con
+`fail_if_success`). `lake build Sagitta` pasa.
+
+### Por qué no el lema general
+
+Se probó solo para `M₁ = histTM` (lo que permitía el pedido). En cslib una acción **escribe bajo
+las cabezas y después las mueve**: para deshacerla hay que mover primero y reescribir después, así
+que un paso cuesta al menos dos de la inversa, y para saber qué reescribir hace falta lo que el paso
+leyó, que `IsReversible` (inyectividad global de `step`) determina solo de forma global. Pasar de
+eso a una tabla finita de transiciones locales es la forma de cuádruplas de Bennett, una
+construcción aparte. En `histTM` el registro de la cinta de historia *es* esa información local.
+
+### Dos inversas
+
+- **`invTM`** (`Inverse.lean`), la simple: `rewind` (mover las cabezas de historia al último
+  registro), `read` (leer el registro `(q, r, w)` con `decode`, borrarlo, retroceder cada cabeza lo
+  que avanzó la acción `tm.tr q r w`), `restore` (reescribir `w`). `t` pasos se deshacen en
+  `2t + 2`. Correcta (`invTM_correct`) con `StaysOnBlank tm`, pero **no es reversible**: olvida el
+  estado de la máquina directa, y dos registros distintos pueden dar la misma configuración.
+- **`uncTM`** (`Uncompute.lean`), la reversible, la que necesita el paso 5: el estado `back q`
+  lleva el estado `q` de la máquina directa (`none` si se detuvo), así que borrar el registro no
+  pierde nada. `peek q` revisa que el registro lleve a `q`; `restore` revisa que la entrada lea `r`
+  y cada cabeza lo que el paso dejó (`expected`). Lo que no cuadra va a un **sumidero** `.inr s`
+  (agrega `false` una vez y `true` siempre), como en `histTM`. Se detiene solo al no encontrar
+  registro estando en el estado inicial. `t` pasos se deshacen en `3t + 2`.
+
+### Hallazgo: la inversa reversible no puede mover la cabeza de entrada
+
+La inversa de un paso que mete la cabeza de entrada en el blanco del final la **saca** de un
+blanco, y una máquina reversible nunca hace eso (`IsReversible.staysOnBlank`, paso 1). Así que
+`uncTM` nunca mueve la cabeza de entrada, y su corrección pide `InputFixed tm` (`tm` nunca la
+mueve), más fuerte que `StaysOnBlank`. Consecuencia para 2b: la forma normal no es solo «no salir
+de un blanco» sino **copiar la entrada a una cinta de trabajo y simular sobre la copia**, y esa
+copia (que deja la cabeza de entrada en el blanco final) **no se deshace**: queda como parte de la
+configuración final de la máquina de Bennett.
+
+### La salida
+
+La salida de cslib solo crece; ninguna inversa la deshace. `invTM` y `uncTM` no la tocan y la dejan
+como la dejó la corrida directa (los teoremas la llevan como `out`). Confirma 2c: `M₁` debe dejar la
+salida simulada en una cinta de trabajo.
+
+### Teoremas (rama `bennett`)
+
+`Inverse.lean`:
+- `Sagitta.Arrow.TM.Bennett.moveInputPos_neg` — mover y deshacer el movimiento devuelve la cabeza,
+  salvo recorte (desde el interior no hay).
+- `Sagitta.Arrow.TM.Bennett.invTM_back` — dos pasos de la inversa deshacen un paso limpio.
+- `Sagitta.Arrow.TM.Bennett.invTM_runBack` — `2t` pasos deshacen `t`.
+- `Sagitta.Arrow.TM.Bennett.invTM_correct` — desde la configuración tras `t` pasos (en `rewind`),
+  `2t + 2` pasos llevan a la inicial, detenida, salida intacta (`atRest`).
+- `Sagitta.Arrow.TM.Bennett.invTM_correct_of_tm`, `Sagitta.Arrow.TM.Bennett.inverse` (con
+  `oneHot`; `oneHot_pos`).
+
+`Uncompute.lean`:
+- `Sagitta.Arrow.TM.Bennett.uncTM_isReversible` — `IsReversible (uncTM tm code)`, **sin
+  hipótesis** (ni sobre `tm` ni sobre `code`).
+- `Sagitta.Arrow.TM.Bennett.uncTM_back` — tres pasos deshacen un paso limpio (de `mirror` a
+  `mirror`).
+- `Sagitta.Arrow.TM.Bennett.uncTM_finish` — los dos últimos: sin registro en el estado inicial, se
+  detiene.
+- `Sagitta.Arrow.TM.Bennett.uncTM_runBack` — `3t` pasos deshacen `t`.
+- `Sagitta.Arrow.TM.Bennett.uncTM_correct` — `3t + 2` pasos de `mirror (corrida t)` a la
+  inicial detenida (`halted`), con `InputFixed tm`, código inyectivo y `0 < h`.
+- `Sagitta.Arrow.TM.Bennett.uncTM_correct_of_tm` — la hipótesis sobre `tm`.
+- `Sagitta.Arrow.TM.Bennett.uncompute` — empaquetado con `oneHot`: reversible y correcta.
+- Auxiliares: `decode_code`, `decode_blank`, `decode_some`, `histTM_step_good`,
+  `inputSymbol_congr`, `InputFixed.staysOnBlank`.
+
+### Lo que no está
+
+- El lema general (arriba).
+- Que la inversa siga en marcha antes del último paso (no hace falta para `RunsInTime`).
+- `mirror` usa el estado de la máquina directa; empalmar el final de `M₁` (detenida, estado
+  `none` → `back none`) con el comienzo de `uncTM` y la copia en una sola máquina es el paso 5.
+
+### Siguiente
+
+- **2b, revisado.** Forma normal con `InputFixed`: copiar la entrada a una cinta de trabajo
+  (reversible, como `copyTM` pero leyendo la cinta de entrada) y simular `M` sobre la copia sin
+  mover la cabeza de entrada.
+- **2c.** `M₁` con la salida de `M` en una cinta de trabajo.
+- **5.** Componer `histTM` → `copyTM`/`emitTM` → `uncTM` en una máquina reversible: el empalme
+  de estados (los finales de una fase son los iniciales de la siguiente) tiene que conservar la
+  inyectividad; mirar antes el PR de composición TM2 de Mathlib (#44441). Ojo: `copyTM` deja la
+  cabeza donde empezó, y `uncTM` espera las cabezas de `histTM` donde las dejó la corrida.
