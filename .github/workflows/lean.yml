@@ -4,9 +4,8 @@
 #
 # The same job then builds the blueprint (`blueprint/src`, with leanblueprint, in a TeX Live
 # container), checks that every `\lean{...}` of the blueprint names a declaration of the compiled
-# project (`lake exe checkdecls blueprint/lean_decls`, which fails the build otherwise), builds the
-# API documentation with doc-gen4 (on pushes), and, on `main` only, publishes everything to GitHub
-# Pages: https://julatec.github.io/sagitta/
+# project (`lake exe checkdecls blueprint/lean_decls`, which fails the build otherwise), and, on
+# `main` only, publishes the blueprint and its PDF to GitHub Pages: https://julatec.github.io/sagitta/
 name: Lean build
 
 on:
@@ -21,7 +20,7 @@ permissions:
 
 jobs:
   build:
-    name: lake build, blueprint and docs
+    name: lake build and blueprint
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
@@ -34,18 +33,7 @@ jobs:
           build: true
           test: false
           lint: false
-      # doc-gen4 analyses every imported Mathlib module in parallel and ran out of memory on the
-      # 16 GB runner; a swap file on the larger /mnt disk gives it room.
-      - name: Swap for doc-gen4
-        run: |
-          df -h / /mnt || true
-          sudo swapoff -a || true
-          sudo fallocate -l 24G /mnt/docgen.swap
-          sudo chmod 600 /mnt/docgen.swap
-          sudo mkswap /mnt/docgen.swap
-          sudo swapon /mnt/docgen.swap
-          free -h
-      # The landing page of the site; the action adds `blueprint/`, `blueprint.pdf` and `docs/`.
+      # The landing page of the site; the action adds `blueprint/` and `blueprint.pdf`.
       - name: Landing page
         run: |
           mkdir -p docs
@@ -53,5 +41,8 @@ jobs:
       - uses: leanprover-community/docgen-action@dacc1acc2a3f532cc577266979ba9c36c7593f7c # main, 2026-10-05
         with:
           blueprint: true
+          # API documentation (doc-gen4) is off: on this toolchain its processes fail to start with
+          # "resource exhausted (error code: 12)" on the GitHub runner, with or without swap.
+          api-docs: false
           build-page: false
           deploy: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
