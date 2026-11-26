@@ -15,7 +15,12 @@ Where is the asymmetry between going forward (from a witness to "yes") and going
 
 1. **Not in the dynamics.** A reversible dynamics goes back at the same cost as it goes forward
    (`ReversibleDynamics.back_iterate_step_iterate`, `ReversibleDynamics.costBack_eq_costForward`),
-   and any dynamics becomes reversible once it keeps its history (`history_recovers`).
+   and any dynamics becomes reversible once it keeps its history (`history_recovers`). This part is
+   completed in `Core/Dynamics.lean` (and `TM/Dynamics.lean` for cslib's machines) with the two
+   symmetries of time and their Noether charges: time reversal conserves the information (discrete
+   Noether, Koopman), time translation makes the system blind to the clock and charges the clock to
+   memory (the CHT, the cube law, `2^S`). Neither decides the arrow
+   (`Dynamics.localization_one`, `TM.localization_one_tm`).
 2. **Not with the full boundary.** If the whole witness is kept, going back is one verification
    (`full_boundary`); with `m` of `n` bits kept, at most `2 ^ (n - m)` verifications
    (`interpolation`), tight in a black box (`boundary_lower_bound`).

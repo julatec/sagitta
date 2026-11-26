@@ -7,6 +7,8 @@ import Sagitta.Arrow.Core.Consequences
 import Sagitta.Arrow.TM.Consequences
 import Sagitta.Arrow.Core.Decision
 import Sagitta.Arrow.TM.Decision
+import Sagitta.Arrow.Core.Dynamics
+import Sagitta.Arrow.TM.Dynamics
 
 /-!
 # Sagitta: the computational arrow of time

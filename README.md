@@ -15,6 +15,41 @@ verification), but **only** in the erasure of the boundary down to one bit, wher
 *exactly* the question `P` versus `NP`. The second law says that the asymmetry is real; it is a
 named hypothesis, never an axiom.
 
+## The first localization, complete: neither symmetry of time decides the arrow
+
+The first localization ("the dynamics does not carry the arrow") is stated with the **two
+symmetries of time** that a dynamics can have, and the Noether charge of each
+(`Core/Dynamics.lean`, and `TM/Dynamics.lean` for cslib's machines).
+
+* **Time reversal: the information is conserved.** Discrete Noether: for a reversible step, a
+  quantity is conserved if and only if it is constant on the orbits of the group of steps
+  (`conserved_iff_const_on_orbits`), and, in Koopman's form, if and only if its phases commute with
+  the operator `φ ↦ φ ∘ f` (`koopman_noether`). Koopman's operator is unitary if and only if the step
+  is bijective (`koopman_isometry_iff`), so a reversible dynamics neither creates nor destroys
+  information (`ReversibleDynamics.card_image_iterate`, `ReversibleDynamics.koopman_isometry`,
+  `entropy_pushforward`); erasure is not unitary (`erasure_not_isometry`).
+* **Time translation: the system does not know the time (the CHT).** A homogeneous automaton has no
+  step counter. Two runs that reach the same state continue identically (`noether_charge`,
+  `does_not_know_the_time`). A clock is paid in memory: a clocked automaton is a homogeneous one on
+  `σ × κ`, `|σ| · 2^c` states for `c` bits (`homogenize_run`, `card_clock_bits`). The cube law
+  `N ≤ 2^L · 2^s · min (t + 1) 2^(S − 1)` (`cube_law`, `cube_law_general`, `cube_law_clock`, with the
+  exact price of the clock in `clock_price_control`); halt or cycle (`halt_or_cycle`), so `S` bits
+  halt before `2^S` (`halts_before_two_pow`, `cht_time`, `clock_in_memory`).
+* **For cslib's machines** (`TM/Dynamics.lean`): a multi-tape machine with space `S` is a homogeneous
+  automaton of at most `2^spaceBits` states (`toAutomaton`, `run_toAutomaton`, `card_states_bits`,
+  with the counting of cslib's `ConfigBound`), so it does not know the time
+  (`does_not_know_the_time_tm`), obeys the cube law (`cube_law_tm`), halts or cycles
+  (`halt_or_cycle_tm`) and, if it halts, halts within `2^spaceBits` steps (`halts_soon_tm`).
+* **The CHT tower, piece 1.** Homogeneity with polynomial memory gives the `PSPACE` bound, `2^poly`
+  steps (`cht_pspace`), and not a polynomial one: a counter of `n + 1` bits answers within the CHT
+  budget and not in `2^n − 1` queries (`cht_exponential_not_polynomial`).
+* **The conclusion** (`Dynamics.localization_one`, `TM.localization_one_tm`): these facts are
+  theorems with no hypothesis, true in every model, while the arrow holds in one model with the
+  closure properties and fails in another; neither symmetry of time decides it. With the decision
+  hypothesis (`irreversibility_without_loss`, `TM.irreversibility_without_loss_tm`): the information
+  is not lost (Noether, a theorem), yet from one bit it is not recovered cheaply (HD, a hypothesis).
+  The irreversibility is **without loss of information**.
+
 ## The central hypothesis: the decision hypothesis
 
 The central hypothesis is not stated as `P ≠ NP` but at the place where the localization says the
@@ -66,6 +101,11 @@ The project has two layers, and both are default build targets.
 | Zeroth law | `Core/LawZero.lean`, `TM/Instance.lean` | `Model.lawZero`, `TM.lawZero` | none |
 | First law | `Core/FirstLaw.lean` | `conservation`, `free_table_breaks` | none |
 | Localization (1): reversible dynamics | `Core/Reversible.lean` | `ReversibleDynamics.back_iterate_step_iterate`, `history_recovers` | none |
+| Localization (1): time reversal, Noether | `Core/Dynamics.lean` | `koopman_noether`, `koopman_isometry_iff`, `ReversibleDynamics.card_image_iterate` | none |
+| Localization (1): time translation, CHT | `Core/Dynamics.lean`, `TM/Dynamics.lean` | `noether_charge`, `does_not_know_the_time`, `homogenize_run`, `cube_law_clock`, `cht_time`, `does_not_know_the_time_tm`, `halts_soon_tm` | none |
+| CHT tower, piece 1 | `Core/Dynamics.lean`, `TM/Dynamics.lean` | `cht_exponential_not_polynomial`, `cht_pspace` | none |
+| **Localization (1), complete** | `Core/Dynamics.lean`, `TM/Dynamics.lean` | `localization_one`, `TM.localization_one_tm` | none |
+| Irreversibility without loss | `Core/Dynamics.lean`, `TM/Dynamics.lean` | `irreversibility_without_loss`, `TM.irreversibility_without_loss_tm` | HD |
 | Localization (2): full boundary, interpolation | `Core/Boundary.lean` | `full_boundary`, `interpolation`, `boundary_lower_bound` | none |
 | Localization (3): one bit | `Core/Localization.lean`, `TM/Instance.lean` | `Model.searchEasy_iff_peqNP`, `TM.oneBit` | none |
 | Localization theorem | `Core/Localization.lean`, `TM/Consequences.lean` | `localization`, `TM.localizationTM` | none |
@@ -111,6 +151,11 @@ machines: that needs Bennett's construction (compute with a history tape, copy t
 uncompute) as a cslib machine with injective transitions, with its time analysis. Its abstract
 shadow is proved in the core (`historyDynamics`, `history_simulates`, `history_recovers`).
 
+The end of `TM/Dynamics.lean` does the same for the 37 central theorems of the complete first
+localization (both layers), and contains one mutant per central theorem (18 in all: a hypothesis
+dropped or a conclusion strengthened), each under `fail_if_success`, so the build fails if any of
+them starts to elaborate.
+
 Not here, on purpose: the Boolean dichotomy (Schaefer), whose formalization rests on further
 assumptions, and the other companion material of the essay.
 
@@ -124,10 +169,11 @@ lake exe cache get   # prebuilt Mathlib; Mathlib is never compiled here
 lake build
 ```
 
-A clean `lake build` compiles 345 vendored modules (312 from cslib-frontier, 33 from cslib) and 15
+A clean `lake build` compiles 345 vendored modules (312 from cslib-frontier, 33 from cslib) and 17
 modules of this project, and no Mathlib module. On an Apple M1 Pro with `LEAN_NUM_THREADS=3` it
-takes 5 min 47 s of wall-clock time (measured on 25 November 2026, before the two modules of the decision hypothesis, which add
-about 45 s); the modules of this project
+takes 5 min 47 s of wall-clock time (measured on 25 November 2026, before the two modules of the
+decision hypothesis, which add about 45 s, and the two of the complete first localization, which add
+about 1 min 10 s); the modules of this project
 take about 2 min of that, mostly loading the environment of cslib-frontier.
 
 ## Vendored code
