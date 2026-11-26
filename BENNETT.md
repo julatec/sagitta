@@ -338,3 +338,105 @@ cosas que una `M` cualquiera no cumple:
 
 - **2c** primero (es local a `histTM`), después **2b** (la forma normal de la entrada), y con eso
   el **paso 7**: probar `Bennett` de `Sagitta/Arrow/TM/Instance.lean`.
+
+## Paso 7 — 26 nov 2026 (cerrado): `Bennett` es un teorema
+
+Archivos: `Sagitta/Arrow/TM/Bennett/Prepare.lean` (2b, la parte reversible),
+`Sagitta/Arrow/TM/Bennett/Normal.lean` (2b y 2c, la forma normal) y
+`Sagitta/Arrow/TM/Bennett/Discharge.lean` (el paso 7), importados por `Sagitta.lean`. Cero `sorry`;
+`#print axioms` de los diecinueve teoremas centrales bajo `#guard_msgs`: solo `propext`,
+`Classical.choice`, `Quot.sound`; un mutante por teorema (diecinueve, con `fail_if_success`).
+`lake build` completo pasa (6947 trabajos, 5 min 50 s con `LEAN_NUM_THREADS=3`). No se vendorizó
+nada nuevo: `inputFromTape`, `outputToTape`, `rewindWork`, `extendTapes`/`tapeEmb` (cslib),
+`length_output_runFrom_le` y el cierre de `PolynomiallyBounded` (cslib-frontier) ya estaban en la
+clausura vendorizada, y se usan sin modificar.
+
+### 2c y 2b sin escribir máquinas nuevas de simulación
+
+cslib ya tenía las dos redirecciones, con sus homomorfismos de pasos:
+
+- `outputToTape tm`: lo que `tm` manda a la salida va a una cinta de trabajo nueva (`outTape`), con
+  la cabeza en la frontera; `outCfgHom`.
+- `inputFromTape tm`: lee la entrada de una **cinta de entrada virtual** (la palabra desde la celda
+  0) con una **cinta bandera** que marca la celda −1, con el recorte de la cabeza de entrada
+  resuelto por la bandera (`clampMove`), y nunca toca la cabeza de entrada real; `inCfgHom`.
+
+La forma normal es `normTM tm := nopTM.seq (tm.outputToTape.inputFromTape.seq rewindOut)`:
+
+- `rewindOut` = `rewindWork` de cslib puesto en `outTape` con `extendTapes (tapeEmb _)`: deja la
+  palabra desde la cabeza, como la pide la emisión del paso 6.
+- `nopTM` (un paso que no hace nada) para que **nada vuelva a entrar al estado inicial**
+  (`normTM_noReentry`), que es lo que hace distinguible la entrega desde la máquina que prepara
+  (`seq_noReentry`, `histTM_noReentry`, `bennettTM_noReentry'`).
+- `normTM_inputFixed` y `normTM_inputBlind`: nunca mueve ni lee la cabeza de entrada, así que corre
+  igual esté donde esté (`runFrom_setInputPos`).
+- `normTM_run`: desde las cintas preparadas (`prepTapes`), con la cabeza de entrada en cualquier
+  lado, si `tm` se detuvo para `t` con salida `y`, la forma normal se detuvo para `1 + t + |y| + 2`
+  con `y` en `outTape` desde la celda 0, la cabeza en 0 y la salida real vacía.
+
+### Lo que faltaba: preparar la entrada virtual de forma reversible
+
+`prepTM vip flag` (cuatro estados): `fwd` intercambia la celda de `vip` con el símbolo leído (el
+XOR de Bennett) y avanza la entrada; en el blanco final exige `vip` en blanco (si no, sumidero) y
+retrocede; `back` vuelve sobre la palabra; `mark` intercambia la celda −1 de `flag` con `true` y se
+detiene. La cabeza de entrada **queda en el blanco final** y ahí se queda: ninguna máquina
+reversible la puede sacar de ahí (`IsReversible.staysOnBlank`), y la forma normal no la necesita.
+
+- `prepTM_isReversible`: `vip ≠ flag` ⟹ reversible en toda configuración en marcha. La entrada al
+  bucle `back` se distingue de su iteración por la celda de `vip` (blanco contra símbolo), que
+  ninguno de los dos escribe; por eso `fwd` es el estado inicial (nadie entra a él salvo él mismo,
+  y su iteración se reconoce por la cabeza de entrada).
+- `prepTM_correct`: en `2 |x| + 3` pasos, `x` en `vip` (`tapeOfList x`), la marca en `flag`, las
+  cabezas en 0, la entrada en el blanco final, nada más cambió.
+
+### El paso 7
+
+- `bennettTM_correct_from`: el teorema del paso 6 desde **cualquier configuración limpia** con las
+  cintas de historia en blanco, no solo la inicial (la misma prueba, con `runFrom_clean` y
+  `uncTM_runBack` desde `c₀`).
+- `revTM M := (prepTM vip flag).seq (bennettTM (normTM M) oneHot outTape)`, estados finitos.
+- `revTM_isReversible`: sin hipótesis.
+- `revTM_correct`: si `M` se detuvo para `t` con salida `y`, `revTM M` se detuvo con salida
+  **exactamente** `y` para `2 |x| + 3 + 4 (1 + t + |y| + 2) + 2 |y| + 6`. La salida exacta sale de que
+  la forma normal no escribe en la salida real.
+- `Sagitta.Arrow.TM.bennett_holds : Bennett`. Tiempo `T(n) = 2 n + 10 t(n) + 21` (con
+  `|y| ≤ t`, `length_output_runFrom_le`), espacio `(k + 3 + h)(2 T(n) + 1)`; los dos polinomiales
+  por el cierre de cslib-frontier.
+- `reversible_verifier_holds` y `decision_bennett_holds`: las versiones sin `hB`. Las viejas
+  (`reversible_verifier`, `decision_bennett`) se conservan. La definición `Bennett` se conserva en
+  `Instance.lean` (su docstring dice dónde se prueba).
+- README: `Bennett` deja de ser hipótesis; las únicas hipótesis con nombre son HD (≡ flecha) y
+  `Law22`.
+
+### Teoremas (rama `bennett`)
+
+`Prepare.lean`: `prepTM_isReversible`, `prepTM_correct` (auxiliares `prep_mark_inj`,
+`prep_fwd_inj`, `prep_fwd`, `prep_back`).
+
+`Normal.lean`: `step_setInputPos`, `runFrom_setInputPos`, `seq_noReentry`, `histTM_noReentry`,
+`normTM_inputFixed`, `normTM_inputBlind`, `normTM_noReentry`, `inCfg_outCfg_initCfg`,
+`redirTM_run`, `normTM_run`.
+
+`Discharge.lean`: `bennettTM_correct_from`, `bennettTM_noReentry'`, `revTM_isReversible`,
+`revTM_correct`, `Sagitta.Arrow.TM.halted_of_runsInTime`, **`Sagitta.Arrow.TM.bennett_holds`**,
+`Sagitta.Arrow.TM.reversible_verifier_holds`, `Sagitta.Arrow.TM.decision_bennett_holds`.
+
+### Lo que no está
+
+- Cotas más finas: el espacio sale de «una cabeza avanza una celda por paso» (`O(T)`), no de las
+  `h` cintas de historia sobre `t` celdas; `h` es el tamaño del código one-hot (enorme, pero
+  constante). El `4n + 4l + 5` exacto de Bennett no se enunció (era opcional).
+- El lema general de la inversa para cualquier máquina reversible en forma de cuádruplas (paso 4):
+  no hizo falta.
+
+### Bloqueo
+
+Ninguno.
+
+### Siguiente
+
+- **Fusionar `bennett` a `main`: lo decide José.** La rama está lista (build completo verde, cero
+  `sorry`, axiomas estándar), sin fusionar y sin remote.
+- **8 (si sale, otro proyecto).** Bennett 1989: usar `bennettMoves` de los guijarros reversibles de
+  cslib-frontier para elegir qué configuraciones guardar (espacio `O(S log T)`), el puente entre los
+  guijarros y las máquinas.
