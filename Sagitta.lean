@@ -5,6 +5,8 @@ Authors: Jose-de-Jesus Ulate-Cardenas
 -/
 import Sagitta.Arrow.Core.Consequences
 import Sagitta.Arrow.TM.Consequences
+import Sagitta.Arrow.Core.Decision
+import Sagitta.Arrow.TM.Decision
 
 /-!
 # Sagitta: the computational arrow of time

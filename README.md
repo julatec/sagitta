@@ -15,6 +15,32 @@ verification), but **only** in the erasure of the boundary down to one bit, wher
 *exactly* the question `P` versus `NP`. The second law says that the asymmetry is real; it is a
 named hypothesis, never an axiom.
 
+## The central hypothesis: the decision hypothesis
+
+The central hypothesis is not stated as `P ≠ NP` but at the place where the localization says the
+asymmetry lives. **The decision hypothesis (HD):** *the symmetry of time is broken by the decision
+question; reducing the final state to one bit is the boundary condition that breaks the symmetry,
+and that breaking has a cost.* Formally: for some polynomial-time verifier, no polynomial-time
+procedure reconstructs a witness from the instance alone, that is, from the one bit "a witness
+exists" (`Model.DecisionHypothesis` in the core, `TM.DecisionHypothesis` for Turing machines).
+
+```
+HD  --(localization, part 3)-->  arrow (P ≠ NP)  -->  SAT, 3-SAT, ISING ∉ P; an NP-intermediate problem
+```
+
+* **Equivalence, not strength.** `decisionHypothesis_iff_arrow` proves HD ↔ arrow in both layers,
+  by the localization, part (3). HD is the conceptual formulation of `P ≠ NP` (worst case), not a
+  stronger hypothesis.
+* **The parallel with physics.** The past hypothesis plus reversible dynamics give the second law
+  of thermodynamics; here HD plus Bennett's reversible simulation give the arrow and locate it
+  (`TM.decision_bennett`): the verifier runs on a reversible machine, and still the arrow holds,
+  because it is in the bit, not in the dynamics.
+* **Three senses of "decision".** The decision problem (a yes/no question), the erasure of the
+  boundary down to that bit, and the choice of a witness that going back has to make again.
+* **Not an axiom.** HD is a definition of type `Prop`, taken as `(h : DecisionHypothesis)`. The end
+  of `TM/Decision.lean` checks that it is a definition, runs `#print axioms` on every theorem that
+  uses it, and contains a mutant (the consequence without `h`) that must fail to elaborate.
+
 ## Two readings
 
 The project has two layers, and both are default build targets.
@@ -43,12 +69,15 @@ The project has two layers, and both are default build targets.
 | Localization (2): full boundary, interpolation | `Core/Boundary.lean` | `full_boundary`, `interpolation`, `boundary_lower_bound` | none |
 | Localization (3): one bit | `Core/Localization.lean`, `TM/Instance.lean` | `Model.searchEasy_iff_peqNP`, `TM.oneBit` | none |
 | Localization theorem | `Core/Localization.lean`, `TM/Consequences.lean` | `localization`, `TM.localizationTM` | none |
+| **Decision hypothesis (central)** | `Core/Decision.lean`, `TM/Decision.lean` | `Model.DecisionHypothesis`, `TM.DecisionHypothesis`, `decisionHypothesis_iff_arrow`, `decisionHypothesis_on_boundary` | defines HD |
 | Second law 2.1 (Kelvin) | `Core/SecondLaw.lean`, `TM/Instance.lean` | `Model.Arrow`, `Model.kelvin`, `TM.kelvin`, `arrow_independent` | defines `Arrow` |
 | Second law 2.2 | `TM/Law22.lean` | `Law22`, `Law22.arrow` (2.2 implies 2.1) | defines `Law22` |
 | Bennett | `TM/Instance.lean` | `Bennett`, `reversible_verifier`, `IsReversible.runFrom_injective` | `Bennett` |
 | SAT, 3-SAT not in P | `TM/Consequences.lean` | `SAT_notMem_P`, `ThreeSAT_notMem_P` | `Arrow` |
 | An NP-intermediate problem | `TM/Consequences.lean` | `exists_intermediate` (Ladner) | `Arrow` |
 | ISING not in P | `TM/Ising.lean`, `TM/Consequences.lean` | `Ising.ISING_npComplete`, `ISING_notMem_P` | `Arrow` |
+| Consequences from HD | `TM/Decision.lean` | `SAT_notMem_P_of_decision`, `ThreeSAT_notMem_P_of_decision`, `exists_intermediate_of_decision`, `ISING_notMem_P_of_decision` | HD |
+| HD and Bennett | `TM/Decision.lean` | `decision_bennett` | HD, `Bennett` |
 | 3-SAT not in TIME(2^(n^(1-ε))) | `TM/Consequences.lean` | `ThreeSAT_notMem_TIME` | `Law22` |
 
 ### The laws, as stated in the essay
@@ -65,13 +94,16 @@ The project has two layers, and both are default build targets.
 
 ### The hypotheses
 
-There are exactly three named hypotheses, and all three are definitions of type `Prop`, taken as
-explicit arguments `(h : Arrow)`, `(h : Law22)`, `(hB : Bennett)`. None is a Lean `axiom`. The end of
+There are exactly four named hypotheses, and all four are definitions of type `Prop`, taken as
+explicit arguments `(h : DecisionHypothesis)`, `(h : Arrow)`, `(h : Law22)`, `(hB : Bennett)`. The
+first two are equivalent (`decisionHypothesis_iff_arrow`); HD is the central one, the arrow its
+statement as `P ≠ NP`. None is a Lean `axiom`. The end of
 `TM/Consequences.lean` runs `#print axioms` on every main theorem under `#guard_msgs`, so the build
 fails if any of them depends on anything other than `propext`, `Classical.choice` and
 `Quot.sound`. The core also proves that the arrow is independent of the closure properties
 (`arrow_independent`: one model satisfies them with `P = NP`, another with `P ≠ NP`), and that
-without the arrow the consequences fail (`consequences_need_arrow`).
+without the arrow the consequences fail (`consequences_need_arrow`); the same holds for HD (`decisionHypothesis_independent`,
+`consequences_need_decisionHypothesis`).
 
 `Bennett` (every polynomial-time function is computed in polynomial time and space by a reversible
 multi-tape machine, whose step is injective on running configurations) is not proved for cslib's
@@ -92,9 +124,10 @@ lake exe cache get   # prebuilt Mathlib; Mathlib is never compiled here
 lake build
 ```
 
-A clean `lake build` compiles 345 vendored modules (312 from cslib-frontier, 33 from cslib) and 13
+A clean `lake build` compiles 345 vendored modules (312 from cslib-frontier, 33 from cslib) and 15
 modules of this project, and no Mathlib module. On an Apple M1 Pro with `LEAN_NUM_THREADS=3` it
-takes 5 min 47 s of wall-clock time (measured on 25 November 2026); the modules of this project
+takes 5 min 47 s of wall-clock time (measured on 25 November 2026, before the two modules of the decision hypothesis, which add
+about 45 s); the modules of this project
 take about 2 min of that, mostly loading the environment of cslib-frontier.
 
 ## Vendored code
