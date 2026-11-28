@@ -4,4 +4,1691 @@
 \chapter{Search and decision}
 \label{chap:search}
 
-This chapter is not written yet.
+This chapter is about the relation between finding a solution and deciding that one exists. It
+states the search class $\cTFNP$ and the self-reduction of $\SAT$, the class $\cPLS$ of local
+search and the problem of the standard algorithm, and the universal search of Levin. It also
+contains results in two smaller models: a tree of choices, where a search is a descent through
+partial choices and the cost of a wrong choice is counted, and a black box that answers questions
+about a function, where the number of questions is the cost. The title of such an entry says
+which model it is about, and none of them is a statement about Turing machines. The chapter ends
+with statements that are conditional on a hypothesis about a world of classes, and with one
+exploration.
+
+\section{Search problems and TFNP}
+\label{sec:search-tfnp}
+
+The classes $\cFNP$ and $\cFP$ of search problems are in Part~I (Definition~\ref{def:FNP}); this
+section states $\cTFNP$ for relations on bit strings, as the map does.
+
+\begin{definition}[Total search problems with a polynomial verifier]
+  \label{def:search-tfnp}
+  \lean{Sagitta.Map.TFNP, Sagitta.Map.EnTFNP}
+  \leanok
+  \uses{def:FNP}
+  % uses-lean: Sagitta.Map.Busqueda
+  % uses-lean: Sagitta.Map.EsPolinomial
+  A search problem is a relation $R(x, y)$ between bit strings. $R \in \cTFNP$ when there are a
+  polynomial $p$ and a function $V$ on pairs of bit strings with Boolean values, computable in
+  polynomial time, such that $R(x, y)$ holds if and only if $V(x, y) = \mathrm{true}$, $R(x, y)$
+  implies $|y| \le p(|x|)$, and for every $x$ there is a $y$ with $R(x, y)$. $\cTFNP$ is the set of
+  such relations.
+  \source{\cite{MegiddoPapadimitriou91}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/PLS.lean}
+\end{definition}
+
+\section{Self-reduction of SAT: deciding and searching}
+\label{sec:search-selfreduction}
+
+Searching for a satisfying assignment of a formula reduces to deciding satisfiability, one
+variable at a time. The first entry is the self-reduction of cslib-frontier, the second the
+procedure of the map, which is stated for an arbitrary decider.
+
+\begin{definition}[Self-reduction and the prefix problem, in cslib-frontier]
+  \label{def:search-cslib-selfreduce}
+  \lean{Cslib.Complexity.SAT.selfReduce, Cslib.Complexity.prefixSearch}
+  \leanok
+  \uses{def:threesat, def:FNP}
+  Given a procedure $D$ that decides satisfiability, the self-reduction of a CNF formula $\varphi$
+  goes through the variable occurrences of $\varphi$ in turn and fixes each variable to the answer
+  of $D$ on $\varphi$ together with the values fixed so far and the unit clause that sets the
+  variable to true. For a search relation $R$, the prefix problem has as solutions of a pair
+  $(a, u)$ the words $v$ such that $u v$ is a solution of $a$.
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/NP/SelfReduction.lean} and
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/TFNP/SearchToDecision.lean}.
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{definition}[The self-reducing search over a list of variables]
+  \label{def:search-buscar}
+  \lean{Sagitta.Map.Informacion.TorreCHT.buscar, Sagitta.Map.Informacion.TorreCHT.Decide, Sagitta.Map.Informacion.TorreCHT.asignacion, Sagitta.Map.Informacion.TorreCHT.fijados, Sagitta.Map.Informacion.TorreCHT.pregunta}
+  \leanok
+  \uses{def:threesat}
+  Let $D$ be a function from CNF formulas over $\mathbb{N}$ to Booleans. $D$ \emph{decides} when
+  $D(\psi) = \mathrm{true}$ if and only if $\psi$ is satisfiable, for every $\psi$. For a list of
+  variables $vs$ and a list of bits $bs$, the formula $\mathrm{fijados}(vs, bs)$ is the list of
+  unit clauses that set the first $|bs|$ variables of $vs$ to the bits of $bs$, and
+  $\mathrm{pregunta}(vs, \varphi, bs, v)$ is the formula $\mathrm{fijados}(vs, bs) \cdot \varphi$
+  with the unit clause $(v, \mathrm{true})$ put in front. The search $\mathrm{buscar}(D, vs, \varphi)$
+  starts from the empty list of bits and, for each variable $v$ of $vs$ in order, appends the bit
+  $D(\mathrm{pregunta}(vs, \varphi, bs, v))$, where $bs$ is the list built so far. The assignment
+  $\mathrm{asignacion}(vs, bs)$ gives a variable $v$ the bit of $bs$ at the position of the first
+  occurrence of $v$ in $vs$, and $\mathrm{false}$ if there is none.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{definition}
+
+\begin{theorem}[The self-reducing search is correct, for CNF formulas]
+  \label{thm:search-buscar-correcto}
+  \lean{Sagitta.Map.Informacion.TorreCHT.buscar_correcto}
+  \leanok
+  \uses{def:search-buscar}
+  Let $D$ decide satisfiability, let $vs$ be a list of variables and $\varphi$ a CNF formula over
+  $\mathbb{N}$ such that every variable of $\varphi$ is in $vs$. If $\varphi$ is satisfiable, then
+  $\varphi$ evaluates to true under the assignment
+  $\mathrm{asignacion}(vs, \mathrm{buscar}(D, vs, \varphi))$.
+  \source{\cite{AroraBarak}, Theorem~2.19, and \cite{JohnsonPapadimitriouYannakakis88}, Lemma~2.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By induction along the list of variables: if the unit clauses fixed so far together with
+  $\varphi$ are satisfiable, so are they after one more step, because $D$ answers correctly. At the
+  end the fixed values satisfy $\varphi$, and they agree with the assignment on the variables of
+  $\varphi$.
+\end{proof}
+
+\begin{theorem}[Deciding $\SAT$ in polynomial time gives a search for $\SAT$ in polynomial time]
+  \label{thm:search-busqueda-de-decision}
+  \lean{Sagitta.Map.Informacion.TorreCHT.busqueda_de_decision}
+  \leanok
+  \uses{thm:search-buscar-correcto, def:threesat, def:P}
+  % uses-lean: Sagitta.Map.Tiempo.LevinMaquinas.BusquedaEnP
+  If $\SAT \in \cP$ (for the encoding $\enc_{\mathrm{CNF}}$ of formulas), then the search for
+  $\SAT$ is in polynomial time: there is a function, computable in polynomial time from the
+  encoding of a formula to the encoding of a bit string, that on every satisfiable formula
+  $\varphi$ returns a certificate accepted by the verifier of $\SAT$ of cslib-frontier.
+  \source{\cite{AroraBarak}, Theorem~2.19.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take the polynomial-time decider of $\SAT$ and run the self-reducing search over the variable
+  occurrences of the formula. It is computable in polynomial time as a fold of cslib-frontier
+  whose state grows by one bit per step, and it is correct by
+  Theorem~\ref{thm:search-buscar-correcto}.
+\end{proof}
+
+\begin{theorem}[Searching for $\SAT$ in polynomial time gives deciding $\SAT$ in polynomial time]
+  \label{thm:search-decision-de-busqueda}
+  \lean{Sagitta.Map.Informacion.TorreCHT.decision_de_busqueda}
+  \leanok
+  \uses{def:threesat, def:P}
+  % uses-lean: Sagitta.Map.Tiempo.LevinMaquinas.BusquedaEnP
+  If the search for $\SAT$ is in polynomial time, in the sense of
+  Theorem~\ref{thm:search-busqueda-de-decision}, then $\SAT \in \cP$ for the encoding
+  $\enc_{\mathrm{CNF}}$.
+  \source{\cite{AroraBarak}, Theorem~2.19.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compute the certificate with the search function and apply the polynomial-time verifier of
+  $\SAT$ to the formula and the certificate.
+\end{proof}
+
+\begin{theorem}[Prefix search returns the first solution in the order of the exhaustive descent]
+  \label{thm:search-destino-busqueda}
+  \lean{Sagitta.Map.BusquedaPrefijos.destinoBusqueda_eq}
+  \leanok
+  % uses-lean: Sagitta.Map.exhaustivo
+  % uses-lean: Sagitta.Map.DescensoInstancia.destino
+  Let $V$ be a function on pairs of bit strings with Boolean values, and let $\mathit{preg}$ be a
+  function on triples $(x, (k, p))$ of bit strings. Assume that $\mathit{preg}$ answers the question
+  ``is there a string $r$ of the length of $k$ such that $V(x, r\,p) = \mathrm{true}$?'' correctly:
+  $\mathit{preg}(x, (k, p)) = \mathrm{true}$ if and only if such an $r$ exists, for all $x, k, p$.
+  Let $\mathrm{tope}$ be a function from bit strings to bit strings. Then the search in two phases
+  (first the least length of a certificate that is at most $|\mathrm{tope}(x)|$, then its bits from
+  the last to the first, each by one question) returns, on $x$, the destination of the exhaustive
+  descent of $V$ with bound $y \mapsto |\mathrm{tope}(y)|$ on $x$. The destination is the first
+  certificate in the order of the descent, or the last string allowed if there is none.
+  \source{\cite{Papadimitriou}, Section~10.3, and \cite{JohnsonPapadimitriouYannakakis88}, Lemma~2.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/BusquedaPrefijos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first phase leaves a least length with a certificate, or the bound if there is none; the
+  second leaves, among the certificates of that length, the one of least value, or only ones if
+  there are none. Both facts are proved by induction on the list, and the result is compared with
+  the first certificate of the enumeration of strings.
+\end{proof}
+
+\section{Search to decision: the localization}
+\label{sec:search-localization}
+
+Search is easy for every relation of $\cFNP$ exactly when decision is easy for every problem of
+$\cNP$. The statements below are the forms of this fact that the map uses, in terms of the
+classes $\cP$ and $\cNP$ of the map (bit strings, verifiers with certificates of polynomial
+length).
+
+\begin{theorem}[Search is easy for $\cFNP$ if and only if $\SAT \in \cP$, in cslib-frontier]
+  \label{thm:search-cslib-fnp-sat}
+  \lean{Cslib.Complexity.FNP_subset_FPSearch_iff_SAT_mem_P}
+  \leanok
+  \uses{def:FNP, thm:cslib-search-decision, def:threesat, def:P}
+  For every encoding, $\cFNP \subseteq \cFP$ if and only if $\SAT \in \cP$ (for the encoding
+  $\enc_{\mathrm{CNF}}$).
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/TFNP/SearchToDecision.lean}.
+  \notours{cslib-frontier}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  In cslib-frontier.
+\end{proof}
+
+\begin{theorem}[The search for $\SAT$ is in polynomial time if and only if $\SAT \in \cP$]
+  \label{thm:search-sat-iff-busqueda}
+  \lean{Sagitta.Map.Informacion.TorreCHT.sat_enP_iff_busqueda}
+  \leanok
+  \uses{thm:search-busqueda-de-decision, thm:search-decision-de-busqueda}
+  $\SAT \in \cP$ if and only if the search for $\SAT$ is in polynomial time, in the sense of
+  Theorem~\ref{thm:search-busqueda-de-decision}.
+  \source{\cite{AroraBarak}, Theorem~2.19.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The two directions are Theorems~\ref{thm:search-busqueda-de-decision}
+  and~\ref{thm:search-decision-de-busqueda}.
+\end{proof}
+
+\begin{theorem}[Every problem of $\cNP$ is in $\cP$ if and only if the destination of every polynomial exhaustive descent is computable in polynomial time]
+  \label{thm:search-otra-direccion}
+  \lean{Sagitta.Map.OtraDireccion.verificarImplicaResolver_iff}
+  \leanok
+  \uses{thm:search-destino-busqueda}
+  % uses-lean: Sagitta.Map.exhaustivo
+  % uses-lean: Sagitta.Map.ExhaustivoTiempo.exhaustivoVara
+  Every problem of $\cNP$ is in $\cP$ if and only if, for every function $V$ from pairs of bit
+  strings to Booleans and every function $\mathrm{tope}$ from bit strings to bit strings, both
+  computable in polynomial time, the function that gives the destination of the exhaustive descent
+  of $V$ with bound $y \mapsto |\mathrm{tope}(y)|$ is computable in polynomial time.
+  \source{\cite{JohnsonPapadimitriouYannakakis88}, Lemmas~1 and~2.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/OtraDireccion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Forward, run the prefix search of Theorem~\ref{thm:search-destino-busqueda}, which asks a
+  question of $\cNP$ at each step; each question is answered in polynomial time by hypothesis, and
+  the search is a composition of two bounded loops. Backward, a problem of $\cNP$ is decided by
+  checking that its verifier accepts the destination.
+\end{proof}
+
+\begin{theorem}[$\cP = \cNP$ if and only if every problem of $\cNP$ is in $\cP$, assuming $\cP \subseteq \cNP$]
+  \label{thm:search-pnp-verificar}
+  \lean{Sagitta.Map.pIgualNP_iff_verificarImplicaResolver}
+  \leanok
+  % uses-lean: Sagitta.Map.PSubNP
+  % uses-lean: Sagitta.Map.PIgualNP
+  % uses-lean: Sagitta.Map.VerificarImplicaResolver
+  Assume $\cP \subseteq \cNP$ (the named hypothesis of the map, in the classes of bit strings).
+  Then $\cP = \cNP$ if and only if every problem of $\cNP$ is in $\cP$.
+  \source{\cite{AroraBarak}, Chapter~2.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Clases.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Antisymmetry of inclusion: one direction rewrites with the equality, the other combines the
+  inclusion $\cNP \subseteq \cP$ with the assumed $\cP \subseteq \cNP$.
+\end{proof}
+
+\section{Local search: PLS and the standard algorithm}
+\label{sec:search-pls}
+
+A local search problem gives, for each instance, a set of feasible solutions, a starting solution,
+a neighbour of each solution and a cost; the task is a feasible solution whose neighbour does not
+cost less. The standard algorithm follows the neighbour from the starting solution. In the next
+definition a \emph{descent} is the data without the conditions of polynomial time.
+
+\begin{definition}[Problems of PLS]
+  \label{def:search-pls}
+  \lean{Sagitta.Map.ProblemaPLS, Sagitta.Map.ProblemaPLS.EsSolucion, Sagitta.Map.PLS}
+  \leanok
+  \uses{def:search-tfnp}
+  % uses-lean: Sagitta.Map.EsPolinomial
+  A problem of PLS consists of a polynomial $c$ and of the following functions on bit strings, each
+  computable in polynomial time: a feasibility test $F(x, s)$ with Boolean values on pairs, a
+  starting solution $\mathrm{ini}(x)$, a neighbour $\mathrm{nb}(x, s)$ and a cost
+  $\mathrm{cost}(x, s) \in \mathbb{N}$. They satisfy: $\mathrm{ini}(x)$ is feasible for every $x$;
+  the neighbour of a feasible $s$ is feasible; and a feasible $s$ has length at most $c(|x|)$. A
+  solution of the instance $x$ is a feasible $s$ with
+  $\mathrm{cost}(x, s) \le \mathrm{cost}(x, \mathrm{nb}(x, s))$. $\cPLS$ is the set of search
+  relations that are the relation of solutions of some problem of PLS.
+  \source{\cite{JohnsonPapadimitriouYannakakis88}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/PLS.lean}
+\end{definition}
+
+\begin{definition}[Descents and the problem of the standard algorithm]
+  \label{def:search-descent}
+  \lean{Sagitta.Map.DescensoInstancia, Sagitta.Map.DescensoInstancia.ruta, Sagitta.Map.DescensoInstancia.EsOptimo, Sagitta.Map.DescensoInstancia.pasos, Sagitta.Map.DescensoInstancia.destino, Sagitta.Map.DescensoInstancia.AlgoritmoEstandar, Sagitta.Map.ProblemaPLS.aDescenso, Sagitta.Map.exhaustivo, Sagitta.Map.ExhaustivoTiempo.exhaustivoVara}
+  \leanok
+  \uses{def:search-pls}
+  A descent is a triple of functions on bit strings: a starting string $\mathrm{ini}(x)$, a
+  neighbour $\mathrm{nb}(x, s)$ and a cost $\mathrm{cost}(x, s) \in \mathbb{N}$, with no condition
+  of time. Its path on $x$ is the sequence of strings obtained from $\mathrm{ini}(x)$ by following
+  the neighbour; a string $s$ is optimal when $\mathrm{cost}(x, s) \le \mathrm{cost}(x, \mathrm{nb}(x, s))$.
+  The path reaches an optimal string, because $\mathbb{N}$ is well founded; the number of steps
+  to the first optimal one is $\mathrm{pasos}(x)$, and that string is the destination
+  $\mathrm{destino}(x)$. The problem of the standard algorithm asks, on $x$, for the destination.
+  A problem of PLS gives a descent by forgetting the feasibility test. The exhaustive descent of a
+  function $V$ on pairs of bit strings with a bound $M$ from bit strings to $\mathbb{N}$ starts from
+  the empty string and goes to the next string, in the order by length and then by value, until
+  $V$ accepts a string or the next string is longer than the bound; its cost is a number that
+  decreases by one at each string and does not read $V$. With a function $\mathrm{tope}$ from bit
+  strings to bit strings, the bound $y \mapsto |\mathrm{tope}(y)|$ is the descent with a rod.
+  \source{\cite{JohnsonPapadimitriouYannakakis88}, Section~2 and Lemma~1.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/AlgoritmoEstandar.lean}
+\end{definition}
+
+\begin{theorem}[Every problem of PLS is a total search problem with a polynomial verifier]
+  \label{thm:search-pls-tfnp}
+  \lean{Sagitta.Map.pls_sub_tfnp}
+  \leanok
+  \uses{def:search-pls, def:search-tfnp}
+  $\cPLS \subseteq \cTFNP$.
+  \source{\cite{JohnsonPapadimitriouYannakakis88}; \cite{MegiddoPapadimitriou91}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/PLS.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The verifier tests feasibility and compares two costs; it is computable in polynomial time
+  because computable functions in polynomial time are closed under composition, pairing, first
+  projection, conjunction and comparison of naturals (all proved on the Turing machines of
+  Mathlib). A solution exists because the descent from the starting solution reaches an optimal
+  string.
+\end{proof}
+
+\begin{theorem}[Every problem of $\cNP$ is decided by the standard algorithm of a problem of PLS]
+  \label{thm:search-np-por-pls}
+  \lean{Sagitta.Map.PLSConcreto.np_por_pls}
+  \leanok
+  \uses{def:search-pls, def:search-descent}
+  % uses-lean: Sagitta.Map.NP
+  % uses-lean: Sagitta.Map.EsPolinomial
+  Let $L$ be a problem of the class $\cNP$ of the map. Then there are a problem $P$ of PLS and a
+  function $V$ on pairs of bit strings, computable in polynomial time, such that for every $x$,
+  $L(x) = \mathrm{true}$ if and only if $V(x, d) = \mathrm{true}$, where $d$ is the destination
+  on $x$ of the descent of $P$.
+  \source{\cite{JohnsonPapadimitriouYannakakis88}, Lemma~1.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/PLSConcreto.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take a verifier of $L$ and a rod that bounds the certificates. The exhaustive descent, with the
+  feasible strings being those no longer than the rod, is a problem of PLS; its destination is a
+  certificate if and only if there is one.
+\end{proof}
+
+\begin{theorem}[The standard algorithm takes at most exponentially many steps, on a descent with a polynomial cost]
+  \label{thm:search-pasos-exponencial}
+  \lean{Sagitta.Map.CuantoTarda.pasos_exponencial}
+  \leanok
+  \uses{def:search-descent}
+  % uses-lean: Sagitta.Map.EsPolinomial
+  Let $D$ be a descent whose cost function is computable in polynomial time. Then there is a
+  polynomial $q$ such that for every bit string $x$,
+  $\mathrm{pasos}(x) < 2^{q(2|x| + 1 + |\mathrm{ini}(x)|)}$.
+  \source{\cite{JohnsonPapadimitriouYannakakis88}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/CuantoTarda.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The path takes at most as many steps as the cost of the starting string, because each step that
+  does not stop lowers the cost; and a number written by a machine in polynomial time has
+  polynomially many bits, so it is below $2^{q}$ for a polynomial $q$ in the length of the encoded
+  input.
+\end{proof}
+
+\section{A total search problem that decides a language puts it in NP and coNP}
+\label{sec:search-tfnp-conp}
+
+\begin{theorem}[If the solutions of a $\cTFNP$ problem decide $L$, then $L \in \cNP \cap \cconP$]
+  \label{thm:search-np-conp-tfnp}
+  \lean{Sagitta.Map.np_y_conp_de_tfnp, Sagitta.Map.DecididoPor}
+  \leanok
+  \uses{def:search-tfnp}
+  % uses-lean: Sagitta.Map.NP
+  % uses-lean: Sagitta.Map.coNP
+  Let $L$ be a problem of the map (a function from bit strings to Booleans) and $R$ a search
+  relation on bit strings with $R \in \cTFNP$. Say that the solutions of $R$ \emph{decide} $L$
+  when there is a function $d$ on pairs of bit strings, computable in polynomial time, such that
+  $R(x, y)$ implies $d(x, y) = L(x)$ for all $x, y$. If the solutions of $R$ decide $L$, then $L$
+  is in the class $\cNP$ of the map and in the class $\cconP$ of the map.
+  \source{\cite{MegiddoPapadimitriou91}; for $\cPLS$, \cite{JohnsonPapadimitriouYannakakis88}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/BusquedaNP.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A solution exists and is short, so it is a certificate for both answers: for $\cNP$ the verifier
+  accepts $(x, y)$ when $y$ is a solution and $d(x, y)$ is true, and for $\cconP$ when $y$ is a
+  solution and $d(x, y)$ is false. Both verifiers are built from the closure of polynomial-time
+  functions under composition, pairing, conjunction and negation.
+\end{proof}
+
+\section{Descents with an ordinal cost and their collapse}
+\label{sec:search-ordinal-descent}
+
+The cost of a descent may live in any well-founded order. The three entries below are about the
+order $\omega^2$, written as pairs of naturals ordered lexicographically ($(a, b)$ stands for
+$\omega a + b$). They are statements about explicit descents on bit strings or on triples of
+naturals; they contain no statement about time, and they are not the theorem of the source, which
+is about ordinals far beyond $\omega^2$ inside bounded arithmetic.
+
+\begin{theorem}[In the order $\omega^2$ the cost does not bound the number of steps, for a descent on bit strings]
+  \label{thm:search-recarga-sin-cota}
+  \lean{Sagitta.Map.Recarga.sin_cota}
+  \leanok
+  \uses{def:search-descent}
+  % uses-lean: Sagitta.Map.Recarga.recarga
+  % uses-lean: Sagitta.Map.DescensoEn
+  Consider the descent on bit strings with cost in $\mathbb{N} \times_{\mathrm{lex}} \mathbb{N}$
+  given by: the cost of the empty string is $(0, 0)$, of a string that begins with $1$ is
+  $(1, 0)$, and of $0$ followed by $bs$ is $(0, v)$ where $v$ is the value of $bs$ as a counter;
+  the neighbour of a string $1\,bs$ is $0$ followed by as many $1$s as $|bs|$, and the neighbour of
+  $0\,bs$ is $0$ followed by the counter $bs$ decreased by one. A string is optimal when its cost is
+  at most the cost of its neighbour. There is no function $g$ from the order to $\mathbb{N}$ such
+  that every string $x$ reaches an optimal string in at most $g(\mathrm{cost}(x))$ steps.
+  \source{\cite{BeckmannBussPollett03}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DescensoOrdinal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The strings $1$ followed by $n$ bits all have cost $(1, 0)$ and take exactly $2^n$ steps to reach
+  an optimal string. Taking $n = g((1, 0))$ gives a string for which $g$ is too small.
+\end{proof}
+
+\begin{theorem}[A descent that lengthens its state has no collapse to a polynomially bounded natural cost, on triples of naturals]
+  \label{thm:search-creciente-no-colapsa}
+  \lean{Sagitta.Map.Creciente.no_colapsa}
+  \leanok
+  % uses-lean: Sagitta.Map.Creciente.vecino
+  % uses-lean: Sagitta.Map.Creciente.costo
+  % uses-lean: Sagitta.Map.Creciente.EsOptimo
+  % uses-lean: Sagitta.Map.Creciente.tam
+  Consider states $(a, b, L) \in \mathbb{N}^3$ of size $a + L$, with cost $(a, b)$ in
+  $\mathbb{N} \times_{\mathrm{lex}} \mathbb{N}$ and neighbour: $(a, b+1, L) \mapsto (a, b, L)$,
+  $(a+1, 0, L) \mapsto (a, 2^L, 2L)$ and $(0, 0, L) \mapsto (0, 0, L)$. A state is optimal when its
+  cost is at most the cost of its neighbour. There are no function $c$ from states to
+  $\mathbb{N}$ and polynomial $p$ such that $c(s) < 2^{p(\text{size}(s))}$ for every state $s$ and,
+  for every state $s$, $c(s) \le c(\text{neighbour}(s))$ if and only if $s$ is optimal.
+  \source{\cite{BeckmannBussPollett03}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DescensoCreciente.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From $(N+1, 0, 1)$ no optimal state is reached in the first $2^{2^N}$ steps. A natural cost
+  reaches an optimal state in at most as many steps as its value, which is below
+  $2^{p(N+2)} \le 2^{2^N}$ for large $N$.
+\end{proof}
+
+\begin{theorem}[A descent whose trajectories have polynomially bounded length collapses to a natural cost]
+  \label{thm:search-colapsa-por-conteo}
+  \lean{Sagitta.Map.Acotado.colapsa_por_conteo}
+  \leanok
+  \uses{def:search-descent}
+  % uses-lean: Sagitta.Map.Acotado.EsOptimo
+  Let $\alpha$ be a linearly ordered type whose strict order is well founded, let $c$ be a function
+  from bit strings to $\alpha$, $v$ a function from bit strings to bit strings, and $q$ a function
+  from $\mathbb{N}$ to $\mathbb{N}$. Assume that for every bit string $s$ and every $k$, the string
+  $v^k(s)$ has length at most $q(|s|)$. Then there is a function $c'$ from bit strings to
+  $\mathbb{N}$ such that $c'(s) < 2^{2 q(|s|) + 1}$ for every $s$ and, for every $s$,
+  $c'(s) \le c'(v(s))$ if and only if $c(s) \le c(v(s))$.
+  \source{\cite{BeckmannBussPollett03}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DescensoAcotado.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take for $c'(s)$ the number of steps from $s$ to its first optimal string. It has the same
+  optimal strings, and it is below $(L+1)2^L$ for $L = q(|s|)$ because the states of the trajectory
+  are distinct, by an injection into the strings of length at most $L$.
+\end{proof}
+
+\section{Deciding is never free: the adversary and hidden choices, in the query model}
+\label{sec:search-adversary}
+
+The model of this section and the next is a tree of questions to an oracle, and not a machine: the
+only cost is the number of questions, and nothing is said about the time of the computation between
+them.
+
+\begin{definition}[Question trees over an oracle]
+  \label{def:search-pregunta}
+  \lean{Sagitta.Map.Tiempo.Pregunta, Sagitta.Map.Tiempo.Pregunta.corre, Sagitta.Map.Tiempo.Pregunta.vistos, Sagitta.Map.Tiempo.Pregunta.costo, Sagitta.Map.Tiempo.DecideExiste, Sagitta.Map.Tiempo.Calcula, Sagitta.Map.Tiempo.Sensible, Sagitta.Map.Tiempo.verificar}
+  \leanok
+  Over a type $\alpha$ of options, a question tree is either an answer $b \in \{\mathrm{true},
+  \mathrm{false}\}$, or a question about an option $i$ together with a question tree for each
+  answer to it. Its answer on an oracle $f : \alpha \to \{\mathrm{true}, \mathrm{false}\}$ follows
+  the answers of $f$; the options it looks at on $f$ are the options asked, in order, and its cost
+  on $f$ is the number of them. A tree $t$ \emph{decides existence} when, for every $f$, it answers
+  true if and only if $f(i) = \mathrm{true}$ for some $i$. A tree $t$ \emph{computes} a function $F$
+  from oracles to Booleans when it answers $F(g)$ on every oracle $g$. A position $i$ is
+  \emph{sensitive} for $F$ on $x$ when $F$ changes if the value of $x$ at $i$ is flipped. The tree
+  $\mathrm{verificar}(i)$ asks about $i$ and answers what it is told.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{definition}
+
+\begin{theorem}[Deciding existence of a good option costs as many questions as there are options, in the query model]
+  \label{thm:search-costo-adversario}
+  \lean{Sagitta.Map.Tiempo.costo_adversario}
+  \leanok
+  \uses{def:search-pregunta}
+  Let $\alpha$ be a finite type with decidable equality and $t$ a question tree over $\alpha$ that
+  decides existence. Then $|\alpha|$ is at most the cost of $t$ on the oracle that answers false to
+  every option.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $t$ left an option $i$ unasked on the all-false oracle, the oracle that is true only at $i$
+  gives the same answers on what is asked, so $t$ would answer false on both; it is wrong on the
+  second. Hence every option is asked, and the options asked are at least $|\alpha|$ distinct ones.
+\end{proof}
+
+\begin{theorem}[Deciding whether one of $2^c$ branches accepts costs $2^c$ questions, in the query model]
+  \label{thm:search-decidir-ramas}
+  \lean{Sagitta.Map.Tiempo.decidir_ramas}
+  \leanok
+  \uses{thm:search-costo-adversario}
+  Let $c \in \mathbb{N}$ and let $t$ be a question tree over the vectors of $c$ Booleans that
+  decides existence. Then $2^c$ is at most the cost of $t$ on the oracle that answers false to every
+  vector.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Theorem~\ref{thm:search-costo-adversario}, with $|\alpha| = 2^c$ for the vectors of $c$ Booleans.
+\end{proof}
+
+\begin{theorem}[If the choice is told, verifying it costs one question, in the query model]
+  \label{thm:search-te-dicen}
+  \lean{Sagitta.Map.Tiempo.te_dicen}
+  \leanok
+  \uses{def:search-pregunta}
+  For every type $\alpha$ and every oracle $f : \alpha \to \{\mathrm{true}, \mathrm{false}\}$,
+  there is an option $i$ with $f(i) = \mathrm{true}$ if and only if there is an option $i$ such that
+  the tree $\mathrm{verificar}(i)$ answers true on $f$ and its cost on $f$ is $1$.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Unfold the definitions and compute: the tree asks once and returns the answer.
+\end{proof}
+
+\begin{theorem}[A tree that computes a function asks about every sensitive position, in the query model]
+  \label{thm:search-lee-lo-sensible}
+  \lean{Sagitta.Map.Tiempo.lee_lo_sensible}
+  \leanok
+  \uses{def:search-pregunta}
+  Let $\alpha$ have decidable equality, let $t$ be a question tree over $\alpha$ that computes a
+  function $F$ from oracles to Booleans, let $x$ be an oracle and $i$ a position that is
+  sensitive for $F$ on $x$. Then $i$ is among the options that $t$ looks at on $x$.
+  \own{}
+  \leanfile{Sagitta/Map/LeerCuesta.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $i$ were not looked at, the oracle $x$ with the value at $i$ flipped agrees with $x$ on every
+  option looked at, so $t$ answers the same on both and $F$ would not change.
+\end{proof}
+
+\section{Hiding logarithmically many bits is free}
+\label{sec:search-log-bits}
+
+A function $f$ is $O(K)$ when there are $C$ and $N$ with $f(n) \le C\,K(n)$ for all $n \ge N$. The
+set $\mathrm{Pol}$ is the set of functions $f$ from $\mathbb{N}$ to $\mathbb{N}$ for which there are
+$c$ and $k$ with $f(n) \le c\,(n+1)^k$ for all $n$. The statements below are about functions on the
+naturals, and they are used with the cost of the query model.
+
+\begin{theorem}[$2^{c(n)}$ is polynomial if and only if $c(n)$ is logarithmic]
+  \label{thm:search-dos-pow-pol}
+  \lean{Sagitta.Map.Tiempo.dos_pow_pol_iff}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.Pol
+  For every function $c$ from $\mathbb{N}$ to $\mathbb{N}$, the function $n \mapsto 2^{c(n)}$ is in
+  $\mathrm{Pol}$ if and only if there are $a$ and $b$ with $c(n) \le a \lfloor \log_2 (n+1) \rfloor + b$
+  for all $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Forward, $2^{c(n)} \le C (n+1)^k$ and $n + 1 < 2^{L+1}$ for $L = \lfloor \log_2(n+1) \rfloor$ give
+  $c(n) \le C + (L+1)k$. Backward, $2^{aL + b} \le 2^b (n+1)^a$.
+\end{proof}
+
+\begin{theorem}[A certificate with one bit in $k$ is linear]
+  \label{thm:search-rala-certificado}
+  \lean{Sagitta.Map.Tiempo.rala_certificado}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.Pol
+  For every natural number $k$, the function $n \mapsto \lfloor n / k \rfloor$ is in $\mathrm{Pol}$.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  $\lfloor n/k \rfloor \le n \le n + 1$, with $c = k = 1$.
+\end{proof}
+
+\begin{theorem}[Choosing once in every $k$ steps already escapes every polynomial]
+  \label{thm:search-rala-escapa}
+  \lean{Sagitta.Map.Tiempo.rala_escapa}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.Pol
+  For every $k \ge 1$ and every $K \in \mathrm{Pol}$, the function $n \mapsto 2^{\lfloor n / k \rfloor}$
+  is not $O(K)$.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $2^{\lfloor n/k \rfloor} \le C K(n)$ for $n \ge N$, evaluate at $n = km$ for $m$ large: the
+  left side is $2^m$ and the right side is at most a polynomial in $m$, and a polynomial is below
+  $2^m$ from some $m$ on.
+\end{proof}
+
+\section{The cost of choosing wrong: risk and delay, in a model of independent segments}
+\label{sec:search-cost-error}
+
+The model of this section is probabilistic and has no machine. A search makes choices in segments of
+$d$ choices (the delay). A segment is right with probability $p$, independently of the others; when
+it is wrong the segment is redone.
+
+\begin{definition}[Segments with geometric failures]
+  \label{def:search-tramos}
+  \lean{Sagitta.Map.Tiempo.tramos, Sagitta.Map.Tiempo.costo}
+  \leanok
+  For $m \in \mathbb{N}$ and $p \in [0, 1]$, $\mathrm{tramos}(m, p)$ is the product measure on
+  functions $x : \{1, \dots, m\} \to \mathbb{N}$ in which each $x(i)$ has the geometric distribution
+  of Mathlib with parameter $p$ (the number of failures before the first success). For
+  $d \in \mathbb{N}$ the cost of $x$ is the real number $d \sum_i (x(i) + 1)$.
+  \own{}
+  \leanfile{Sagitta/Map/CostoError.lean}
+\end{definition}
+
+\begin{theorem}[Expected cost of $m$ independent segments, with success probability $p$]
+  \label{thm:search-costo-esperado}
+  \lean{Sagitta.Map.Tiempo.costo_esperado}
+  \leanok
+  \uses{def:search-tramos}
+  Let $d, m \in \mathbb{N}$ and let $p \in [0, 1]$ with $p \ne 0$. The integral of the cost with
+  respect to $\mathrm{tramos}(m, p)$ is $d\,m / p$.
+  \own{}
+  \leanfile{Sagitta/Map/CostoError.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By linearity of the integral over the $m$ coordinates, each of which has mean $1/p$ for the
+  number of attempts; that mean is computed from the series $\sum_n n (1-p)^n$.
+\end{proof}
+
+\begin{theorem}[Choosing at random to the end, with a delay equal to the length, is not polynomial]
+  \label{thm:search-a-ciegas-al-final}
+  \lean{Sagitta.Map.Tiempo.a_ciegas_al_final_no_polinomial}
+  \leanok
+  \uses{def:search-tramos}
+  % uses-lean: Sagitta.Map.Tiempo.frontera
+  There are no real number $C$ and natural number $k$ such that
+  $(1 - 1/2)^{-n} \le C\,(n + 1)^k$ for all natural numbers $n$.
+  \own{}
+  \leanfile{Sagitta/Map/CostoError.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Such a bound would give, by the boundary theorem for risk $1/2$ and delay $n$, constants $a, b$
+  with $n/2 \le a \log(n+1) + b$ for all $n$; this fails at $n = t^2 - 1$ for $t$ large.
+\end{proof}
+
+\section{The tree of choices: live nodes, sound detectors and delay}
+\label{sec:search-tree}
+
+The model of this section is a binary tree of partial assignments. A node is a list of Booleans
+$p$; a function $\mathit{sol}$ from bit strings to Booleans says which complete strings are
+solutions. No machine and no time appear: what is counted is nodes.
+
+\begin{definition}[Live node, sound detector and delay, in the tree of choices]
+  \label{def:search-vivo}
+  \lean{Sagitta.Map.Tiempo.Vivo, Sagitta.Map.Tiempo.Sano, Sagitta.Map.Tiempo.Demora}
+  \leanok
+  Let $\mathit{sol}$ and $\mathit{det}$ be functions from bit strings to Booleans. A node $p$ is
+  \emph{live with $k$ variables left} when there is a string $q$ of length $k$ with
+  $\mathit{sol}(p\,q) = \mathrm{true}$. The detector $\mathit{det}$ is \emph{sound} for
+  $\mathit{sol}$ when $\mathit{det}(p) = \mathrm{true}$ implies $\mathit{sol}(p\,q) = \mathrm{false}$
+  for all $p$ and $q$. It has \emph{delay} $d \in \mathbb{N}$ when, for all $k$ and all $p$ that are
+  not live with $k$ variables left, $\mathit{det}(p\,q) = \mathrm{true}$ for every $q$ of length $d$.
+  The quantifier over $k$ in the delay includes $k = 0$.
+  \own{}
+  \leanfile{Sagitta/Map/ArbolElecciones.lean}
+\end{definition}
+
+\begin{theorem}[Every problem of $\cNP$ is the question whether the root of a tree of choices is live]
+  \label{thm:search-np-raiz-viva}
+  \lean{Sagitta.Map.Tiempo.np_iff_raiz_viva, Sagitta.Map.Tiempo.solCert}
+  \leanok
+  \uses{def:search-vivo}
+  % uses-lean: Sagitta.Map.NP
+  % uses-lean: Sagitta.Map.EsPolinomial
+  For a function $V$ on pairs of bit strings and a bit string $x$, let $\mathrm{solCert}(V, x)$ be
+  the function that sends a string $q$ to true when $V(x, q')$ is true for some prefix $q'$ of $q$
+  (including the empty prefix and $q$ itself). Let $L$ be a problem in the class $\cNP$ of the map.
+  Then there are a polynomial $p$ and a function $V$ on pairs of bit strings, computable in
+  polynomial time, such that for every $x$, $L(x) = \mathrm{true}$ if and only if the root (the empty
+  list) is live with $p(|x|)$ variables left for $\mathrm{solCert}(V, x)$.
+  \own{}
+  \leanfile{Sagitta/Map/CertificadosArbol.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take a polynomial and a verifier of $L$. The root is live with $K$ variables left if and only if
+  some certificate of length at most $K$ is accepted: a certificate is padded with $\mathrm{false}$
+  to length $K$ in one direction, and a prefix of a leaf is a certificate in the other.
+\end{proof}
+
+\begin{theorem}[The density of a node is the mean of the densities of its children, in the tree of choices]
+  \label{thm:search-densidad-succ}
+  \lean{Sagitta.Map.Tiempo.densidad_succ, Sagitta.Map.Tiempo.densidad, Sagitta.Map.Tiempo.cuenta}
+  \leanok
+  \uses{def:search-vivo}
+  For a function $\mathit{sol}$ from bit strings to Booleans, a natural number $k$ and a node $p$,
+  let $\mathrm{cuenta}(k, p)$ be the number of strings $q$ of length $k$ with
+  $\mathit{sol}(p\,q) = \mathrm{true}$, and let $\mathrm{densidad}(k, p)$ be the real number
+  $\mathrm{cuenta}(k, p) / 2^k$. Then $\mathrm{densidad}(k+1, p)$ equals
+  $(\mathrm{densidad}(k, p\,\mathrm{false}) + \mathrm{densidad}(k, p\,\mathrm{true})) / 2$.
+  \own{}
+  \leanfile{Sagitta/Map/AzarEnElArbol.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The count at $k+1$ is the sum of the counts of the two children by definition; divide by
+  $2^{k+1}$.
+\end{proof}
+
+\section{Effective delay, and logarithmic delay implies P}
+\label{sec:search-effective-delay}
+
+This section continues in the tree of choices of the previous one, with a fixed number $N$ of
+variables (a horizon), because the delay of Definition~\ref{def:search-vivo} is not satisfiable by
+a sound detector on a formula that has a solution.
+
+\begin{definition}[Backtracking, sound detector and delay with a horizon, effective delay]
+  \label{def:search-demoran}
+  \lean{Sagitta.Map.Tiempo.buscar, Sagitta.Map.Tiempo.nodos, Sagitta.Map.Tiempo.SanoN, Sagitta.Map.Tiempo.DemoraN, Sagitta.Map.Tiempo.demoraEfectiva}
+  \leanok
+  \uses{def:search-vivo}
+  Backtracking $\mathrm{buscar}(\mathit{sol}, \mathit{det}, k, p)$, for a node $p$ with $k$
+  variables left, returns a pair of a Boolean and a number of visited nodes. If
+  $\mathit{det}(p) = \mathrm{true}$ it returns $(\mathrm{false}, 1)$. Otherwise, for $k = 0$ it
+  returns $(\mathit{sol}(p), 1)$; for $k + 1$ it searches under $p\,\mathrm{false}$ first and, if that
+  finds a solution, returns true with the visited nodes plus one, and otherwise returns the
+  Boolean of the search under $p\,\mathrm{true}$ with the sum of the visited nodes of both searches
+  plus one. $\mathrm{nodos}(\mathit{sol}, \mathit{det}, k, p)$ is the second component. For $N \in
+  \mathbb{N}$, $\mathit{det}$ is \emph{sound with horizon} $N$ when, for every $p$ with
+  $|p| \le N$ and $\mathit{det}(p) = \mathrm{true}$, $p$ is not live with $N - |p|$ variables left.
+  It has \emph{delay} $d$ \emph{with horizon} $N$ when, for every $p$ with $|p| + d \le N$ that is not
+  live with $N - |p|$ variables left, $\mathit{det}(p\,q) = \mathrm{true}$ for every $q$ of length
+  $d$. The effective delay of a delay $d$ and a cost $t$ is $d + \lfloor \log_2 t \rfloor$.
+  \own{}
+  \leanfile{Sagitta/Map/DemoraEfectiva.lean}
+\end{definition}
+
+\begin{theorem}[Backtracking costs at most $(k+1)\,2^{\text{effective delay} + 2}$, counting a cost $t$ per node, in the tree of choices]
+  \label{thm:search-costo-demora-efectiva}
+  \lean{Sagitta.Map.Tiempo.costo_demora_efectiva}
+  \leanok
+  \uses{def:search-demoran}
+  Let $\mathit{sol}$ and $\mathit{det}$ be functions from bit strings to Booleans and
+  $N, d \in \mathbb{N}$. Assume that $\mathit{det}$ is sound with horizon $N$ and has delay $d$ with
+  horizon $N$. Let $t, k \in \mathbb{N}$ and $p$ a node with $|p| + k = N$. Then
+  $\mathrm{nodos}(\mathit{sol}, \mathit{det}, k, p) \cdot t \le (k+1)\, 2^{d + \lfloor \log_2 t \rfloor + 2}$.
+  \own{}
+  \leanfile{Sagitta/Map/DemoraEfectiva.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The number of nodes visited is at most $(k+1)2^{d+1}$ by the bound for backtracking with a delay,
+  and $t \le 2^{\lfloor \log_2 t \rfloor + 1}$; multiply the two.
+\end{proof}
+
+\begin{theorem}[A sound detector of logarithmic delay, computable in polynomial time, puts a problem in $\cP$, on Turing machines]
+  \label{thm:search-busqueda-en-P}
+  \lean{Sagitta.Map.Tiempo.busqueda_en_P}
+  \leanok
+  \uses{def:search-demoran, def:polytime, thm:search-np-raiz-viva}
+  % uses-lean: Sagitta.Map.P
+  Let $L$ be a problem of the map, $p$ a polynomial and $V$ and $\mathit{det}$ functions on pairs of
+  bit strings with Boolean values. Assume:
+  \begin{itemize}
+    \item for every $x$, $L(x) = \mathrm{true}$ if and only if there is a string $y$ with
+      $|y| \le p(|x|)$ and $V(x, y) = \mathrm{true}$;
+    \item $V$ and $\mathit{det}$ are computable in polynomial time, with the encoding of pairs of
+      bit strings and the encoding of Booleans of Part~I;
+    \item there are $a, b \in \mathbb{N}$ and a function $d$ from $\mathbb{N}$ to $\mathbb{N}$ with
+      $d(n) \le a \lfloor \log_2 (n+1) \rfloor + b$ for all $n$;
+    \item for every $x$, the function $q \mapsto \mathit{det}(x, q)$ is sound with horizon $p(|x|)$ for
+      $\mathrm{solCert}(V, x)$, and has delay $d(|x|)$ with horizon $p(|x|)$ for it.
+  \end{itemize}
+  Then $L$ is in the class $\cP$ of the map.
+  \own{}
+  \leanfile{Sagitta/Map/BusquedaPolinomial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  With a sound detector and delay $d$, the root is live if and only if some word $q$ of length
+  $\min(d, p(|x|))$ is not discarded by the detector. A machine enumerates these at most
+  $2^b(|x|+1)^a$ words and, on each, evaluates $\mathit{det}$ (and $V$ on its prefixes when the word
+  is a leaf); it is computable in polynomial time by the closure properties of cslib-frontier.
+\end{proof}
+
+\begin{theorem}[A logarithmic bound on the delay survives a polynomial change of size]
+  \label{thm:search-umbral-log}
+  \lean{Sagitta.Map.Tiempo.umbral_log}
+  \leanok
+  Let $N, d : \mathbb{N} \to \mathbb{N}$ and $C, c, a, b \in \mathbb{N}$. Assume $N(n) \le C(n+1)^c$
+  for all $n$ and $d(M) \le a \lfloor \log_2 M \rfloor + b$ for all $M$. Then for every $n$,
+  $d(N(n)) \le a c \lfloor \log_2 n \rfloor + (a(\lfloor \log_2 C \rfloor + c) + b)$.
+  \own{}
+  \leanfile{Sagitta/Map/DemoraReducciones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  $\lfloor \log_2 N(n) \rfloor \le c \lfloor \log_2 n \rfloor + \lfloor \log_2 C \rfloor + c$ by
+  monotonicity of the logarithm and a bound for $\log_2 (C(n+1)^c)$; then substitute in the
+  bound for $d$.
+\end{proof}
+
+\section{Memory against delay, in the tree of choices}
+\label{sec:search-memory-delay}
+
+A detector with finite memory is an automaton that reads the prefix of a node once, bit by bit,
+and keeps only its state.
+
+\begin{definition}[Detectors with finite memory, and fooling sets]
+  \label{def:search-memoria}
+  \lean{Sagitta.Map.Tiempo.BombeoDetector.Memoria, Sagitta.Map.Tiempo.BombeoDetector.Memoria.estado, Sagitta.Map.Tiempo.BombeoDetector.Memoria.det, Sagitta.Map.Tiempo.CurvaMemoriaDemora.Distinguibles, Sagitta.Map.Tiempo.CurvaMemoriaDemora.Enganador, Sagitta.Map.Tiempo.BombeoDetector.unica}
+  \leanok
+  \uses{def:search-demoran}
+  A detector with memory over a type $\sigma$ of states is an initial state, a transition
+  $\sigma \times \{\mathrm{true}, \mathrm{false}\} \to \sigma$ and an alarm function
+  $\sigma \to \{\mathrm{true}, \mathrm{false}\}$. Its state after a prefix $p$ is the fold of the
+  transition over $p$ from the initial state, and its detector function $\mathit{det}(p)$ is the
+  alarm of that state. For $\mathit{sol}$, $N$ and $d$, two prefixes $p$ and $p'$ are
+  \emph{distinguishable} when there is a bit string $w$ with $|p\,w| + d \le N$, $|p'\,w| + d \le N$,
+  such that one of $p\,w$ and $p'\,w$ is live with $N - |p\,w|$ (respectively $N - |p'\,w|$)
+  variables left and the other is not. A finite set $F$ of bit strings is a \emph{fooling set} for
+  $\mathit{sol}$, $N$ and $d$ when any two different elements are distinguishable. For $m \in
+  \mathbb{N}$, the function $\mathrm{unica}(m)$ is true exactly on the string of $m$ true values
+  followed by $m$ false values.
+  \own{}
+  \leanfile{Sagitta/Map/CurvaMemoriaDemora.lean}
+\end{definition}
+
+\begin{theorem}[Pumping: a live and a dead node that the detector does not tell apart are far from the leaves, in the tree of choices]
+  \label{thm:search-bombeo-demora}
+  \lean{Sagitta.Map.Tiempo.BombeoDetector.bombeo_demora}
+  \leanok
+  \uses{def:search-demoran}
+  Let $\mathit{sol}$ and $\mathit{det}$ be functions from bit strings to Booleans, $N, d \in
+  \mathbb{N}$, with $\mathit{det}$ sound with horizon $N$ and of delay $d$ with horizon $N$. Let $x$
+  and $y$ be bit strings with $\mathit{det}(x\,q) = \mathit{det}(y\,q)$ for every $q$, such that $x$
+  is not live with $N - |x|$ variables left and $y$ is live with $N - |y|$ variables left. Then
+  $N < \max(|x|, |y|) + d$.
+  \own{}
+  \leanfile{Sagitta/Map/BombeoDetector.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $N \ge \max(|x|, |y|) + d$, the delay forces $\mathit{det}$ to answer true on $x\,q$ for every
+  $q$ of length $d$, hence also on $y\,q$. Taking $q$ to be the first $d$ bits of a completion of
+  $y$ that is a solution contradicts soundness.
+\end{proof}
+
+\begin{theorem}[The memory--delay curve: a detector has at least as many states as a fooling set has elements, in the tree of choices]
+  \label{thm:search-curva-memoria-demora}
+  \lean{Sagitta.Map.Tiempo.CurvaMemoriaDemora.curva_memoria_demora}
+  \leanok
+  \uses{def:search-memoria, thm:search-bombeo-demora}
+  Let $\sigma$ be a finite type and $M$ a detector with memory over $\sigma$. Let $\mathit{sol}$ be a
+  function from bit strings to Booleans and $N, d \in \mathbb{N}$, and assume that $M$'s detector
+  function is sound with horizon $N$ and has delay $d$ with horizon $N$, for $\mathit{sol}$. If $F$
+  is a fooling set for $\mathit{sol}$, $N$ and $d$, then $|F| \le |\sigma|$.
+  \own{}
+  \leanfile{Sagitta/Map/CurvaMemoriaDemora.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The map from a prefix to its state is injective on $F$: two different elements of $F$ in the
+  same state would be indistinguishable by Theorem~\ref{thm:search-bombeo-demora}, but they are
+  distinguishable by the definition of $F$. An injection into $\sigma$ gives the bound.
+\end{proof}
+
+\begin{theorem}[A detector with $m+1$ states or fewer, on the single-solution family, has delay at least $m$]
+  \label{thm:search-cota-inferior-fina}
+  \lean{Sagitta.Map.Tiempo.CurvaMemoriaDemora.cota_inferior_fina}
+  \leanok
+  \uses{def:search-memoria, thm:search-curva-memoria-demora}
+  Let $\sigma$ be a finite type, $M$ a detector with memory over $\sigma$, and $m, d \in
+  \mathbb{N}$ with $|\sigma| \le m + 1$. If the detector function of $M$ is sound with horizon $2m$
+  and has delay $d$ with horizon $2m$, for $\mathrm{unica}(m)$, then $m \le d$.
+  \own{}
+  \leanfile{Sagitta/Map/CurvaMemoriaDemora.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $d < m$, a fooling set with $m + 2$ elements for $\mathrm{unica}(m)$ is exhibited (the string
+  $[\mathrm{false}]$ and the strings of $j$ true values for $0 \le j \le m$), and
+  Theorem~\ref{thm:search-curva-memoria-demora} gives $m + 2 \le |\sigma| \le m + 1$.
+\end{proof}
+
+\section{The fast index: part B of the difficulty is P versus NP}
+\label{sec:search-fast-index}
+
+\begin{definition}[Fast index for a verifier]
+  \label{def:search-indice-rapido}
+  \lean{Sagitta.Map.Tiempo.IndiceRapido.EsIndiceRapido, Sagitta.Map.Tiempo.IndiceRapido.TodoNPTieneIndice}
+  \leanok
+  \uses{def:polytime, thm:search-np-raiz-viva}
+  Let $V$ be a function on pairs of bit strings with Boolean values and $p$ a polynomial. A function
+  $\mathit{det}$ on pairs of bit strings is a \emph{fast index} for $V$ and $p$ when it is
+  computable in polynomial time (with the encoding of pairs of bit strings and the encoding of
+  Booleans of Part~I) and, for all $x$ and $q$ with $|q| \le p(|x|)$, $\mathit{det}(x, q) =
+  \mathrm{true}$ if and only if $q$ is not live with $p(|x|) - |q|$ variables left for
+  $\mathrm{solCert}(V, x)$. The proposition $\mathrm{TodoNPTieneIndice}$ says: for every problem
+  $L$ of the class $\cNP$ of the map there are a polynomial $p$ and a function $V$, computable in
+  polynomial time, with $L(x) = \mathrm{true}$ if and only if some $y$ with $|y| \le p(|x|)$ has
+  $V(x, y) = \mathrm{true}$, for every $x$, and a fast index for $V$ and $p$.
+  \own{}
+  \leanfile{Sagitta/Map/IndiceRapido.lean}
+\end{definition}
+
+\begin{theorem}[Every problem of $\cNP$ has a fast index if and only if every problem of $\cNP$ is in $\cP$]
+  \label{thm:search-indice-iff}
+  \lean{Sagitta.Map.Tiempo.IndiceRapido.indice_iff_NP_sub_P}
+  \leanok
+  \uses{def:search-indice-rapido}
+  % uses-lean: Sagitta.Map.VerificarImplicaResolver
+  $\mathrm{TodoNPTieneIndice}$ holds if and only if every problem of the class $\cNP$ of the map is
+  in the class $\cP$ of the map.
+  \own{}
+  \leanfile{Sagitta/Map/IndiceRapido.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A fast index decides whether the root is live, hence decides $L$ in polynomial time. Conversely,
+  if $\cNP \subseteq \cP$ the question whether a prefix is live is a problem of $\cNP$, so it is
+  decided in polynomial time, and the decider is a fast index.
+\end{proof}
+
+\begin{theorem}[A fooling set has at most $2^{N+1}$ elements, in the tree of choices]
+  \label{thm:search-curva-le-lineal}
+  \lean{Sagitta.Map.Tiempo.IndiceRapido.curva_le_lineal}
+  \leanok
+  \uses{def:search-memoria}
+  For every function $\mathit{sol}$ from bit strings to Booleans, every $N, d \in \mathbb{N}$ and
+  every fooling set $F$ for $\mathit{sol}$, $N$ and $d$, $|F| \le 2^{N+1}$.
+  \own{}
+  \leanfile{Sagitta/Map/IndiceRapido.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $F$ has two or more elements, each element has a partner from which it is distinguishable, and
+  that bounds its length by $N$; padding the elements to length $N+1$ is an injection into the
+  strings of length $N+1$.
+\end{proof}
+
+\section{Ladder of detectors: unit propagation, resolution, cutting planes, and refutation traces}
+\label{sec:search-ladder}
+
+This section is about backtracking over the assignments of a CNF formula, in the tree of choices
+(Section~\ref{sec:search-tree}) and with the detectors of Section~\ref{sec:search-effective-delay}.
+The bounds count nodes, evaluations or lines of a derivation; none of them is a bound on the time
+of a machine.
+
+\begin{definition}[Detectors for a CNF formula in the tree of choices]
+  \label{def:search-cnf-detectors}
+  \lean{Sagitta.Map.Tiempo.Clausula, Sagitta.Map.Tiempo.solCNF, Sagitta.Map.Tiempo.detCNF, Sagitta.Map.Tiempo.anticipa, Sagitta.Map.Tiempo.detUP}
+  \leanok
+  \uses{def:search-demoran}
+  A clause is a list of literals $(v, s)$ with $v \in \mathbb{N}$ and $s$ a Boolean. A prefix $p$
+  makes a literal $(v, s)$ true when $p[v] = s$. For a list $F$ of clauses, $\mathrm{solCNF}(F)(p)$
+  is true when every clause of $F$ has a true literal under $p$, and $\mathrm{detCNF}(F)(p)$ is true
+  when some clause of $F$ has all its variables fixed by $p$ and no true literal. For functions
+  $\mathit{sol}$ and $\mathit{det}$ and $N \in \mathbb{N}$, the detector with look-ahead
+  $\mathrm{anticipa}(\mathit{sol}, \mathit{det}, N, h)$ is $\mathit{det}$ for $h = 0$ and, for
+  $h + 1$, the function that on $p$ is true when $\mathit{det}(p)$ is true or, if $|p| < N$, when
+  $\mathrm{anticipa}(\dots, h)$ is true on both $p\,\mathrm{false}$ and $p\,\mathrm{true}$, and, if
+  $|p| \ge N$, when $\mathit{sol}(p)$ is false. The detector $\mathrm{detUP}(F, N)$ is unit
+  propagation from the partial assignment given by $p$ with at most $N$ rounds: it answers true when
+  some clause has all its literals false; otherwise, if the first unit clause (a clause with one
+  free variable whose other literals are false) exists, it fixes that literal and goes on; if
+  there is none it answers false.
+  \own{}
+  \leanfile{Sagitta/Map/PropagacionUnitaria.lean}
+\end{definition}
+
+\begin{theorem}[Look-ahead does not escape the exponential bound, for backtracking with a clause detector on the pigeonhole formula]
+  \label{thm:search-palomar-anticipa}
+  \lean{Sagitta.Map.Tiempo.palomar_anticipa_nodos}
+  \leanok
+  \uses{def:search-cnf-detectors}
+  % uses-lean: Sagitta.Map.Tiempo.nodos
+  Let $m, n, j, h \in \mathbb{N}$ with $n < m$ and $0 < n$, let $f$ be an injective function from
+  $\{1..m\} \times \{1..n\}$ to $\mathbb{N}$ and $N \in \mathbb{N}$ with $f(v) < N$ for all $v$. Let
+  $F$ be the pigeonhole formula with $m$ pigeons and $n$ holes, with its variables renamed along
+  $f$. Then $(n + 1 - j)^j < \mathrm{nodos}(\mathrm{solCNF}(F), \mathrm{anticipa}(\mathrm{solCNF}(F),
+  \mathrm{detCNF}(F), N, h), N, [\,]) \cdot 2^{h+2}$, where the subtraction is on naturals.
+  \own{}
+  \leanfile{Sagitta/Map/RaizMuertaFuerte.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The backtracking with a detector certified by decision trees of bounded size is a decision tree
+  that finds a false clause, and the lower bound for tree-like resolution refutations of the
+  pigeonhole formula of cslib-frontier gives $(n+1-j)^j < 2 \cdot \mathrm{peso}$; evaluating
+  $\mathrm{anticipa}$ at $h$ levels costs at most $2^{h+1}$ calls, which turns the weight into nodes.
+\end{proof}
+
+\begin{theorem}[Unit propagation does not escape the exponential bound, for backtracking on the pigeonhole formula]
+  \label{thm:search-palomar-detup}
+  \lean{Sagitta.Map.Tiempo.palomar_detUP_nodos}
+  \leanok
+  \uses{def:search-cnf-detectors}
+  Let $m, n, j \in \mathbb{N}$ with $n < m$ and $0 < n$, let $f$ be an injective function from
+  $\{1..m\} \times \{1..n\}$ to $\mathbb{N}$ and $N \in \mathbb{N}$ with $f(v) < N$ for all $v$. Let
+  $F$ be the pigeonhole formula with $m$ pigeons and $n$ holes, with its variables renamed along
+  $f$. Then $(n + 1 - j)^j < 2\,(\mathrm{nodos}(\mathrm{solCNF}(F), \mathrm{detUP}(F, N), N, [\,])
+  \cdot (N + 1))$, where the subtraction is on naturals.
+  \own{}
+  \leanfile{Sagitta/Map/PropagacionUnitaria.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Unit propagation from a prefix is certified by a decision tree with at most $N + 1$ leaves, each
+  propagated variable being one question; the bound of Theorem~\ref{thm:search-palomar-anticipa}
+  for certified detectors then applies.
+\end{proof}
+
+\begin{definition}[Detectors certified by resolution and by cutting planes]
+  \label{def:search-certified}
+  \lean{Sagitta.Map.Tiempo.CertificaRes, Sagitta.Map.Tiempo.formulaPal, Sagitta.Map.Tiempo.DetectorPlanosDeCorte.CertificaCP, Sagitta.Map.Tiempo.DetectorPlanosDeCorte.VarsCC}
+  \leanok
+  \uses{def:search-cnf-detectors}
+  % uses-lean: Sagitta.Map.Tiempo.Sigue
+  A detector $\mathit{det}$ is \emph{certified by resolution} for a list $F$ of clauses, a bound $N$
+  and a size function $c$ from bit strings to $\mathbb{N}$ when, for every $p$ with $|p| \le N$ and
+  $\mathit{det}(p) = \mathrm{true}$, there are a clause $C$ and a resolution derivation from $F$ of
+  at most $c(p)$ lines that contains $C$, with $C$ false under every assignment that follows $p$.
+  The formula $\mathrm{formulaPal}(n)$ is the pigeonhole formula with $n + 1$ pigeons and $n$ holes
+  whose variable $(i, j)$ is renamed to $n i + j$. The variables $\mathrm{VarsCC}(n, k, r)$ of the
+  clique--colouring formula are the edge variables of a graph on $n$ vertices, the variables of a
+  $k$-clique and the variables of an $r$-colouring, as a sum of types. A detector is
+  \emph{certified by cutting planes} for a formula $\varphi$ over variables $W$, an order $f : W \to
+  \mathbb{N}$ of the variables, a bound $N$, a size function $c$ and a bound $M$ when, for every $p$
+  with $|p| \le N$ and $\mathit{det}(p) = \mathrm{true}$, there are an inequality $I$ and a cutting-planes
+  derivation from the inequalities of $\varphi$ of at most $c(p)$ lines that contains $I$, all of
+  whose coefficients have absolute value at most $M$, with $I$ false under every assignment $\tau$
+  that agrees with $p$ in the order $f$.
+  \own{}
+  \leanfile{Sagitta/Map/DetectorResolucion.lean} and
+  \leanfile{Sagitta/Map/DetectorPlanosDeCorte.lean}
+\end{definition}
+
+\begin{theorem}[No detector certified by resolution with short derivations has logarithmic delay on the pigeonhole formulas]
+  \label{thm:search-res-sin-demora-log}
+  \lean{Sagitta.Map.Tiempo.res_sin_demora_log}
+  \leanok
+  \uses{def:search-certified}
+  For all $a, b, e, K \in \mathbb{N}$ there is an $n$ such that, with $N = n(n+1)$, for all functions
+  $\mathit{det}$ from bit strings to Booleans and $c$ from bit strings to $\mathbb{N}$: if
+  $\mathit{det}$ is certified by resolution for $\mathrm{formulaPal}(n)$, $N$ and $c$, and
+  $c(p) \le K\,(N+1)^e$ for every $p$, then $\mathit{det}$ does not have delay
+  $a \lfloor \log_2 (N+1) \rfloor + b$ with horizon $N$ for $\mathrm{solCNF}(\mathrm{formulaPal}(n))$.
+  \own{}
+  \leanfile{Sagitta/Map/DetectorResolucion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The trace of the backtracking is a resolution refutation of the pigeonhole formula, so the bound
+  of Haken of cslib-frontier gives $2^{n/24}$ lines; a logarithmic delay would bound the nodes by a
+  polynomial in $N$, and $n$ is chosen large enough to contradict this.
+\end{proof}
+
+\begin{theorem}[No detector certified by cutting planes with short derivations and small coefficients has logarithmic delay on the clique--colouring formulas]
+  \label{thm:search-cp-sin-demora-log}
+  \lean{Sagitta.Map.Tiempo.DetectorPlanosDeCorte.cp_sin_demora_log}
+  \leanok
+  \uses{def:search-certified}
+  Let $\varphi_j$ be the clique--colouring formula for $n = 2^{4j}$, $k = 2^{2j} + 1$ and
+  $r = 2^{2j}$, over the variables $\mathrm{VarsCC}(n, k, r)$, and let $S_j$ be the number of these
+  variables. For all $a, b, e, K \in \mathbb{N}$ there is a $j$ such that for every injective
+  function $f$ from $\mathrm{VarsCC}(n, k, r)$ to $\mathbb{N}$ with $f(w) < S_j$ for all $w$ and all
+  $\mathit{det}$ and $c$: if $\mathit{det}$ is certified by cutting planes for $\varphi_j$, $f$, the
+  bound $S_j$, $c$ and the coefficient bound $K (S_j + 1)^e$, and $c(p) \le K (S_j + 1)^e$ for every
+  $p$, then $\mathit{det}$ does not have delay $a \lfloor \log_2 (S_j + 1) \rfloor + b$ with horizon
+  $S_j$ for $\mathrm{solCNF}$ of $\varphi_j$ with its variables renamed along $f$.
+  \own{}
+  \leanfile{Sagitta/Map/DetectorPlanosDeCorte.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The trace of the backtracking is a semantic refutation; monotone feasible interpolation turns it
+  into a monotone circuit that separates graphs with a $k$-clique from $r$-colourable graphs, and
+  the lower bound for such circuits (Alon--Boppana, in cslib-frontier) bounds the trace from below
+  by a quantity that a logarithmic delay would contradict for $j$ large.
+\end{proof}
+
+\begin{definition}[Refutation traces and their verifier]
+  \label{def:search-traza}
+  \lean{Sagitta.Map.Tiempo.Traza, Sagitta.Map.Tiempo.Traza.tamano, Sagitta.Map.Tiempo.verifica, Sagitta.Map.Tiempo.traza, Sagitta.Map.Tiempo.tamCNF}
+  \leanok
+  \uses{def:search-demoran}
+  A trace is a binary tree whose nodes are leaves or branches with two subtrees; its size is the
+  number of its nodes. For functions $\mathit{sol}$ and $\mathit{det}$, a number $k$ of variables
+  left, a node $p$ and a trace $T$, the verifier $\mathrm{verifica}$ is defined by: a leaf with
+  $k = 0$ is accepted when $\mathit{det}(p) = \mathrm{true}$ or $\mathit{sol}(p) = \mathrm{false}$;
+  a leaf with $k + 1$ is accepted when $\mathit{det}(p) = \mathrm{true}$; a branch with $k = 0$ is
+  rejected; a branch with $k + 1$ is accepted when its two subtrees are accepted at
+  $p\,\mathrm{false}$ and $p\,\mathrm{true}$ with $k$ variables left. The trace of the run,
+  $\mathrm{traza}(\mathit{det}, k, p)$, is a leaf when $k = 0$ or $\mathit{det}(p) = \mathrm{true}$
+  and otherwise a branch whose subtrees are the traces of the run at $p\,\mathrm{false}$ and
+  $p\,\mathrm{true}$ with $k - 1$ variables left. The size $\mathrm{tamCNF}(F)$ of a list of clauses
+  is its number of clauses plus its number of literals.
+  \own{}
+  \leanfile{Sagitta/Map/RaizMuertaPruebas.lean}
+\end{definition}
+
+\begin{theorem}[A uniform sound detector of logarithmic delay gives short refutation traces, in the tree of choices]
+  \label{thm:search-refutaciones-uniformes}
+  \lean{Sagitta.Map.Tiempo.refutaciones_uniformes}
+  \leanok
+  \uses{def:search-traza}
+  Let $\mathit{det}$ assign to every list $F$ of clauses a function $\mathit{det}(F)$ from bit strings
+  to Booleans, let $N$ and $d$ assign to every $F$ a natural number, and let $a, b \in \mathbb{N}$.
+  Assume that for every $F$, $\mathit{det}(F)$ is sound with horizon $N(F)$ and has delay $d(F)$ with
+  horizon $N(F)$, both for $\mathrm{solCNF}(F)$, and that $d(F) \le a \lfloor \log_2 (\mathrm{tamCNF}(F) + 1)
+  \rfloor + b$. Then, for every $F$ and every trace $T$, if $\mathrm{verifica}$ accepts $T$ at the
+  root with $N(F)$ variables left, then the root is not live with $N(F)$ variables left for
+  $\mathrm{solCNF}(F)$. Moreover, for every $F$ whose root is not live with $N(F)$ variables left, the
+  trace of the run is accepted at the root and its size plus one is at most
+  $2^{b+1}(\mathrm{tamCNF}(F) + 1)^a$.
+  \own{}
+  \leanfile{Sagitta/Map/RaizMuertaPruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An accepted trace proves that the root is dead because a sound detector only fires on dead
+  nodes; conversely the trace of the run is accepted, and its size plus one is at most $2^{d+1}$
+  by the bound for backtracking with a delay, which is at most $2^{b+1}(\mathrm{tamCNF}(F)+1)^a$.
+\end{proof}
+
+\section{Levin's universal search}
+\label{sec:search-levin}
+
+Levin's search runs all programs at once, gives program $i$ a share $2^{-i}$ of the effort, and
+checks everything they output. The map states it twice: with the evaluator of Mathlib, where cost
+is a budget and not machine time, and with the universal machine of cslib-frontier, where cost is
+a count of steps.
+
+\begin{definition}[Universal search by rounds, with the budget of the evaluator of Mathlib]
+  \label{def:search-levin-evaln}
+  \lean{Sagitta.Map.Levin.correr, Sagitta.Map.Levin.intento, Sagitta.Map.Levin.ronda, Sagitta.Map.Levin.buscar, Sagitta.Map.Levin.costoRonda, Sagitta.Map.Levin.costoHasta}
+  \leanok
+  Let $\mathrm{correr}(i, k, x)$ be the result, an option of a natural number, of running the
+  program number $i$ of Mathlib on $x$ with budget $k$ in the bounded evaluator
+  $\mathrm{evaln}$ of Mathlib. For a verifier $V$ from pairs of naturals to Booleans, in round $t$
+  the program $i \le t$ runs with budget $2^{t-i}$ and its result is kept only if $V(x, \cdot)$ accepts
+  it. The round $t$ returns the first kept result for $i = 0, \dots, t$, and the search up to round
+  $T$, $\mathrm{buscar}(V, x, T)$, returns the first result of the rounds $0, \dots, T$. The cost of
+  round $t$ is $\sum_{i \le t} 2^{t-i}$ and $\mathrm{costoHasta}(T)$ is the sum of the costs of the
+  rounds $0, \dots, T$. The budget of $\mathrm{evaln}$ is not machine time.
+  \own{}
+  \leanfile{Sagitta/Map/Levin.lean}
+\end{definition}
+
+\begin{theorem}[Universal search finds an accepted answer within $8 \cdot 2^i k$ of budget, with the evaluator of Mathlib]
+  \label{thm:search-levin}
+  \lean{Sagitta.Map.Levin.levin}
+  \leanok
+  \uses{def:search-levin-evaln}
+  Let $V$ be a function from pairs of naturals to Booleans and $x, i, k, y$ natural numbers with
+  $1 \le k$. If $\mathrm{correr}(i, k, x) = \mathrm{some}(y)$ and $V(x, y) = \mathrm{true}$, then there
+  are $T$ and $y'$ with $\mathrm{buscar}(V, x, T) = \mathrm{some}(y')$, $V(x, y') = \mathrm{true}$ and
+  $\mathrm{costoHasta}(T) < 8 \cdot 2^i \cdot k$.
+  \source{\cite{Levin73}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Levin.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By monotonicity of the budget the program $i$ delivers its answer in round $i + \lceil \log_2 k
+  \rceil$, so the search stops by then; the budget distributed up to round $T$ is below $2^{T+2}$,
+  and $2^{\lceil \log_2 k \rceil} < 2k$.
+\end{proof}
+
+\begin{definition}[Universal search by rounds, with the universal machine of cslib-frontier]
+  \label{def:search-levin-mt}
+  \lean{Sagitta.Map.Tiempo.LevinMaquinas.correrMT, Sagitta.Map.Tiempo.LevinMaquinas.buscarMT, Sagitta.Map.Tiempo.LevinMaquinas.ResuelveMT, Sagitta.Map.Tiempo.LevinMaquinas.costoHastaMT, Sagitta.Map.Tiempo.LevinMaquinas.anchoMT}
+  \leanok
+  \uses{def:cslib-tm}
+  % uses-lean: Sagitta.Map.Tiempo.LevinMaquinas.maquina
+  Let $\mathrm{enc}$ be an injective encoding of a type $\alpha$ into bit strings and $V$ a function
+  on pairs of an element of $\alpha$ and a bit string, with Boolean values. The machine number $i$
+  is the description of cslib-frontier decoded from the word number $i$; $\mathrm{correrMT}(i, w,
+  t)$ runs it on the word $w$ for $t$ steps with the universal machine of cslib-frontier and
+  returns its output if it halted. In round $T$ the machine $i \le T$ runs for $2^{T-i}$ steps and
+  its output is kept only if $V(a, \cdot)$ accepts it; $\mathrm{buscarMT}(a, T)$ is the first kept output of
+  the rounds $0, \dots, T$. The machine $i$ solves $a$ with clock $t$, $\mathrm{ResuelveMT}$, when
+  $\mathrm{correrMT}$ returns an output $y$ with $V(a, y) = \mathrm{true}$. The accounted cost
+  $\mathrm{costoHastaMT}$ up to round $T$ charges each attempt the bound of cslib-frontier on the
+  universal machine, $(I+1)^4 (s+1)^2$ with $I$ the length of its encoded input and $s$ the clock,
+  plus a function $t_V$ of the length of the encoded pair; $\mathrm{anchoMT}(a, T)$ is $2\,\mathrm{tamHasta}(T)
+  + 6\,|\mathrm{enc}(a)| + T + 5$, with $\mathrm{tamHasta}(T)$ the largest size of a description of a
+  machine $j \le T$. The cost is an accounting, not a machine that runs the search.
+  \own{}
+  \leanfile{Sagitta/Map/LevinMaquinas.lean}
+\end{definition}
+
+\begin{theorem}[Universal search with the universal machine of cslib-frontier, with an accounted cost]
+  \label{thm:search-levin-mt}
+  \lean{Sagitta.Map.Tiempo.LevinMaquinas.levinMT}
+  \leanok
+  \uses{def:search-levin-mt}
+  Let $\mathrm{enc}$ be an injective encoding of a type $\alpha$ into bit strings, $V$ a function on
+  pairs $(a, y)$ with Boolean values and $t_V$ a monotone function from $\mathbb{N}$ to $\mathbb{N}$.
+  If the machine $i$ solves $a$ with clock $t$ (that is, $\mathrm{ResuelveMT}$ holds), then there are $T$
+  and $y$ with $\mathrm{buscarMT}(a, T) = \mathrm{some}(y)$, $V(a, y) = \mathrm{true}$,
+  $T \le i + \lceil \log_2 t \rceil$ and
+  \[
+    \mathrm{costoHastaMT}(a, T) \le 16\,\mathrm{anchoMT}(a, T)^4 \,(4^i (2t)^2)
+      + (T+1)^2\, t_V(2\,|\mathrm{enc}(a)| + 1 + 2^i \cdot 2t).
+  \]
+  \source{\cite{Levin73}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/LevinMaquinas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The machine $i$ halts within the clock $2^{T-i} \ge t$ in round $T = i + \lceil \log_2 t \rceil$,
+  so the search stops by then. The cost of each attempt is charged with the bound of the universal
+  machine and with $t_V$, which is monotone, and the sum over at most $T + 1$ rounds of at most $T + 1$
+  machines is bounded.
+\end{proof}
+
+\begin{theorem}[Universal search up to a logarithmic round is computable in polynomial time, for a verifier in polynomial time]
+  \label{thm:search-buscarmt-poly}
+  \lean{Sagitta.Map.Informacion.BuscarPolinomial.buscarMT_poly}
+  \leanok
+  \uses{def:search-levin-mt, def:polytime}
+  % uses-lean: Sagitta.Map.Informacion.BuscarPolinomial.largo
+  Let $\mathrm{enc}$ be an injective encoding of a type $\alpha$ into bit strings and $V$ a function
+  on pairs with Boolean values. Assume that $V$ is computable in polynomial time from the
+  encoding of the pair (the encoding $\mathrm{enc}$ of the first component and the bit-string
+  encoding of the second) to the encoding of Booleans. Then for every $c \in \mathbb{N}$, the
+  function $a \mapsto \mathrm{buscarMT}(a, c \lfloor \log_2 (|\mathrm{enc}(a)| + 2) \rfloor)$, with the
+  empty list when the search finds nothing, is computable in polynomial time from $\mathrm{enc}$ to the
+  bit-string encoding.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/BuscarPolinomial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The clock is capped at $(|\mathrm{enc}(a)| + 2)^c$, which does not change the search up to that
+  round; the capped search is written as a map and a find over a list, and its polynomial time
+  follows by composing the closure properties of cslib-frontier, the universal machine, and the
+  polynomial time of the number-to-word decoding.
+\end{proof}
+
+\section{Sch\"oning's random walk for $k$-SAT, counted}
+\label{sec:search-schoening}
+
+The model of this section has no probability measure on walks: a walk of $t$ steps is a function of
+a sequence of choices, and its success probability is the proportion of the $k^t$ sequences of
+choices that end in a solution. The expected cost of restarts uses the geometric distribution of
+Section~\ref{sec:search-cost-error}.
+
+\begin{definition}[The counted walk of Sch\"oning]
+  \label{def:search-schoening}
+  \lean{Sagitta.Map.Tiempo.pasoCaminata, Sagitta.Map.Tiempo.caminata, Sagitta.Map.Tiempo.aciertos, Sagitta.Map.Tiempo.proporcion, Sagitta.Map.Tiempo.exitoSchoening, Sagitta.Map.Tiempo.exitoU, Sagitta.Map.Tiempo.bloquesFinos}
+  \leanok
+  \uses{def:search-cnf-detectors, def:search-tramos}
+  % uses-lean: Sagitta.Map.Tiempo.primeraFalsa
+  % uses-lean: Sagitta.Map.Tiempo.voltear
+  An assignment of $n$ variables is a function $\alpha : \{1..n\} \to \{\mathrm{true},
+  \mathrm{false}\}$, read as a list. A step with choice $j \in \{1..k\}$ takes the first clause of $F$
+  that is false under $\alpha$ and flips the variable of its literal number $j$; if there is no
+  false clause, or the clause has fewer than $j$ literals, it does nothing. The walk of $t$ steps
+  guided by a sequence $e$ of $t$ choices applies the steps in turn. $\mathrm{aciertos}(F, k, t,
+  \alpha)$ is the number of sequences $e : \{1..t\} \to \{1..k\}$ whose walk from $\alpha$ ends in a
+  solution of $F$; $\mathrm{proporcion}(F, k, t, \alpha)$ is that number divided by $k^t$. The success
+  of an attempt, $\mathrm{exitoSchoening}(F, n, k, t)$, is the mean of $\mathrm{proporcion}$ over the
+  $2^n$ assignments, and $\mathrm{exitoU}$ is the same number as an element of $[0, 1]$. For
+  naturals $k$ and $r$, $\mathrm{bloquesFinos}(k, r) = \lfloor (r + (k - 3)) / (k - 2) \rfloor$.
+  \own{}
+  \leanfile{Sagitta/Map/Schoening.lean}
+\end{definition}
+
+\begin{theorem}[Restarting Sch\"oning's counted walk for $3$-SAT costs at most $n (3/2)^n$ steps in expectation, with the easy lemma]
+  \label{thm:search-tiempo-facil-tres}
+  \lean{Sagitta.Map.Tiempo.tiempo_facil_tres}
+  \leanok
+  \uses{def:search-schoening, def:search-tramos}
+  Let $F$ be a list of clauses with at most three literals each, and let $\beta : \{1..n\} \to
+  \{\mathrm{true}, \mathrm{false}\}$ be an assignment that is a solution of $F$. Then the integral of the
+  cost $n(x + 1)$ with respect to $\mathrm{tramos}(1, \mathrm{exitoU}(F, n, 3, n))$ is at most
+  $n\,(3/2)^n$.
+  \source{\cite{Schoening99}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Schoening.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From a start at distance $r \le n$ from $\beta$, at least $3^{t-r}$ of the $3^t$ sequences of
+  length $t$ succeed, because in the first false clause some literal is true under $\beta$ and
+  flipping it lowers the distance. Averaging over starts gives success at least $(2/3)^n$, and the
+  expected cost of restarts is $n$ divided by the success.
+\end{proof}
+
+\begin{theorem}[Restarting Sch\"oning's counted walk for $k$-SAT costs at most $(2(k-1)/k)^n$ times a polynomial in expectation]
+  \label{thm:search-tiempo-fino-general}
+  \lean{Sagitta.Map.Tiempo.tiempo_fino_general}
+  \leanok
+  \uses{def:search-schoening, def:search-tramos}
+  Let $n, k \in \mathbb{N}$ with $3 \le k$, let $F$ be a list of clauses with at most $k$ literals
+  each, and let $\beta : \{1..n\} \to \{\mathrm{true}, \mathrm{false}\}$ be a solution of $F$. Write $M =
+  \mathrm{bloquesFinos}(k, n)$. Then the integral of the cost with $d = kM$ with respect to
+  $\mathrm{tramos}(1, \mathrm{exitoU}(F, n, k, kM))$ is at most
+  \[
+    kM \cdot \bigl((k-1)^{k-3} (kM + 1)\bigr) \cdot \bigl(2(k-1)/k\bigr)^n .
+  \]
+  \source{\cite{Schoening99}; \cite{MoserScheder11}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/SchoeningGeneral.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Counting the walks that go down $(k-1)m$ times and up $m$ times in any order, with the mode of
+  the binomial distribution as the bound on the binomial coefficient, gives that from distance $r$
+  a walk of $km$ steps succeeds with proportion at least $(k-1)^{-r}/((k-1)^{k-3}(km+1))$ for
+  $m = \lceil r / (k-2) \rceil$; averaging over starts and taking the expected cost of restarts
+  gives the bound.
+\end{proof}
+
+\begin{theorem}[The lemma on walks without a polynomial factor is false]
+  \label{thm:search-schoening-falso}
+  \lean{Sagitta.Map.Tiempo.schoening_sin_factor_falso}
+  \leanok
+  \uses{def:search-schoening}
+  It is not the case that, for every list $F$ of clauses and every $\beta : \{1..8\} \to
+  \{\mathrm{true}, \mathrm{false}\}$, if every clause of $F$ has at most three literals and $\beta$ is
+  a solution of $F$, then for every $\alpha : \{1..8\} \to \{\mathrm{true}, \mathrm{false}\}$,
+  $(1/2)^{d(\alpha, \beta)} \le \mathrm{proporcion}(F, 3, 24, \alpha)$, where $d$ is the Hamming
+  distance.
+  \source{The lemma of \cite{MoserScheder11}, Lemma~1, read without a polynomial factor.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/SchoeningContraejemplo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A formula with $392$ clauses of three literals over $8$ variables, with the all-true assignment as
+  a solution, and a start at distance $1$ from it, are checked by computation in the kernel to have
+  a proportion below $1/2$ for walks of $24$ steps.
+\end{proof}
+
+\section{Alternation trading: Lipton--Viglas and Fortnow--van Melkebeek, in an abstract world of classes}
+\label{sec:search-alternation}
+
+The statements of this section are about an \emph{abstract world of classes}, and not about
+machines. The rules of the method are named hypotheses, taken from the sources and not proved
+here, and the results say what follows from them.
+
+\begin{definition}[A world of classes]
+  \label{def:search-mundo}
+  \lean{Sagitta.Map.Tiempo.IntercambioAlternancias.MundoClases, Sagitta.Map.Tiempo.IntercambioAlternancias.MundoClases.NTIME, Sagitta.Map.Tiempo.IntercambioAlternancias.MundoClases.coNTIME}
+  \leanok
+  A world of classes consists of a type of languages, a complement operation on it, and three
+  families of sets of languages indexed by real exponents: $\mathrm{DTISP}(a)$, standing for
+  deterministic time $n^a$ with memory $n^{o(1)}$, and, for $k \in \mathbb{N}$, $\Sigma_k(a)$ and
+  $\Pi_k(a)$, standing for $\Sigma_k$-time and $\Pi_k$-time $n^a$. $\mathrm{NTIME}(a)$ is
+  $\Sigma_1(a)$ and $\mathrm{coNTIME}(a)$ is $\Pi_1(a)$. Nothing is said about machines.
+  \source{\cite{LiptonViglas99}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/IntercambioAlternancias.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: the assumption on SAT in a world of classes]
+  \label{def:search-supuesto-sat}
+  \lean{Sagitta.Map.Tiempo.IntercambioAlternancias.SupuestoSAT}
+  \leanok
+  \uses{def:search-mundo}
+  For a world $M$ of classes and a real number $c$, $\mathrm{SupuestoSAT}(M, c)$ is the proposition
+  $\mathrm{NTIME}(1) \subseteq \mathrm{DTISP}(c)$.
+  \source{\cite{LiptonViglas99}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/IntercambioAlternancias.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: the rules of Lipton and Viglas in a world of classes]
+  \label{def:search-reglas-lv}
+  \lean{Sagitta.Map.Tiempo.IntercambioAlternancias.ReglasLV}
+  \leanok
+  \uses{def:search-mundo, def:search-supuesto-sat}
+  For a world $M$ of classes, $\mathrm{ReglasLV}(M)$ is the conjunction of the following
+  propositions.
+  \begin{itemize}
+    \item $L \in \Pi_k(a)$ if and only if the complement of $L$ is in $\Sigma_k(a)$, for all $k, a, L$;
+      the complement of the complement of $L$ is $L$; $\mathrm{DTISP}(a)$ is closed under complement.
+    \item If $a \le b$ then $\mathrm{DTISP}(a) \subseteq \mathrm{DTISP}(b)$ and
+      $\Sigma_k(a) \subseteq \Sigma_k(b)$.
+    \item $\mathrm{DTISP}(a) \subseteq \mathrm{NTIME}(a)$; for $1 \le k$, $\Sigma_k(a) \subseteq
+      \Sigma_{k+1}(a) \cap \Pi_{k+1}(a)$.
+    \item (Speed-up) For $2 \le a$ and $0 < \varepsilon$, $\mathrm{DTISP}(a) \subseteq \Sigma_2(a/2 +
+      \varepsilon)$.
+    \item (Padding) For every $c$ with $\mathrm{SupuestoSAT}(M, c)$ and every $a \ge 1$,
+      $\mathrm{NTIME}(a) \subseteq \mathrm{DTISP}(a c)$.
+    \item (Removing an alternation) For every $c$ with $\mathrm{SupuestoSAT}(M, c)$ and all $k \ge 2$,
+      $b \ge 1$, $\Sigma_k(b) \subseteq \Sigma_{k-1}(b c)$.
+    \item (Hierarchy) For $1 \le a$ and $a' < a$, $\mathrm{NTIME}(a) \not\subseteq \mathrm{coNTIME}(a')$.
+  \end{itemize}
+  \source{\cite{LiptonViglas99}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/IntercambioAlternancias.lean}
+\end{definition}
+
+\begin{theorem}[In a world of classes with the rules, the assumption on SAT is contradictory exactly when $c < \sqrt{2}$]
+  \label{thm:search-umbral-lv}
+  \lean{Sagitta.Map.Tiempo.IntercambioAlternancias.umbral_lipton_viglas}
+  \leanok
+  \uses{def:search-reglas-lv}
+  For every real number $c$: for every world $M$ of classes, if $\mathrm{ReglasLV}(M)$ and
+  $\mathrm{SupuestoSAT}(M, c)$ hold then a contradiction follows, if and only if $c < \sqrt{2}$.
+  \source{\cite{LiptonViglas99}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/IntercambioAlternancias.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For $c < \sqrt{2}$, padding, speed-up and removal of one alternation give
+  $\mathrm{NTIME}(2) \subseteq \mathrm{coNTIME}((c + \varepsilon) c)$ with $(c+\varepsilon)c < 2$, which
+  the hierarchy rule forbids. For $c \ge \sqrt{2}$, an explicit world, in which a language is a
+  positive real number and the classes are given by inequalities on exponents, satisfies all the
+  rules and the assumption.
+\end{proof}
+
+\begin{definition}[Hypothesis: the refined rules of Fortnow and van Melkebeek in a world of classes]
+  \label{def:search-reglas-fvm}
+  \lean{Sagitta.Map.Tiempo.IntercambioAlternancias.ReglasFvM}
+  \leanok
+  \uses{def:search-mundo, def:search-supuesto-sat}
+  For a world $M$ of classes and three families $E_A, E_C, E_D$ of sets of languages indexed by
+  pairs of real numbers, $\mathrm{ReglasFvM}(M, E_A, E_C, E_D)$ is the conjunction of the following
+  propositions.
+  \begin{itemize}
+    \item (Refined speed-up) For $0 \le x \le a$ and $0 < \eta$, $\mathrm{DTISP}(a) \subseteq E_A(x + \eta,
+      a - x)$.
+    \item (Inner phase) For $1 \le e$, if $\mathrm{DTISP}(e) \subseteq \mathrm{coNTIME}(e')$ then
+      $E_A(x, e) \subseteq E_C(x, e')$.
+    \item (Refined removal) For every $c$ with $\mathrm{SupuestoSAT}(M, c)$ and all $0 \le x$, $1 \le e$,
+      $E_C(x, e) \subseteq E_D(x, c \max(x, e))$.
+    \item (Closing) $E_D(x, e) \subseteq \mathrm{NTIME}(\max(x, e))$.
+  \end{itemize}
+  \source{\cite{FortnowVanMelkebeek00}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/IntercambioAlternancias.lean}
+\end{definition}
+
+\begin{theorem}[With the refined rules, the assumption on SAT is contradictory exactly when $c$ is below the golden ratio]
+  \label{thm:search-umbral-fvm}
+  \lean{Sagitta.Map.Tiempo.IntercambioAlternancias.umbral_fortnow_van_melkebeek}
+  \leanok
+  \uses{def:search-reglas-lv, def:search-reglas-fvm}
+  Let $\varphi$ be the golden ratio. For every real number $c$: for every world $M$ of classes and
+  all families $E_A, E_C, E_D$ of sets of languages indexed by pairs of reals, if $\mathrm{ReglasLV}(M)$,
+  $\mathrm{ReglasFvM}(M, E_A, E_C, E_D)$ and $\mathrm{SupuestoSAT}(M, c)$ hold then a contradiction
+  follows, if and only if $c < \varphi$.
+  \source{\cite{FortnowVanMelkebeek00}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/IntercambioAlternancias.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For $c < \varphi$, the refined step shows that $\mathrm{DTISP}(a) \subseteq \mathrm{NTIME}(d\,a)$
+  implies the same with $d$ replaced by $c d / (1 + d)$; iterating from $d = 1$ the sequence
+  decreases towards $c - 1$ and $c d < 1$ from some step on, which contradicts the hierarchy. For
+  $c \ge \varphi$, an explicit world satisfies all the rules and the assumption.
+\end{proof}
+
+\section{From algorithms to lower bounds: the shape of Williams's argument, as a toy in the query model}
+\label{sec:search-algorithms-bounds}
+
+The two entries of this section are an exploration. The model is the one of
+Definition~\ref{def:search-pregunta}: the algorithm only asks values of a function, and the proof is
+an adversary argument. The argument of the source reads the circuit and does not hold in this
+model; what is shared is only the form of the statement.
+
+\begin{definition}[The null function, indicators and deciding satisfiability for a class]
+  \label{def:search-sat-clase}
+  \lean{Sagitta.Map.Tiempo.AlgoritmosACotas.nula, Sagitta.Map.Tiempo.AlgoritmosACotas.indicador, Sagitta.Map.Tiempo.AlgoritmosACotas.DecideSATEn}
+  \leanok
+  \uses{def:search-pregunta}
+  Over a type $\alpha$, the null function is the function that is false on every point, and the
+  indicator of $x$ is the function that is true only at $x$. For a set $C$ of functions from
+  $\alpha$ to Booleans and a question tree $A$ over $\alpha$, $A$ \emph{decides satisfiability on}
+  $C$ when, for every $f \in C$, $A$ answers true on $f$ if and only if $f(x) = \mathrm{true}$ for some
+  $x$.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/AlgoritmosACotas.lean}
+\end{definition}
+
+\begin{theorem}[A tree that decides satisfiability for a class with fewer questions than points excludes an indicator, in the query model]
+  \label{thm:search-algoritmo-implica-cota}
+  \lean{Sagitta.Map.Tiempo.AlgoritmosACotas.algoritmo_implica_cota}
+  \leanok
+  \uses{def:search-sat-clase}
+  Let $\alpha$ be a finite type with decidable equality, $C$ a set of functions from $\alpha$ to
+  Booleans and $A$ a question tree over $\alpha$ that decides satisfiability on $C$. If the null
+  function is in $C$ and the cost of $A$ on the null function is less than $|\alpha|$, then there is
+  an $x$ such that the indicator of $x$ is not in $C$.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/AlgoritmosACotas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Fewer than $|\alpha|$ questions leave some $x$ unasked on the null function. The indicator of $x$
+  agrees with the null function on every option asked, so $A$ answers false on it; but it is
+  satisfiable, so it cannot be in $C$.
+\end{proof}
+
+\begin{theorem}[If a class contains the null function and all indicators, a tree deciding satisfiability on it asks every point, in the query model]
+  \label{thm:search-contrapositiva}
+  \lean{Sagitta.Map.Tiempo.AlgoritmosACotas.contrapositiva}
+  \leanok
+  \uses{def:search-sat-clase, thm:search-algoritmo-implica-cota}
+  Let $\alpha$ be a finite type with decidable equality and $C$ a set of functions from $\alpha$ to
+  Booleans that contains the null function and the indicator of every $x$. If a question tree $A$
+  decides satisfiability on $C$, then $|\alpha|$ is at most the cost of $A$ on the null function.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/AlgoritmosACotas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By contradiction: with fewer questions, Theorem~\ref{thm:search-algoritmo-implica-cota} gives an
+  indicator outside $C$, against the assumption.
+\end{proof}
+
+\section{Bootstraps: building a solver is solving, certifying one is impossible}
+\label{sec:search-bootstraps}
+
+The measures of this section are the budget of the bounded evaluator of Mathlib and the rounds of the
+universal search of Definition~\ref{def:search-levin-evaln}; none is machine time.
+
+\begin{definition}[Programs that solve the search for satisfying assignments]
+  \label{def:search-resuelve-sat}
+  \lean{Sagitta.Map.Tiempo.Bootstrap.ResuelveSAT, Sagitta.Map.Tiempo.Bootstrap.ResuelveBusquedaSAT, Sagitta.Map.Tiempo.UniversoCerrado.Proceso, Sagitta.Map.Tiempo.UniversoCerrado.Correcto, Sagitta.Map.Tiempo.KtSAT.uSAT, Sagitta.Map.Tiempo.KtSAT.vSAT, Sagitta.Map.Tiempo.KtSAT.Satisfacible, Sagitta.Map.Tiempo.CorteRacional.costoLevin, Sagitta.Map.Tiempo.AceleracionBlum.Computa, Sagitta.Map.Tiempo.AceleracionBlum.costo}
+  \leanok
+  \uses{def:search-levin-evaln}
+  A formula is a list of clauses, as in Definition~\ref{def:search-cnf-detectors}, and it is encoded
+  as a natural number by the encoding of Mathlib; $\mathrm{vSAT}(x, y)$ decodes $x$ as a formula
+  and $y$ as a list of Booleans, read as an assignment (false outside the list), and returns
+  whether the assignment satisfies the formula, and false if either does not decode. A partial
+  function $f$ on the naturals \emph{solves the search for satisfying assignments} when, for every
+  satisfiable formula $F$, $f$ has a value $y$ at the encoding of $F$ with $\mathrm{vSAT}(\mathrm{enc}(F), y)$
+  true; a code $c$ does so when $\mathrm{eval}(c)$ does. A closed process is a pair $(i, k)$ of a program
+  number and a budget; it is correct for the universe of $F$ when running program $i$ with budget $k$
+  on $\mathrm{enc}(F)$ gives a $y$ accepted by $\mathrm{vSAT}$. $\mathrm{costoLevin}(V, x)$ is the budget
+  distributed by the universal search up to the first round that returns an answer, and $0$ if none
+  does. A code $c$ computes a total function $f$ when $\mathrm{eval}(c)(n) = f(n)$ for all $n$, and
+  its cost $\mathrm{costo}(c, n)$ is the least budget with which the evaluator of Mathlib halts on $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Bootstrap.lean}
+\end{definition}
+
+\begin{theorem}[One program builds and solves: its cost is below $8 \cdot 2^i k$ against every correct process, in the closed universe]
+  \label{thm:search-construir-es-resolver}
+  \lean{Sagitta.Map.Tiempo.Bootstrap.construir_es_resolver}
+  \leanok
+  \uses{def:search-resuelve-sat, thm:search-levin}
+  There is a code $L$ such that: $L$ solves the search for satisfying assignments; every value
+  $y$ of $\mathrm{eval}(L)$ at $x$ has $\mathrm{vSAT}(x, y) = \mathrm{true}$; for every satisfiable formula
+  $F$ and every closed process $p = (i, k)$ that is correct for the universe of $F$,
+  $\mathrm{costoLevin}(\mathrm{vSAT}, \mathrm{enc}(F)) < 8 \cdot 2^{i} \cdot k$; and for every satisfiable
+  $F$, every code $c$ and every value $y$ of $\mathrm{eval}(c)$ at $\mathrm{enc}(F)$ with
+  $\mathrm{vSAT}(\mathrm{enc}(F), y) = \mathrm{true}$,
+  $\mathrm{costoLevin}(\mathrm{vSAT}, \mathrm{enc}(F)) < 8 \cdot 2^{\mathrm{encodeCode}(c)} \cdot \mathrm{costo}(c, \mathrm{enc}(F))$.
+  \own{}
+  \leanfile{Sagitta/Map/Bootstrap.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take the code of the universal search. Its answers are accepted by the verifier by
+  construction, and the cost against a process or a code is the bound of the universal search for a
+  program with a given budget.
+\end{proof}
+
+\begin{theorem}[No program decides, from a code, whether the code solves the search for satisfying assignments]
+  \label{thm:search-no-certificador}
+  \lean{Sagitta.Map.Tiempo.Bootstrap.no_hay_certificador}
+  \leanok
+  \uses{def:search-resuelve-sat, thm:search-construir-es-resolver}
+  The predicate $\mathrm{ResuelveBusquedaSAT}$ on codes is not computable.
+  \own{}
+  \leanfile{Sagitta/Map/Bootstrap.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Rice's theorem of Mathlib applied to the set of partial functions that solve the search: it
+  contains $\mathrm{eval}(L)$ for the code $L$ of Theorem~\ref{thm:search-construir-es-resolver}, so it
+  would contain the nowhere-defined function, which solves nothing.
+\end{proof}
+
+\begin{theorem}[Four bootstraps]
+  \label{thm:search-cuatro-bootstraps}
+  \lean{Sagitta.Map.Tiempo.Bootstrap.cuatro_bootstraps}
+  \leanok
+  \uses{def:search-resuelve-sat, thm:search-no-certificador, thm:search-umbral-lv, thm:search-construir-es-resolver}
+  % uses-lean: Sagitta.Map.Tiempo.EsO
+  The conjunction of the following five statements holds.
+  \begin{enumerate}
+    \item There is a code that solves the search for satisfying assignments.
+    \item The predicate $\mathrm{ResuelveBusquedaSAT}$ on codes is not computable.
+    \item For every real number $c$: for every world of classes $M$, if $\mathrm{ReglasLV}(M)$ and
+      $\mathrm{SupuestoSAT}(M, c)$ hold then a contradiction follows, if and only if $c < \sqrt{2}$.
+    \item There is a computable function $f$ such that there is no code $i$ that computes $f$ and
+      is such that, for every code $j$ that computes $f$, $\mathrm{costo}(i, \cdot)$ is $O(\mathrm{costo}(j, \cdot))$,
+      where $g = O(h)$ means that there are $C$ and $N$ with $g(n) \le C\,h(n)$ for $n \ge N$.
+    \item There is a code $L$ that solves the search for satisfying assignments such that, for every
+      code $c$ that solves it and every satisfiable formula $F$,
+      $\mathrm{costoLevin}(\mathrm{vSAT}, \mathrm{enc}(F)) < 8 \cdot 2^{\mathrm{encodeCode}(c)} \cdot \mathrm{costo}(c, \mathrm{enc}(F))$.
+  \end{enumerate}
+  \own{}
+  \leanfile{Sagitta/Map/Bootstrap.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The five parts are, in order, a corollary of Theorem~\ref{thm:search-construir-es-resolver},
+  Theorem~\ref{thm:search-no-certificador}, Theorem~\ref{thm:search-umbral-lv}, the speed-up theorem of
+  Blum already proved in the project, and the cost bound of Theorem~\ref{thm:search-construir-es-resolver} read
+  for codes that solve the search.
+\end{proof}
