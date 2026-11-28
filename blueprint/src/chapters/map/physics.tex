@@ -4,4 +4,439 @@
 \chapter{Physics: the Ising model}
 \label{chap:physics}
 
-This chapter is not written yet.
+This chapter collects the statements of the map that read a computational problem as a physical
+system. They are of two kinds. Some are about the Ising model without external field: its
+ground-state decision problem is $\cNP$-complete, the energy of a configuration is the weight of a
+cut up to an affine change, and a structure-preserving bijection carries ground states,
+stabilizers and orbit counts from one system to another. The others are about finite systems:
+the first and second moments and the annealed bound for random $3$-SAT, the sum over programs of
+a finite model as a Gibbs mass, and the recurrence of an injective map on a finite set. Each
+section says in which model its statements live; none of them is about a physical system in the
+continuum.
+
+\section{The Ising ground-state problem}
+\label{sec:physics-ising-problem}
+
+An instance is a list of couplings between sites and a threshold; the question is whether some
+configuration of spins has energy at most the threshold. The statements of this section are about
+Turing-machine complexity classes, through the definitions of the classes in Part~I.
+
+\begin{definition}[The problem $\ISING$: ground-state energy at most a threshold]
+  \label{def:physics-ising-problem}
+  \lean{Sagitta.Map.Informacion.Hamiltoniano.Acople, Sagitta.Map.Informacion.Hamiltoniano.IsingInstancia, Sagitta.Map.Informacion.Hamiltoniano.espin, Sagitta.Map.Informacion.Hamiltoniano.energia, Sagitta.Map.Informacion.Hamiltoniano.ISING, Sagitta.Map.Informacion.Hamiltoniano.encIsing}
+  \leanok
+  A \emph{coupling} is a triple $(u, v, J)$ with $u, v \in \mathbb{N}$ (sites) and
+  $J \in \mathbb{Z}$. An instance is a list $E$ of couplings together with a threshold
+  $t \in \mathbb{Z}$. A configuration is a map from sites to $\{\mathrm{true}, \mathrm{false}\}$; the
+  spin of a site is $+1$ on $\mathrm{true}$ and $-1$ on $\mathrm{false}$. The energy of a
+  configuration $\sigma$ is
+  \[
+    H_E(\sigma) = -\sum_{(u,v,J) \in E} J\, \sigma_u \sigma_v ,
+  \]
+  with no external field. $\ISING$ is the set of instances for which some finite set $S$ of sites,
+  with $\sigma_v = +1$ exactly when $v \in S$, has $H_E(\sigma) \le t$. The encoding of an instance
+  writes the list of couplings, each as $(u, v, J)$ in binary (the integer with sign and magnitude),
+  followed by $t$ in binary.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Hamiltoniano.lean}
+\end{definition}
+
+\begin{theorem}[$\ISING$ is $\cNP$-complete, for the encoding of lists of couplings]
+  \label{thm:physics-ising-npcomplete}
+  \lean{Sagitta.Map.Informacion.Hamiltoniano.ISING_npComplete}
+  \leanok
+  \uses{def:physics-ising-problem, thm:maxcut, def:NP, def:reduction}
+  The problem $\ISING$ of Definition~\ref{def:physics-ising-problem} is $\cNP$-complete for the
+  encoding of that definition (in the sense of the Turing-machine definitions of
+  Part~I).
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Hamiltoniano.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Membership in $\cNP$ takes the set $S$ as certificate and computes the energy through the
+  identity $H = -\sum J + 2\,\mathrm{cut}_J$ in polynomial time. Hardness composes the
+  completeness of $\MAXCUT$ (Theorem~\ref{thm:maxcut}) with the reduction that sends a weight $w_e$
+  to the coupling $J_e = -w_e$ and the cut bound $k$ to the energy bound $-\sum J - 2k$.
+\end{proof}
+
+\begin{theorem}[$\cP = \cNP$ if and only if $\ISING \in \cP$]
+  \label{thm:physics-p-np-ising}
+  \lean{Sagitta.Map.Informacion.Hamiltoniano.P_eq_NP_iff_ISING_mem_P}
+  \leanok
+  \uses{thm:physics-ising-npcomplete, def:P, def:NP}
+  The following are equivalent. First, for every type $\alpha$ and every injective encoding
+  $\enc : \alpha \to \{0,1\}^{*}$, the class $\cP$ for $\enc$ equals the class $\cNP$ for
+  $\enc$. Second, $\ISING$ is in the class $\cP$ for the encoding of
+  Definition~\ref{def:physics-ising-problem}.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Hamiltoniano.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From the first to the second, rewrite the class $\cP$ of the encoding of $\ISING$ as $\cNP$ and
+  use $\ISING \in \cNP$. From the second to the first, an $\cNP$-complete problem in $\cP$ gives
+  $\cP = \cNP$ for every encoding, by Theorem~\ref{thm:physics-ising-npcomplete}.
+\end{proof}
+
+\section{Transfer along an isomorphism of structures}
+\label{sec:physics-transfer}
+
+A \emph{structure} is a group acting on a set of states together with a real energy on the states.
+An isomorphism of structures carries what is defined from the group action and the energy.
+The statements below are about this abstract structure and about the Ising model on $n$ sites with
+a real coupling matrix; they contain no machine and no measure of cost.
+
+\begin{definition}[Isomorphism of structures: a group acting on states with an energy]
+  \label{def:physics-iso-estructura}
+  \lean{Sagitta.Map.Informacion.Transferencia.IsoEstructura, Sagitta.Map.Informacion.Transferencia.EsMinimo}
+  \leanok
+  Let $G$ act on $X$ with energy $E : X \to \mathbb{R}$, and $G'$ act on $X'$ with energy
+  $E' : X' \to \mathbb{R}$. An \emph{isomorphism of structures} consists of a bijection
+  $\varphi : X \to X'$, a group isomorphism $h : G \to G'$ with $\varphi(g \cdot x) = h(g) \cdot
+  \varphi(x)$ for all $g, x$, and real numbers $a > 0$ and $b$ with $E'(\varphi(x)) = a\,E(x) + b$
+  for all $x$. A state $x$ is a \emph{minimum} of $E$ when $E(x) \le E(y)$ for every $y \in X$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Transferencia.lean}
+\end{definition}
+
+\begin{definition}[The Ising energy and the cut weight, on $n$ sites with a coupling matrix]
+  \label{def:physics-ising-matrix}
+  \lean{Sagitta.Map.Informacion.Transferencia.ising, Sagitta.Map.Informacion.Transferencia.pesoTotal, Sagitta.Map.Informacion.Transferencia.Corte, Sagitta.Map.Informacion.Transferencia.corte, Sagitta.Map.Informacion.Transferencia.ladoMas}
+  \leanok
+  Let $J : \{1..n\} \times \{1..n\} \to \mathbb{R}$ and let a spin configuration be
+  $\sigma : \{1..n\} \to \{+1, -1\}$ (the units of $\mathbb{Z}$). The energy is
+  $H_J(\sigma) = -\sum_{i<j} J_{ij}\,\sigma_i\sigma_j$ and the total weight is
+  $W(J) = \sum_{i<j} J_{ij}$. A cut is a subset $S$ of the sites; its weight is
+  $\mathrm{cut}_J(S) = \sum_{i<j,\ i \text{ and } j \text{ on different sides of } S} J_{ij}$. The
+  side $\mathrm{ladoMas}(\sigma)$ of a configuration is the set of sites with $\sigma_i = +1$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Transferencia.lean}
+\end{definition}
+
+\begin{theorem}[Ising energy and cut weight, on $n$ sites with a real coupling matrix]
+  \label{thm:physics-ising-eq-corte}
+  \lean{Sagitta.Map.Informacion.Transferencia.ising_eq_corte}
+  \leanok
+  \uses{def:physics-ising-matrix}
+  For every $n$, every $J : \{1..n\} \times \{1..n\} \to \mathbb{R}$ and every configuration
+  $\sigma : \{1..n\} \to \{+1, -1\}$,
+  \[
+    H_J(\sigma) = -W(J) + 2\,\mathrm{cut}_J(\mathrm{ladoMas}(\sigma)).
+  \]
+  No symmetry of $J$ and no condition on its diagonal is assumed, because the sums run over the
+  pairs $i < j$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Transferencia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Each pair contributes $J_{ij}\sigma_i\sigma_j = J_{ij} - 2\,[\sigma_i \ne \sigma_j]\,J_{ij}$,
+  checked on the four sign cases; sum over the pairs.
+\end{proof}
+
+\begin{theorem}[Isomorphisms of structures carry the set of minima]
+  \label{thm:physics-image-minimos}
+  \lean{Sagitta.Map.Informacion.Transferencia.IsoEstructura.image_minimos}
+  \leanok
+  \uses{def:physics-iso-estructura}
+  Let $I$ be an isomorphism of structures between $(G \curvearrowright X, E)$ and
+  $(G' \curvearrowright X', E')$, with bijection $\varphi$. Then the image under $\varphi$ of the
+  set of minima of $E$ is the set of minima of $E'$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Transferencia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A state $x$ is a minimum of $E$ if and only if $\varphi(x)$ is a minimum of $E'$: apply
+  $E'(\varphi(y)) = a\,E(y) + b$ with $a > 0$ and use that $\varphi$ is onto. The two inclusions
+  follow, taking $\varphi^{-1}$ for the one that needs a preimage.
+\end{proof}
+
+\begin{theorem}[Isomorphisms of structures carry stabilizers]
+  \label{thm:physics-map-stabilizer}
+  \lean{Sagitta.Map.Informacion.Transferencia.IsoEstructura.map_stabilizer}
+  \leanok
+  \uses{def:physics-iso-estructura}
+  Let $I$ be an isomorphism of structures between $(G \curvearrowright X, E)$ and
+  $(G' \curvearrowright X', E')$, with bijection $\varphi$ and group isomorphism $h$. For every
+  $x \in X$, the image under $h$ of the stabilizer of $x$ in $G$ is the stabilizer of $\varphi(x)$
+  in $G'$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Transferencia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By equivariance, $g$ fixes $x$ if and only if $h(g)$ fixes $\varphi(x)$, using that $\varphi$ is
+  injective. For the inclusion from right to left, a stabilizing element of $G'$ is the image of
+  its preimage under $h$.
+\end{proof}
+
+\begin{theorem}[Orbit counts of $\{\pm 1\}$ on truth assignments and on spin configurations agree]
+  \label{thm:physics-orbitas-sat-espin}
+  \lean{Sagitta.Map.Informacion.Transferencia.orbitas_sat_espin}
+  \leanok
+  \uses{def:physics-iso-estructura}
+  Let $n \in \mathbb{N}$ and let the group $\mathbb{Z}^{\times} = \{+1, -1\}$ act on the set of maps
+  $\{1..n\} \to \{\mathrm{true}, \mathrm{false}\}$ by negating every value when the element is $-1$,
+  and on the set of maps $\{1..n\} \to \{+1, -1\}$ by multiplying every value. Then the two
+  actions have the same number of orbits.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Transferencia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The bijection from truth values to spins, coordinate by coordinate, together with the identity on
+  $\{+1,-1\}$, is an isomorphism of structures for the empty formula; the orbit counts of
+  an isomorphism of structures agree, by a bijection between the two quotients.
+\end{proof}
+
+\section{Random 3-SAT as a finite probability space}
+\label{sec:physics-random-sat}
+
+The statements of this section are about finite probability: a finite set $\Omega$ with weights
+that sum to $1$, no measure theory. A random formula is a uniform choice of $m$ clauses, each a
+triple of variables and three signs, over a finite type of triples.
+
+\begin{definition}[A finite probability law, and the number of solutions of a clause list]
+  \label{def:physics-ley}
+  \lean{Sagitta.Map.FisicaEstadistica.Ley, Sagitta.Map.FisicaEstadistica.Ley.esp, Sagitta.Map.FisicaEstadistica.Ley.prob, Sagitta.Map.FisicaEstadistica.uniforme, Sagitta.Map.FisicaEstadistica.Clausula, Sagitta.Map.FisicaEstadistica.Satisface, Sagitta.Map.FisicaEstadistica.numSol, Sagitta.Map.FisicaEstadistica.probSat}
+  \leanok
+  A \emph{law} $P$ on a finite type $\Omega$ is a family of weights $w(\omega) \ge 0$ with
+  $\sum_\omega w(\omega) = 1$; $E_P[X] = \sum_\omega w(\omega) X(\omega)$ and
+  $P(A) = \sum_{\omega \in A} w(\omega)$. The uniform law gives every point the weight
+  $1/|\Omega|$. Let $V$ be a finite type with a map $\mathrm{var} : V \to \{1,2,3\} \to \{1..n\}$. A
+  \emph{clause} is a pair $(v, s)$ with $v \in V$ and $s : \{1,2,3\} \to \{\mathrm{true},
+  \mathrm{false}\}$; an assignment $x : \{1..n\} \to \{\mathrm{true}, \mathrm{false}\}$
+  \emph{satisfies} it when $x(\mathrm{var}(v)(i)) = s(i)$ for some $i$. For a formula
+  $F : \{1..m\} \to \text{clauses}$, $\mathrm{numSol}(F)$ is the number of assignments that satisfy
+  every clause of $F$. The probability $\mathrm{probSat}$ is the probability, under the uniform law
+  on $\{1..m\} \to \text{clauses}$, that $\mathrm{numSol}(F) \ge 1$, and is $0$ when $V$ is empty.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/FisicaEstadistica.lean}
+\end{definition}
+
+\begin{theorem}[First moment of the number of solutions, for $m$ independent clauses over a finite type of triples]
+  \label{thm:physics-esperanza-soluciones}
+  \lean{Sagitta.Map.FisicaEstadistica.esperanza_soluciones}
+  \leanok
+  \uses{def:physics-ley}
+  Let $V$ be a finite nonempty type, $\mathrm{var} : V \to \{1,2,3\} \to \{1..n\}$ and
+  $m \in \mathbb{N}$. Under the uniform law on formulas of $m$ clauses, the expectation of the
+  number of solutions is
+  \[
+    E[\mathrm{numSol}] = 2^{n}\,(7/8)^{m}.
+  \]
+  The triple of variables of a clause need not have distinct entries. Independence of the clauses
+  is the product structure of the uniform law on $\{1..m\} \to \text{clauses}$.
+  \source{\cite{FrancoPaull83}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/FisicaEstadistica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For a fixed assignment, exactly one of the $8$ sign patterns falsifies a clause, so $7/8$ of the
+  clauses are satisfied. Write the number of solutions as a sum over assignments of a product over
+  the $m$ clauses, exchange the sums, and factor the product.
+\end{proof}
+
+\begin{theorem}[The probability of satisfiability tends to $0$ above the first-moment threshold, for any finite types of triples]
+  \label{thm:physics-prob-sat-tiende-cero}
+  \lean{Sagitta.Map.FisicaEstadistica.prob_sat_tiende_cero}
+  \leanok
+  \uses{def:physics-ley, thm:physics-esperanza-soluciones}
+  For each $n$ let $V_n$ be a finite type with $\mathrm{var}_n : V_n \to \{1,2,3\} \to \{1..n\}$,
+  and assume that $V_n$ is nonempty for all large $n$. Let $c$ be a real number with
+  $c > \ln 2 / \ln (8/7)$, and let $m : \mathbb{N} \to \mathbb{N}$ satisfy $c\,n \le m(n)$ for
+  every $n$. Then $\mathrm{probSat}(V_n, \mathrm{var}_n, m(n))$ tends to $0$ as $n \to \infty$.
+  \source{\cite{FrancoPaull83}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/FisicaEstadistica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Markov's inequality for the number of solutions and Theorem~\ref{thm:physics-esperanza-soluciones}
+  bound the probability by $(2\,(7/8)^c)^n$. The ratio $2\,(7/8)^c$ is below $1$ exactly because
+  $c > \ln 2 / \ln (8/7)$, so the bound tends to $0$ and the squeeze gives the limit.
+\end{proof}
+
+\begin{theorem}[Annealed entropy bounds quenched entropy, on a finite probability space]
+  \label{thm:physics-templada-recocida}
+  \lean{Sagitta.Map.FisicaEstadistica.templada_le_recocida}
+  \leanok
+  \uses{def:physics-ley}
+  Let $P$ be a law on a finite type $\Omega$ and $Z : \Omega \to \mathbb{R}$ with $Z(\omega) > 0$
+  for every $\omega$. Then $E_P[\log Z] \le \log E_P[Z]$.
+  \source{\cite{MezardParisiZecchina02}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/FisicaEstadistica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Jensen's inequality for the concave function $\log$ on the positive reals, applied to the
+  weights of the law.
+\end{proof}
+
+\begin{theorem}[Second-moment lower bound for the probability of being positive, on a finite probability space]
+  \label{thm:physics-paley-zygmund}
+  \lean{Sagitta.Map.FisicaEstadistica.paley_zygmund}
+  \leanok
+  \uses{def:physics-ley}
+  Let $P$ be a law on a finite type $\Omega$ and $Z : \Omega \to \mathbb{R}$ with $Z(\omega) \ge 0$
+  for every $\omega$ and $E_P[Z] > 0$. Then
+  \[
+    \frac{E_P[Z]^2}{E_P[Z^2]} \le P(Z > 0).
+  \]
+  \source{\cite{PaleyZygmund32}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/FisicaEstadistica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The Cauchy--Schwarz inequality in the form $(\sum r_i)^2 \le (\sum f_i)(\sum g_i)$ when
+  $r_i^2 \le f_i g_i$, with $r_i = w_i Z_i$, $f_i = w_i Z_i^2$ and $g_i = w_i [Z_i > 0]$, gives
+  $E[Z]^2 \le E[Z^2]\,P(Z>0)$. Then $E[Z^2] > 0$ and the claim is a division.
+\end{proof}
+
+\begin{theorem}[Values at the integers do not fix the derivative of the moment at $0$]
+  \label{thm:physics-enteros-no-bastan}
+  \lean{Sagitta.Map.FisicaEstadistica.enteros_no_bastan}
+  \leanok
+  \uses{def:physics-ley}
+  Let $P$ be a law on a finite type $\Omega$ and $Z : \Omega \to \mathbb{R}$ with $Z(\omega) > 0$
+  for every $\omega$, and let $M(r) = \sum_\omega w(\omega) Z(\omega)^r$ for real $r$. Then, for
+  every natural number $k$, $M(k) + \sin(\pi k) = M(k)$; and the function
+  $r \mapsto M(r) + \sin(\pi r)$ has derivative $E_P[\log Z] + \pi$ at $0$.
+  \source{\cite{MezardParisiZecchina02}, for the replica method that this statement shows cannot be
+  justified by integer values alone.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/FisicaEstadistica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  $\sin(\pi k) = 0$ for natural $k$. The derivative of $M$ at $0$ is $E_P[\log Z]$, by
+  differentiating each term $w(\omega) Z(\omega)^r$, and the derivative of $\sin(\pi r)$ at $0$ is
+  $\pi$; add them.
+\end{proof}
+
+\section{The distribution of a finite model of programs as a Gibbs mass}
+\label{sec:physics-solomonoff}
+
+The model is a finite set $P$ of programs with a length $\ell : P \to \mathbb{N}$ and a map
+$U : P \to X$ to outputs. It is not a universal machine; the sum below is over a finite set.
+
+\begin{definition}[Partition function, Gibbs mass, mass of an output and free energy, in a finite model of programs]
+  \label{def:physics-gibbs}
+  \lean{Sagitta.Map.Informacion.Repeticiones.Z, Sagitta.Map.Informacion.Repeticiones.masaGibbs, Sagitta.Map.Informacion.Repeticiones.m, Sagitta.Map.Informacion.Repeticiones.energiaLibre}
+  \leanok
+  Let $P$ be a finite type, $\ell : P \to \mathbb{N}$, $U : P \to X$ with $X$ having decidable
+  equality. For a real $\beta$ and a finite subset $S$ of $P$, the Gibbs mass is
+  $\sum_{p \in S} e^{-\beta\,\ell(p)}$, and the partition function $Z(\beta)$ is the Gibbs mass of
+  all of $P$. The mass of an output $x$ is $m(x) = \sum_{U(p) = x} (1/2)^{\ell(p)}$. The free energy
+  of $S$ at $\beta$ is $-\ln(\text{Gibbs mass of } S)/\beta$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{definition}
+
+\begin{theorem}[The mass of an output is a Gibbs mass at $\beta = \ln 2$, in a finite model of programs]
+  \label{thm:physics-solomonoff-gibbs}
+  \lean{Sagitta.Map.Informacion.Repeticiones.solomonoff_es_gibbs}
+  \leanok
+  \uses{def:physics-gibbs}
+  Let $P$ be a finite type, $\ell : P \to \mathbb{N}$, $U : P \to X$ and $x \in X$. Then $m(x)$ is
+  the Gibbs mass at $\beta = \ln 2$ of the set $\{p \mid U(p) = x\}$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Termwise, $e^{-\ln 2 \cdot n} = (1/2)^n$.
+\end{proof}
+
+\begin{theorem}[The free energy at $\beta = \ln 2$ is $-\log_2 m(x)$, in a finite model of programs]
+  \label{thm:physics-energia-libre}
+  \lean{Sagitta.Map.Informacion.Repeticiones.energia_libre_eq}
+  \leanok
+  \uses{def:physics-gibbs, thm:physics-solomonoff-gibbs}
+  With the data of Definition~\ref{def:physics-gibbs} and $x \in X$, the free energy at
+  $\beta = \ln 2$ of the set $\{p \mid U(p) = x\}$ equals $-\log_2 m(x)$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Replace the Gibbs mass by $m(x)$ with Theorem~\ref{thm:physics-solomonoff-gibbs}, and unfold
+  $\log_2$ as $\ln / \ln 2$.
+\end{proof}
+
+\begin{theorem}[Kraft: the partition function at $\beta = \ln 2$ is at most $1$ for prefix-free codes, in a finite model of programs]
+  \label{thm:physics-kraft-z}
+  \lean{Sagitta.Map.Informacion.Repeticiones.kraft_Z}
+  \leanok
+  \uses{def:physics-gibbs}
+  Let $P$ be a finite type, $\ell : P \to \mathbb{N}$ and $\mathrm{codigo} : P \to \{0,1\}^{*}$ an
+  injective map whose range is a prefix-free set, with $\ell(p)$ the length of
+  $\mathrm{codigo}(p)$ for every $p$. Then $Z(\ln 2) \le 1$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  $Z(\ln 2) = \sum_p (1/2)^{\ell(p)}$, and by injectivity this is the Kraft sum over the finite
+  prefix-free set of codewords, which is at most $1$ by the Kraft inequality in Mathlib.
+\end{proof}
+
+\section{Poincar\'e recurrence on a finite set}
+\label{sec:physics-poincare}
+
+The statements are about an injective map of a finite set into itself, iterated; there is no
+measure and no phase space.
+
+\begin{theorem}[Recurrence of an injective map on a finite set, within the cardinality]
+  \label{thm:physics-poincare}
+  \lean{Sagitta.Map.Informacion.Repeticiones.poincare}
+  \leanok
+  Let $\sigma$ be a finite type, $f : \sigma \to \sigma$ injective and $x \in \sigma$. Then there
+  is $n$ with $0 < n$, $n \le |\sigma|$ and $f^{n}(x) = x$.
+  \source{\cite{Poincare1890}, for the recurrence theorem; this is its discrete form.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The pigeonhole principle gives $i < j \le |\sigma|$ with $f^{i}(x) = f^{j}(x)$. Since
+  $f^{i}$ is injective, $f^{i}(f^{j-i}(x)) = f^{i}(x)$ gives $f^{j-i}(x) = x$.
+\end{proof}
+
+\begin{theorem}[An injective map on a finite set returns infinitely often]
+  \label{thm:physics-poincare-infinitas}
+  \lean{Sagitta.Map.Informacion.Repeticiones.poincare_infinitas}
+  \leanok
+  \uses{thm:physics-poincare}
+  Let $\sigma$ be a finite type, $f : \sigma \to \sigma$ injective, $x \in \sigma$ and
+  $N \in \mathbb{N}$. Then there is $n \ge N$ with $f^{n}(x) = x$.
+  \source{\cite{Poincare1890}, for the recurrence theorem; this is its discrete form.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take a return time $n > 0$ from Theorem~\ref{thm:physics-poincare}. Then $x$ is periodic of period
+  $n$, so it returns at $nN$, and $nN \ge N$.
+\end{proof}
