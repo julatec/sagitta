@@ -4,4 +4,474 @@
 \chapter{Scales, fractals and dimension}
 \label{chap:scales}
 
-This chapter is not written yet.
+This chapter has two groups of statements. The first is about growth rates of functions
+$\mathbb{N} \to \mathbb{N}$: the layers $\mathrm{Capa}\ k$ of a fast-growing hierarchy, a skeleton of
+the layer $\mathrm{Capa}\ 2$ indexed by pairs of natural numbers, and one function from the ordinals up to
+$\omega\cdot\omega+\omega$ to classes of functions that grows strictly and takes the classes
+$\mathsf{Pol}$ and $\mathsf{Exp}$ as values at limit ordinals. The second is about the
+self-reduction of $\SAT$ for CNF formulas: $\SAT$ as the fixed point of an operator, the tree of partial
+assignments with its counts of live prefixes, the pruning of that tree, and a hypothesis of measure in an
+abstract model of negligible classes. Nothing here is about Turing machines except where the statement names
+the classes $\cP$ and $\cNP$ of Part~I.
+
+\section{A finer index for the onion of growth rates}
+\label{sec:scales-cebolla}
+
+The statements of this section are about sets of functions $\mathbb{N}\to\mathbb{N}$ ordered by
+inclusion; no machine or cost model is involved. They are indexed first by natural numbers and then by
+ordinals below $\omega\cdot\omega+\omega$.
+
+\begin{definition}[Layers of the fast-growing hierarchy]
+  \label{def:scales-capa}
+  \lean{Sagitta.Map.Tiempo.F, Sagitta.Map.Tiempo.Capa}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.Pol
+  Let $F_0(n) = n+1$ and let $F_{k+1}(n) = F_k^{\,n}(n)$ be the $n$-fold iterate of $F_k$ applied to
+  $n$. The layer $\mathrm{Capa}\ k$ is the set of functions $f : \mathbb{N}\to\mathbb{N}$ for which there is
+  $m$ with $f(n) \le F_k^{\,m}(n+m)$ for all $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Jerarquia.lean}
+\end{definition}
+
+\begin{definition}[The skeleton of the layer $\mathrm{Capa}\ 2$]
+  \label{def:scales-esq}
+  \lean{Sagitta.Map.Tiempo.torre, Sagitta.Map.Tiempo.tope, Sagitta.Map.Tiempo.Esq, Sagitta.Map.Tiempo.EsqLim}
+  \leanok
+  \uses{def:scales-capa}
+  Let $\mathrm{torre}_h(x) = 2^{2^{\cdot^{\cdot^{2^x}}}}$ be the $h$-fold iterate of $x \mapsto 2^x$, and
+  let $\mathrm{tope}_{h,d}(n) = \mathrm{torre}_h\big((n+1)^{d+1}\big)$. For functions $f, g :
+  \mathbb{N}\to\mathbb{N}$, $f \in O(g)$ means that there are $C$ and $N$ with $f(n) \le C\,g(n)$ for all
+  $n \ge N$. Then $\mathrm{Esq}\ h\ d = O(\mathrm{tope}_{h,d})$ and $\mathrm{EsqLim}\ h = \bigcup_d
+  \mathrm{Esq}\ h\ d$.
+  \own{}
+  \leanfile{Sagitta/Map/EsqueletoCapaDos.lean}
+\end{definition}
+
+\begin{theorem}[Powers of two lie in the layer $\mathrm{Capa}\ 2$]
+  \label{thm:scales-dos-pow-capa-dos}
+  \lean{Sagitta.Map.Tiempo.dos_pow_capa_dos}
+  \leanok
+  \uses{def:scales-capa}
+  The function $n \mapsto 2^n$ belongs to $\mathrm{Capa}\ 2$.
+  \own{}
+  \leanfile{Sagitta/Map/CebollaExp.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take $m = 1$: the bound $2^n \le F_2(n+1) = 2^{n+1}(n+1)$ follows from $1 \le 2^n$ by an inequality
+  of naturals (\texttt{nlinarith}).
+\end{proof}
+
+\begin{theorem}[The skeleton of $\mathrm{Capa}\ 2$ grows strictly]
+  \label{thm:scales-esq-estricta}
+  \lean{Sagitta.Map.Tiempo.esq_estricta}
+  \leanok
+  \uses{def:scales-esq}
+  Let $h, d, h', d'$ be natural numbers such that $(h,d) < (h',d')$ in the lexicographic order on
+  $\mathbb{N}\times\mathbb{N}$. Then $\mathrm{Esq}\ h\ d$ is a proper subset of $\mathrm{Esq}\ h'\ d'$.
+  \own{}
+  \leanfile{Sagitta/Map/EsqueletoCapaDos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The inclusion is \texttt{esq\_mono}. For properness, $\mathrm{tope}_{h',d'}$ is in $\mathrm{Esq}\ h'\
+  d'$ and is not in $\mathrm{Esq}\ h\ d$ (\texttt{tope\_no\_esq}), by comparing towers when $h < h'$ and
+  polynomials when $h = h'$.
+\end{proof}
+
+\begin{definition}[The ordinal-indexed onion]
+  \label{def:scales-cebolla}
+  \lean{Sagitta.Map.Tiempo.Escalon, Sagitta.Map.Tiempo.Escalon.ord, Sagitta.Map.Tiempo.Escalon.clase, Sagitta.Map.Tiempo.indice, Sagitta.Map.Tiempo.cebolla, Sagitta.Map.Tiempo.tope2}
+  \leanok
+  \uses{def:scales-capa, def:scales-esq}
+  A \emph{step} is one of $\mathrm{base}$, $\mathrm{esq}(h,d)$ for $h, d \in \mathbb{N}$, or
+  $\mathrm{capa}(k)$ for $k \in \mathbb{N}$. Its ordinal is $0$ for $\mathrm{base}$,
+  $\mathrm{succ}(\omega h + d)$ for $\mathrm{esq}(h,d)$, and $\mathrm{succ}(\omega\cdot\omega + k)$ for
+  $\mathrm{capa}(k)$. Its class is $\mathrm{Capa}\ 0$, $\mathrm{Esq}\ h\ d$ and $\mathrm{Capa}\ (k+3)$
+  respectively. For an ordinal $\alpha$, $\mathrm{cebolla}(\alpha)$ is the union of the classes of the
+  steps whose ordinal is at most $\alpha$. The ordinal $\mathrm{tope2}$ is $\omega\cdot\omega+\omega$.
+  \own{}
+  \leanfile{Sagitta/Map/CebollaFina.lean}
+\end{definition}
+
+\begin{theorem}[The onion grows strictly up to $\omega\cdot\omega+\omega$]
+  \label{thm:scales-cebolla-strictmono}
+  \lean{Sagitta.Map.Tiempo.cebolla_strictMono}
+  \leanok
+  \uses{def:scales-cebolla}
+  Let $\alpha < \beta \le \omega\cdot\omega+\omega$ be ordinals. Then $\mathrm{cebolla}(\alpha)$ is a
+  proper subset of $\mathrm{cebolla}(\beta)$.
+  \own{}
+  \leanfile{Sagitta/Map/CebollaFina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Monotonicity gives the inclusion. Some step has ordinal $\mathrm{succ}(\alpha)$ (\texttt{existe\_paso}),
+  its witness function is in $\mathrm{cebolla}(\beta)$, and no step of ordinal at most $\alpha$ contains it
+  (\texttt{testigo\_no}).
+\end{proof}
+
+\begin{theorem}[The onion at $\omega$ is the polynomial functions]
+  \label{thm:scales-cebolla-pol}
+  \lean{Sagitta.Map.Tiempo.cebolla_pol}
+  \leanok
+  \uses{def:scales-cebolla}
+  % uses-lean: Sagitta.Map.Tiempo.Pol
+  $\mathrm{cebolla}(\omega) = \mathsf{Pol}$, where $\mathsf{Pol}$ is the set of $f$ with $f(n) \le c\,(n+1)^k$
+  for all $n$, for some $c$ and $k$.
+  \own{}
+  \leanfile{Sagitta/Map/CebollaFina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Instance $h = 0$ of the value of the onion at $\omega(h+1)$, which is $\mathrm{EsqLim}\ h$, together with
+  $\mathrm{EsqLim}\ 0 = \mathsf{Pol}$.
+\end{proof}
+
+\begin{theorem}[The onion at $\omega\cdot 2$ is the exponential functions]
+  \label{thm:scales-cebolla-exp}
+  \lean{Sagitta.Map.Tiempo.cebolla_exp}
+  \leanok
+  \uses{def:scales-cebolla}
+  % uses-lean: Sagitta.Map.Tiempo.Exp
+  $\mathrm{cebolla}(\omega\cdot 2) = \mathsf{Exp}$, where $\mathsf{Exp}$ is the set of $f$ for which there
+  is $K \in \mathsf{Pol}$ with $f(n) \le 2^{K(n)}$ for all $n$.
+  \own{}
+  \leanfile{Sagitta/Map/CebollaFina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Instance $h = 1$ of the value at $\omega(h+1)$, together with $\mathrm{EsqLim}\ 1 = \mathsf{Exp}$.
+\end{proof}
+
+\section{SAT as the fixed point of its self-reduction operator}
+\label{sec:scales-punto-fijo}
+
+The statements of this section are about CNF formulas over $\mathbb{N}$ (lists of clauses, a clause a list
+of literals, a literal a variable with a sign) and about the set $\SAT$ of satisfiable ones; no machine is
+involved.
+
+\begin{definition}[Fixing the first variable, and the operator $T$]
+  \label{def:scales-T}
+  \lean{Sagitta.Map.Borde.FractalSAT.fijar, Sagitta.Map.Borde.FractalSAT.T, Sagitta.Map.Borde.FractalSAT.Acotada}
+  \leanok
+  \uses{def:threesat}
+  For $b \in \{0,1\}$ and a CNF formula $\varphi$, $\mathrm{fijar}(b,\varphi)$ drops the clauses that
+  contain the literal $(0,b)$, and in the other clauses deletes the literals on variable $0$ and lowers
+  every other variable by one. For a set $L$ of formulas, $T(L)$ is the set of formulas $\varphi$ such
+  that: if $\varphi$ has no variables, $\varphi$ evaluates to true under the all-false assignment;
+  otherwise $\mathrm{fijar}(0,\varphi) \in L$ or $\mathrm{fijar}(1,\varphi) \in L$. A formula
+  $\varphi$ is $n$-bounded (\texttt{Acotada}) when all its variables are less than $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{definition}
+
+\begin{theorem}[$\SAT$ is a fixed point of $T$, on CNF formulas]
+  \label{thm:scales-sat-punto-fijo}
+  \lean{Sagitta.Map.Borde.FractalSAT.sat_punto_fijo}
+  \leanok
+  \uses{def:scales-T, def:threesat}
+  $T(\SAT) = \SAT$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Split on whether the formula has variables. Without variables, satisfiability is the value under the
+  all-false assignment; with variables, it is the one-step self-reduction (\texttt{satisfacible\_fijar}).
+\end{proof}
+
+\begin{theorem}[$T$ forgets its starting set after $n+1$ steps, on $n$-bounded formulas]
+  \label{thm:scales-iterado}
+  \lean{Sagitta.Map.Borde.FractalSAT.iterado_olvida_el_inicio}
+  \leanok
+  \uses{def:scales-T}
+  Let $X$ be a set of CNF formulas, $n$ a natural number and $\varphi$ a CNF formula. If $\varphi$ is
+  $n$-bounded, then $\varphi \in T^{n+1}(X)$ if and only if $\varphi$ is satisfiable.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $n$. For $n = 0$ the formula has no variables. For $n+1$, either it has no variables, or
+  fixing the first variable to $0$ and to $1$ gives $n$-bounded formulas, to which the induction hypothesis
+  applies, and \texttt{satisfacible\_fijar} closes the step.
+\end{proof}
+
+\begin{theorem}[$\SAT$ is the only fixed point of $T$, on CNF formulas]
+  \label{thm:scales-punto-fijo-unico}
+  \lean{Sagitta.Map.Borde.FractalSAT.punto_fijo_unico}
+  \leanok
+  \uses{def:scales-T, thm:scales-iterado, def:threesat}
+  Let $L$ be a set of CNF formulas with $T(L) = L$. Then $L = \SAT$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Given $\varphi$, choose $n$ bounding its variables. Since $T(L) = L$, $T^{n+1}(L) = L$, and
+  Theorem~\ref{thm:scales-iterado} with $X = L$ gives that $\varphi \in L$ if and only if $\varphi$ is
+  satisfiable.
+\end{proof}
+
+\section{The self-reduction tree and its box counts}
+\label{sec:scales-arbol}
+
+A node of the tree is a list of bits; it stands for the formula with its first variables fixed to those
+bits. The statements are about finite sets of lists of bits.
+
+\begin{definition}[Solutions, prefixes and the count $N(d)$]
+  \label{def:scales-cuenta}
+  \lean{Sagitta.Map.Borde.FractalSAT.fijarLista, Sagitta.Map.Borde.FractalSAT.soluciones, Sagitta.Map.Borde.FractalSAT.prefijos, Sagitta.Map.Borde.FractalSAT.cuenta}
+  \leanok
+  \uses{def:scales-T}
+  For a list $p$ of bits, $\mathrm{fijarLista}(p,\varphi)$ fixes the first variables of $\varphi$ to the
+  bits of $p$ in order, one at a time with $\mathrm{fijar}$. For a formula $\varphi$ and $n$, the set
+  $\mathrm{soluciones}(\varphi,n)$ is the set of lists $p$ of length $n$ such that $\varphi$ evaluates to
+  true under the assignment that gives variable $v$ the bit $p_v$ (false beyond the end of $p$). For a
+  finite set $S$ of lists, $\mathrm{prefijos}(S,d)$ is the set of the first $d$ elements of lists of $S$,
+  and $\mathrm{cuenta}(S,d)$ is its cardinality.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{definition}
+
+\begin{definition}[Box-counting quotient]
+  \label{def:scales-dimcajas}
+  \lean{Sagitta.Map.Borde.FractalSAT.dimCajas}
+  \leanok
+  \uses{def:scales-cuenta}
+  For a finite set $S$ of lists of bits and $d \in \mathbb{N}$, $\mathrm{dimCajas}(S,d)$ is the real number
+  $\log_2 \mathrm{cuenta}(S,d) / d$. Only this quotient at a given level is defined; no limit is.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{definition}
+
+\begin{theorem}[The count at the last level is the number of solutions]
+  \label{thm:scales-cuenta-soluciones}
+  \lean{Sagitta.Map.Borde.FractalSAT.cuenta_soluciones}
+  \leanok
+  \uses{def:scales-cuenta}
+  For every CNF formula $\varphi$ and every $n$, $\mathrm{cuenta}(\mathrm{soluciones}(\varphi,n), n) =
+  |\mathrm{soluciones}(\varphi,n)|$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Every solution has length $n$, so taking its first $n$ elements changes nothing, and the image has the
+  cardinality of the set (\texttt{cuenta\_tope}).
+\end{proof}
+
+\begin{theorem}[The count at level $d$ is at most $2^d$]
+  \label{thm:scales-cuenta-le-pow}
+  \lean{Sagitta.Map.Borde.FractalSAT.cuenta_le_pow}
+  \leanok
+  \uses{def:scales-cuenta}
+  Let $S$ be a finite set of lists of bits, all of length $n$, and let $d \le n$. Then
+  $\mathrm{cuenta}(S,d) \le 2^d$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The prefixes of length $d$ lie in the set of all $2^d$ lists of bits of length $d$.
+\end{proof}
+
+\begin{proposition}[The box-counting quotient is nonnegative]
+  \label{prop:scales-dimcajas-nonneg}
+  \lean{Sagitta.Map.Borde.FractalSAT.dimCajas_nonneg}
+  \leanok
+  \uses{def:scales-dimcajas}
+  For every finite set $S$ of lists of bits and every $d$, $0 \le \mathrm{dimCajas}(S,d)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  The denominator is nonnegative; the logarithm is $0$ when the count is $0$ and nonnegative when it is at
+  least $1$.
+\end{proof}
+
+\begin{proposition}[The box-counting quotient is at most one]
+  \label{prop:scales-dimcajas-le-uno}
+  \lean{Sagitta.Map.Borde.FractalSAT.dimCajas_le_uno}
+  \leanok
+  \uses{def:scales-dimcajas, thm:scales-cuenta-le-pow}
+  Let $S$ be a finite set of lists of bits, all of length $n$, and let $d \le n$. Then
+  $\mathrm{dimCajas}(S,d) \le 1$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  For $d = 0$ the quotient is $0$. Otherwise it reduces to $\log_2 \mathrm{cuenta}(S,d) \le d$, which
+  follows from Theorem~\ref{thm:scales-cuenta-le-pow}.
+\end{proof}
+
+\section{Pruning the self-reduction tree}
+\label{sec:scales-poda}
+
+The statements of this section are about lists of lists of bits and an arbitrary function $h$ from lists
+of bits to a type with decidable equality; the function $h$ is data, not something computed.
+
+\begin{definition}[Pruning and the pruned levels]
+  \label{def:scales-poda}
+  \lean{Sagitta.Map.Borde.FractalSAT.podar, Sagitta.Map.Borde.FractalSAT.hijos, Sagitta.Map.Borde.FractalSAT.nivel}
+  \leanok
+  Let $\beta$ be a type with decidable equality and $h$ a function from lists of bits to $\beta$. For a
+  list $l$ of lists, $\mathrm{podar}(h,l)$ is defined by recursion: the empty list gives the empty list;
+  for $x :: xs$, if some element of $\mathrm{podar}(h,xs)$ has the same value of $h$ as $x$, the result is
+  $\mathrm{podar}(h,xs)$, and otherwise it is $x :: \mathrm{podar}(h,xs)$. The children of a list $F$ of
+  nodes are $p \mathbin{+\!\!+} [0]$ and $p \mathbin{+\!\!+} [1]$ for each $p \in F$. Level $0$ is
+  $[[\,]]$, and level $d+1$ is $\mathrm{podar}(h, \text{children of level } d)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{definition}
+
+\begin{theorem}[Pruning covers every value of $h$]
+  \label{thm:scales-podar-cubre}
+  \lean{Sagitta.Map.Borde.FractalSAT.podar_cubre}
+  \leanok
+  \uses{def:scales-poda}
+  Let $\beta$ be a type with decidable equality, $h$ a function from lists of bits to $\beta$, $l$ a list
+  of lists of bits and $x \in l$. Then there is $y \in \mathrm{podar}(h,l)$ with $h(y) = h(x)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $l$: if $x$ was dropped, the element of the pruned tail with the same value of $h$ is the
+  witness; if $x$ is the head, it is kept.
+\end{proof}
+
+\begin{theorem}[Pruned search for satisfiability, with the bound of the pruning as a hypothesis]
+  \label{thm:scales-poda-sat}
+  \lean{Sagitta.Map.Borde.FractalSAT.poda_sat}
+  \leanok
+  \uses{def:scales-poda, def:scales-cuenta}
+  Let $\beta$ be a type with decidable equality, $\varphi$ a CNF formula, $h$ a function from lists of
+  bits to $\beta$, $R$ a finite subset of $\beta$ with $h(x) \in R$ for all lists $x$, and $m$ with
+  $|R| \le m$. Assume that for all lists $u, v$ of the same length with $h(u) = h(v)$, the formula
+  $\mathrm{fijarLista}(u,\varphi)$ is satisfiable if and only if $\mathrm{fijarLista}(v,\varphi)$ is. Then
+  for every $n$:
+  \[
+    \varphi \text{ is satisfiable} \iff \exists q \in \mathrm{nivel}(h,n),\ \mathrm{fijarLista}(q,\varphi)
+    \text{ is satisfiable},
+  \]
+  and moreover $\sum_{d<n} |\mathrm{nivel}(h,d+1)| \le n\,m$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The equivalence is the correctness of the pruned levels (\texttt{nivel\_correcto}) for the predicate
+  ``the node is satisfiable'', which is self-reducible (\texttt{nodo\_autorreducible}); the bound is that
+  each level has at most $|R|$ elements (\texttt{nodos\_totales}), and $|R| \le m$.
+\end{proof}
+
+\section{A hypothesis of measure in an abstract model}
+\label{sec:scales-medida}
+
+The statements of this section are about an abstract notion of negligible set of sets of binary words, and
+about the classes $\cP$ and $\cNP$ over binary words of Part~I.
+
+\begin{definition}[Ideal closed under countable unions]
+  \label{def:scales-ideal}
+  \lean{Sagitta.Map.Borde.FractalSAT.IdealSigma}
+  \leanok
+  For a type $X$, an ideal is a predicate $\mathrm{nulo}$ on subsets of $X$ such that the empty set is
+  negligible, a subset of a negligible set is negligible, and the union of a sequence
+  $(A_i)_{i\in\mathbb{N}}$ of negligible sets is negligible.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: the measure hypothesis for an ideal]
+  \label{def:scales-hipotesis-medida}
+  \lean{Sagitta.Map.Borde.FractalSAT.HipotesisMedida}
+  \leanok
+  \uses{def:scales-ideal, def:P, def:NP}
+  Let $I$ be an ideal on the subsets of $\{0,1\}^{*}$ (sets of sets of binary words). The hypothesis
+  $\mathrm{HipotesisMedida}(I)$ says that $\cP$ is negligible for $I$ and $\cNP$ is not. This entry
+  defines the proposition and does not assert it.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{definition}
+
+\begin{theorem}[The measure hypothesis implies $\cP \ne \cNP$, in an abstract ideal]
+  \label{thm:scales-medida-implica}
+  \lean{Sagitta.Map.Borde.FractalSAT.medida_implica_P_ne_NP}
+  \leanok
+  \uses{def:scales-hipotesis-medida}
+  Let $I$ be an ideal on the subsets of $\{0,1\}^{*}$. Assume $\mathrm{HipotesisMedida}(I)$. Then $\cP \ne
+  \cNP$ over binary words.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $\cP = \cNP$, the second component of the hypothesis would say that $\cP$ is not negligible,
+  contradicting the first.
+\end{proof}
+
+\begin{theorem}[Choosing the ideal afterwards is a restatement of $\cP \ne \cNP$]
+  \label{thm:scales-elegir-despues}
+  \lean{Sagitta.Map.Borde.FractalSAT.elegir_despues_reformula}
+  \leanok
+  \uses{def:scales-hipotesis-medida}
+  There is an ideal $I$ on the subsets of $\{0,1\}^{*}$ with $\mathrm{HipotesisMedida}(I)$ if and only if
+  $\cP \ne \cNP$ over binary words.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Some ideal makes $A$ negligible and $B$ not exactly when $B \not\subseteq A$ (\texttt{existe\_ideal\_iff};
+  the ideal of subsets of $A$ is the witness), and $\cNP \subseteq \cP$ fails exactly when $\cP \ne \cNP$,
+  since $\cP \subseteq \cNP$.
+\end{proof}
+
+\begin{definition}[Martingales without a time bound, and success]
+  \label{def:scales-martingala}
+  \lean{Sagitta.Map.Borde.FractalSAT.Martingala, Sagitta.Map.Borde.FractalSAT.prefijo, Sagitta.Map.Borde.FractalSAT.Exito}
+  \leanok
+  A martingale is a function $d$ from lists of bits to the real numbers, with $d(w) \ge 0$ and $d(w
+  \mathbin{+\!\!+} [0]) + d(w \mathbin{+\!\!+} [1]) = 2\,d(w)$ for every list $w$. For a sequence $x :
+  \mathbb{N} \to \{0,1\}$, $\mathrm{prefijo}(x,n)$ is the list $x_0,\dots,x_{n-1}$. The martingale
+  \emph{succeeds} on $x$ (\texttt{Exito}) when for every real $c$ there is $n$ with $c <
+  d(\mathrm{prefijo}(x,n))$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{definition}
+
+\begin{theorem}[No single martingale succeeds on every sequence]
+  \label{thm:scales-una-martingala}
+  \lean{Sagitta.Map.Borde.FractalSAT.una_martingala_no_lo_anula_todo}
+  \leanok
+  \uses{def:scales-martingala}
+  For every martingale $m$ there is a sequence $x : \mathbb{N}\to\{0,1\}$ on which $m$ does not succeed.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Build the sequence that, at each step, extends by the bit with the smaller capital; its capital never
+  exceeds the initial one (\texttt{camino\_acotado}), so the capital is bounded along it.
+\end{proof}
