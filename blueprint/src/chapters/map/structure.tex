@@ -4,4 +4,1859 @@
 \chapter{The structure of NP and dichotomies}
 \label{chap:structure}
 
-This chapter is not written yet.
+This chapter collects the statements of the map about what lies inside $\cNP$ and how it divides.
+It starts with problems of intermediate difficulty (Ladner's construction, the clock it needs, and the
+statement that an intermediate problem exists if and only if $\cP \neq \cNP$), goes on to the
+algebraic description of Boolean constraint problems by polymorphisms and the dichotomy it gives
+under named assumptions, and then lists concrete problems placed in $\cNP$. After that come the
+pumping move against $\SAT$, lower bounds in the model of a search tree and of cutting planes, and
+statements about proof systems and about the rate of approximation. The last four sections are about
+padding, the three switches, and the diagonal argument over enumerations. Each section says in which
+model its statements live: Turing machines of cslib-frontier, the abstract classes of the map, finite
+structures, or an abstract cost model.
+
+\section{Problems between $\cP$ and the $\cNP$-complete ones}
+\label{sec:structure-ladner}
+
+The statements of this section are about decision problems over binary words, with the classes
+$\cP$ and $\cNP$ and the notion of $\cNP$-completeness of cslib-frontier (Part~I). The first
+group is Ladner's theorem in three forms; the second group is the clock that the construction
+needs.
+
+\begin{definition}[Intermediate language]
+  \label{def:structure-intermedio}
+  \lean{Sagitta.Map.Borde.FractalSAT.Intermedio}
+  \leanok
+  \uses{def:P, def:NP, def:reduction}
+  A set $L$ of binary words is \emph{intermediate} when $L \in \cNP$ (over binary words), $L
+  \notin \cP$ and $L$ is not $\cNP$-complete.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{definition}
+
+\begin{theorem}[Ladner's theorem, as stated over binary words in the map]
+  \label{thm:structure-ladner-cslib}
+  \lean{Sagitta.Map.Borde.RelojDeLadner.ladner_cslib}
+  \leanok
+  \uses{thm:ladner}
+  Let $\alpha$ be a type and $\enc : \alpha \hookrightarrow \mathrm{List}\,\mathrm{Bool}$ an
+  injective encoding. If $\cP \neq \cNP$ for $\enc$, then there is a set $L$ of binary words with
+  $L \in \cNP$, $L \notin \cP$ and $L$ not $\cNP$-complete.
+  \source{\cite{Ladner75}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/RelojDeLadner.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the theorem of cslib-frontier (Theorem~\ref{thm:ladner}) applied as it stands.
+\end{proof}
+
+\begin{theorem}[Ladner's language outside a set in $\cP$, by words]
+  \label{thm:structure-ladner-palabras}
+  \lean{Sagitta.Map.Borde.BordeAlto.ladner_por_palabras_SATH}
+  \leanok
+  \uses{thm:structure-ladner-cslib, thm:ladner, def:P, def:NP, def:reduction}
+  Let $\enc : \alpha \hookrightarrow \mathrm{List}\,\mathrm{Bool}$ be an encoding with $\cP \neq
+  \cNP$ for $\enc$. Then there is a set $G$ of binary words with $G \in \cP$ such that the set
+  of words of $\mathrm{SATH}$ that are not in $G$ is in $\cNP$, is not in $\cP$ and is not
+  $\cNP$-complete. Here $\mathrm{SATH}$ is the language of cslib-frontier used in its proof of
+  Ladner's theorem.
+  \source{\cite{Ladner75}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/BordeAlto.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It applies a lemma of the same file (for every $B \in \cNP$ outside $\cP$ there is such a $G$,
+  from cslib-frontier) to the facts that $\mathrm{SATH}$ is in $\cNP$ and, if $\cP \neq \cNP$,
+  not in $\cP$.
+\end{proof}
+
+\begin{theorem}[An intermediate language exists if $\cP \neq \cNP$]
+  \label{thm:structure-ladner-fractal}
+  \lean{Sagitta.Map.Borde.FractalSAT.ladner}
+  \leanok
+  \uses{def:structure-intermedio, thm:structure-ladner-cslib, def:P, def:NP}
+  If $\cP \neq \cNP$ over binary words (the classes of cslib-frontier for the binary encoding of
+  words), then some language is intermediate.
+  \source{\cite{Ladner75}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Theorem~\ref{thm:structure-ladner-cslib} with the binary encoding of words.
+\end{proof}
+
+\subsection{An intermediate language exists if and only if $\cP \neq \cNP$}
+
+\begin{theorem}[Intermediate languages exist if and only if $\cP \neq \cNP$]
+  \label{thm:structure-intermedio-iff}
+  \lean{Sagitta.Map.Borde.FractalSAT.intermedio_iff_P_ne_NP}
+  \leanok
+  \uses{def:structure-intermedio, thm:structure-ladner-fractal}
+  There is an intermediate language if and only if $\cP \neq \cNP$ over binary words.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An intermediate language is in $\cNP$ and not in $\cP$, so the two classes differ; the converse
+  is Theorem~\ref{thm:structure-ladner-fractal}.
+\end{proof}
+
+\begin{theorem}[If $\cP = \cNP$, every non-trivial language of $\cNP$ is complete]
+  \label{thm:structure-completo-de-p-eq-np}
+  \lean{Sagitta.Map.Borde.FractalSAT.completo_de_P_eq_NP}
+  \leanok
+  \uses{def:P, def:NP, def:reduction}
+  Assume that $\cP = \cNP$ for every type $\alpha$ and every encoding $\enc : \alpha
+  \hookrightarrow \mathrm{List}\,\mathrm{Bool}$. Let $\beta$ be a type with an encoding $\enc_B$, let
+  $L \in \cNP$ for $\enc_B$ be a set of elements of $\beta$, and let $y_1, y_0 \in \beta$ with
+  $y_1 \in L$ and $y_0 \notin L$. Then $L$ is $\cNP$-complete for $\enc_B$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A problem $A \in \cNP$ is in $\cP$, so a function computable in polynomial time decides it; the
+  reduction sends $a$ to $y_1$ if that function accepts and to $y_0$ otherwise.
+\end{proof}
+
+\subsection{The clock of Ladner's construction}
+
+\begin{definition}[Eventually homogeneous set of lengths]
+  \label{def:structure-homogeneo}
+  \lean{Sagitta.Map.Borde.RelojDeLadner.HomogeneoEnLargo}
+  \leanok
+  A set $B \subseteq \mathbb{N}$ is \emph{eventually homogeneous} when either $n \in B$ for all
+  large $n$, or $n \notin B$ for all large $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RelojDeLadner.lean}
+\end{definition}
+
+\begin{proposition}[A set of lengths is not eventually homogeneous if and only if it and its complement are infinite]
+  \label{prop:structure-no-homogeneo}
+  \lean{Sagitta.Map.Borde.RelojDeLadner.no_homogeneo_iff}
+  \leanok
+  \uses{def:structure-homogeneo}
+  For $B \subseteq \mathbb{N}$, $B$ is not eventually homogeneous if and only if $B$ is infinite and
+  its complement $\mathbb{N} \setminus B$ is infinite.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RelojDeLadner.lean}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  ``For all large $n$, $n \in B$'' says that the complement is finite, and ``for all large $n$,
+  $n \notin B$'' says that $B$ is finite; negate the disjunction.
+\end{proof}
+
+\begin{definition}[Cheap clock]
+  \label{def:structure-reloj-barato}
+  \lean{Sagitta.Map.Borde.RelojDeLadner.RelojBarato}
+  \leanok
+  \uses{def:polytime}
+  A function $e : \mathbb{N} \to \mathbb{N}$ is a \emph{cheap clock} when the function that sends
+  a pair $(m, n)$ to the truth value of $e(m) \le n$ is computable in polynomial time, with the
+  pair and both numbers written in unary.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RelojDeLadner.lean}
+\end{definition}
+
+\begin{proposition}[The doubling clock is cheap]
+  \label{prop:structure-reloj-dobles}
+  \lean{Sagitta.Map.Borde.RelojDeLadner.relojBarato_dobles}
+  \leanok
+  \uses{def:structure-reloj-barato}
+  The function $m \mapsto 2^m - 1$ is a cheap clock.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RelojDeLadner.lean}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  The test $2^m - 1 \le n$ equals a comparison of a capped power of two with its cap, which is
+  computable in polynomial time by the tactic of cslib-frontier; the equality of the two
+  functions is a computation with natural numbers.
+\end{proof}
+
+\begin{theorem}[Ladner's clock is computable in polynomial time, in unary]
+  \label{thm:structure-reloj-de-ladner}
+  \lean{Sagitta.Map.Borde.RelojDeLadner.reloj_de_ladner}
+  \leanok
+  \uses{def:polytime}
+  The function $H : \mathbb{N} \to \mathbb{N}$ of cslib-frontier's proof of Ladner's theorem is
+  computable in polynomial time, with input and output in unary.
+  The function $H$ is the one of Ladner's construction, as formalized in cslib-frontier.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RelojDeLadner.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the theorem of cslib-frontier that $H$ is computable in polynomial time.
+\end{proof}
+
+\section{Polymorphisms of Boolean constraint languages}
+\label{sec:structure-polymorphisms}
+
+The statements of this section are about finite Boolean relations and the operations on
+$\{0,1\}$ that preserve them. There is no machine and no cost measure in them: they describe
+the algebra that decides, in the next section, which constraint problems are in $\cP$.
+
+\begin{definition}[Boolean relations, preservation and polymorphisms]
+  \label{def:structure-polymorphism}
+  \lean{Sagitta.Map.Informacion.Polimorfismos.Relacion, Sagitta.Map.Informacion.Polimorfismos.Relaciones, Sagitta.Map.Informacion.Polimorfismos.Preserva, Sagitta.Map.Informacion.Polimorfismos.Polimorfismo, Sagitta.Map.Informacion.Polimorfismos.proy}
+  \leanok
+  A Boolean relation of arity $r$ is a predicate on $\{0,1\}^r$ (functions $\mathrm{Fin}\,r \to
+  \mathrm{Bool}$); a \emph{language} $\Gamma$ is a set of Boolean relations of arbitrary arities.
+  An operation $f : \{0,1\}^k \to \{0,1\}$ \emph{preserves} an $r$-ary relation $R$ when, for
+  every choice of $k$ tuples $t_1, \dots, t_k$ of $R$, the tuple whose coordinate $c$ is
+  $f(t_1(c), \dots, t_k(c))$ is in $R$. It is a \emph{polymorphism} of $\Gamma$ when it preserves
+  every relation of $\Gamma$. The projection $\mathrm{proy}_j$ sends $x$ to $x_j$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Polimorfismos.lean}
+\end{definition}
+
+\begin{definition}[Clauses, 2-SAT, 3-SAT, Horn and affine languages; majority, minority and AND]
+  \label{def:structure-languages}
+  \lean{Sagitta.Map.Informacion.Polimorfismos.clausula, Sagitta.Map.Informacion.Polimorfismos.dosSAT, Sagitta.Map.Informacion.Polimorfismos.tresSAT, Sagitta.Map.Informacion.Polimorfismos.paridad, Sagitta.Map.Informacion.Polimorfismos.ecuacion, Sagitta.Map.Informacion.Polimorfismos.xorSAT, Sagitta.Map.Informacion.Polimorfismos.maj, Sagitta.Map.Informacion.Polimorfismos.maltsev, Sagitta.Map.Informacion.Polimorfismos.y}
+  \leanok
+  \uses{def:structure-polymorphism}
+  For $\sigma : \mathrm{Fin}\,r \to \mathrm{Bool}$, the clause $\mathrm{clausula}\,\sigma$ is the
+  relation that holds of $x$ when $x_c = \sigma_c$ for some coordinate $c$. The language
+  $\mathrm{dosSAT}$ is the set of clauses with $r = 2$, $\mathrm{tresSAT}$ the set of clauses with
+  $r = 3$. The parity of a tuple is the exclusive or of its coordinates; $\mathrm{ecuacion}\,r\,b$
+  is the relation ``the parity of $x$ is $b$'', and $\mathrm{xorSAT}$ is the set of these
+  relations with $r \in \{2, 3\}$ and $b \in \{0,1\}$. The operations are the majority
+  $\mathrm{maj}(x_0,x_1,x_2) = (x_0 \wedge x_1) \vee (x_0 \wedge x_2) \vee (x_1 \wedge x_2)$, the
+  minority $\mathrm{maltsev}(x_0,x_1,x_2) = x_0 \oplus x_1 \oplus x_2$, and the conjunction
+  $y(x_0,x_1) = x_0 \wedge x_1$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Polimorfismos.lean}
+\end{definition}
+
+\begin{theorem}[The polymorphisms of 3-SAT of arity at most three are the projections]
+  \label{thm:structure-tressat-pol}
+  \lean{Sagitta.Map.Informacion.Polimorfismos.tresSAT_pol_iff}
+  \leanok
+  \uses{def:structure-polymorphism, def:structure-languages}
+  Let $k$ be a natural number with $0 < k \le 3$ and $f : \{0,1\}^k \to \{0,1\}$. Then $f$ is a
+  polymorphism of $\mathrm{tresSAT}$ if and only if $f$ is a projection $\mathrm{proy}_j$ for some
+  $j$.
+  \source{\cite{Schaefer78,Jeavons98}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/Polimorfismos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $f$ preserves the eight clauses, then on any choice of three inputs it agrees with a
+  projection; taking the unit inputs gives a coordinate $j$ with $f(e_j) = 1$, and that forces $f
+  = \mathrm{proy}_j$. Conversely every projection is a polymorphism of every language.
+\end{proof}
+
+\begin{theorem}[Majority is a polymorphism of 2-SAT]
+  \label{thm:structure-maj-dossat}
+  \lean{Sagitta.Map.Informacion.Polimorfismos.maj_polimorfismo_dosSAT}
+  \leanok
+  \uses{def:structure-polymorphism, def:structure-languages}
+  The majority operation is a polymorphism of $\mathrm{dosSAT}$.
+  \source{\cite{Schaefer78,Jeavons98}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/Polimorfismos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Among three pairs of Booleans, the majority taken coordinate by coordinate is one of the three
+  pairs, so majority preserves every binary relation; this is checked by \texttt{decide}.
+\end{proof}
+
+\begin{theorem}[The minority operation is a polymorphism of the affine language]
+  \label{thm:structure-maltsev-xorsat}
+  \lean{Sagitta.Map.Informacion.Polimorfismos.maltsev_polimorfismo_xorSAT}
+  \leanok
+  \uses{def:structure-polymorphism, def:structure-languages}
+  The operation $x \oplus y \oplus z$ is a polymorphism of $\mathrm{xorSAT}$.
+  \source{\cite{Schaefer78,Jeavons98}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/Polimorfismos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Parity commutes with the exclusive or of three tuples coordinate by coordinate, and $b \oplus b
+  \oplus b = b$, so the operation preserves each equation.
+\end{proof}
+
+\section{The Boolean dichotomy, under named assumptions}
+\label{sec:structure-dichotomy}
+
+The statements of this section are about constraint problems $\mathrm{CSP}(\Gamma)$ for a finite
+Boolean language $\Gamma$. An instance is a list of constraints, each a relation of $\Gamma$ with a
+tuple of variables. The predicates ``$\mathrm{CSP}(\Gamma)$ is in $\cP$'' and ``is
+$\cNP$-complete'' are not defined here: they are arbitrary predicates $\mathrm{EnP}$ and
+$\mathrm{NPc}$ on languages, and what is assumed about them is gathered in one hypothesis.
+
+\begin{theorem}[The polymorphisms of 3-SAT are the projections, in every arity]
+  \label{thm:structure-tressat-pol-todas}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.tresSAT_pol_iff_todas}
+  \leanok
+  \uses{thm:structure-tressat-pol}
+  Let $k$ be a natural number and $f : \{0,1\}^k \to \{0,1\}$. Then $f$ is a polymorphism of
+  $\mathrm{tresSAT}$ if and only if $f = \mathrm{proy}_j$ for some $j$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The sets $A$ of coordinates with $f(\mathbf{1}_A) = 1$ contain the full set, not the empty set,
+  and for each $A$ in it and $j \in A$ contain $\{j\}$ or $A \setminus \{j\}$. Induction on the
+  size of $A$ gives a coordinate $j$ with $f(e_j) = 1$, and then $f = \mathrm{proy}_j$.
+\end{proof}
+
+\begin{definition}[Primitive positive definitions and the canonical one]
+  \label{def:structure-pp}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.DefPP, Sagitta.Map.Borde.DicotomiaBooleana.DefPP.Define, Sagitta.Map.Borde.DicotomiaBooleana.canonica}
+  \leanok
+  \uses{def:structure-polymorphism}
+  A primitive positive definition of an $s$-ary relation over a language $\Gamma$ consists of a
+  finite type $W$ of variables, a finite family of relations of $\Gamma$ with, for each, a tuple of
+  variables of $W$, and $s$ distinguished variables of $W$ (which may repeat). It defines the
+  relation of those $y \in \{0,1\}^s$ for which some assignment $x : W \to \{0,1\}$ satisfies all
+  the relations of the family and gives the distinguished variables the values of $y$. For a finite
+  $\Gamma$ and an $s$-ary relation $S$, the canonical definition has as variables the functions
+  $\{0,1\}^{m}$ with $m$ the number of tuples of $S$, as constraints all those of $\Gamma$ that hold
+  at the $m$ canonical assignments, and as $c$-th distinguished variable the column $c$ of the
+  list of tuples of $S$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{definition}
+
+\begin{theorem}[Galois connection for finite Boolean languages]
+  \label{thm:structure-galois}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.galois}
+  \leanok
+  \uses{def:structure-pp, def:structure-polymorphism}
+  Let $\Gamma$ be a finite language and $S$ an $s$-ary Boolean relation. Assume that every
+  polymorphism of $\Gamma$, of every arity $k$, preserves $S$. Then for every $y \in \{0,1\}^s$,
+  $S(y)$ holds if and only if the canonical definition of $S$ over $\Gamma$ defines $y$.
+  \source{\cite{Geiger68,BodnarchukEtAl69}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A tuple of $S$ is defined by the assignment that sends each canonical variable to its $i$-th
+  coordinate. Conversely a defining assignment is a polymorphism of $\Gamma$ of arity $m$; by
+  hypothesis it preserves $S$ and is applied to the list of tuples of $S$.
+\end{proof}
+
+\begin{theorem}[Replacing each constraint by its definition preserves satisfiability]
+  \label{thm:structure-traducir}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.traducir_correcto}
+  \leanok
+  \uses{def:structure-pp}
+  Let $\Gamma, \Delta$ be languages and $V$ a type of variables. Suppose that every relation $R
+  \in \Delta$ has a primitive positive definition over $\Gamma$ whose distinguished variables are
+  pairwise distinct (injective) and which defines $R$. Then an instance $I$ of
+  $\mathrm{CSP}(\Delta)$ over $V$ is satisfiable if and only if its translation, in which each
+  constraint is replaced by the constraints of its definition with fresh existential variables, is
+  satisfiable as an instance of $\mathrm{CSP}(\Gamma)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From a solution of $I$ take, for each constraint, the assignment that witnesses its definition,
+  and join them; from a solution of the translation restrict to the original variables and read
+  the same witnesses back.
+\end{proof}
+
+\begin{definition}[The six identities of Schaefer]
+  \label{def:structure-six}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.TieneUnaDeLasSeis, Sagitta.Map.Borde.DicotomiaBooleana.const, Sagitta.Map.Borde.DicotomiaBooleana.o}
+  \leanok
+  \uses{def:structure-polymorphism, def:structure-languages}
+  A language $\Gamma$ \emph{has one of the six} when at least one of the following is a
+  polymorphism of $\Gamma$: the constant $0$, the constant $1$, the conjunction $x_0 \wedge x_1$,
+  the disjunction $x_0 \vee x_1$, the majority, the minority $x_0 \oplus x_1 \oplus x_2$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: the assumptions of the Boolean dichotomy]
+  \label{def:structure-supuestos}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.Supuestos}
+  \leanok
+  \uses{def:structure-six, def:structure-pp}
+  For predicates $\mathrm{EnP}$ and $\mathrm{NPc}$ on languages, $\mathrm{Supuestos}$ is the
+  conjunction of the following six statements.
+  \begin{itemize}
+    \item (easy side) For every finite $\Gamma$ that has one of the six, $\mathrm{EnP}(\Gamma)$.
+    \item (Post) For every $\Gamma$ that has none of the six, every polymorphism $f$ of $\Gamma$ of
+      any arity is essentially unary: $f = \mathrm{proy}_j$ or $f(x) = \lnot x_j$ for some $j$.
+    \item $\mathrm{NPc}(\mathrm{tresSAT})$.
+    \item $\mathrm{NPc}$ of the language that contains only the relation ``not all equal'' on
+      three variables.
+    \item (reduction) For finite $\Gamma$ and $\Delta$ with $\mathrm{NPc}(\Delta)$, if every
+      relation of $\Delta$ has an injective-variable primitive positive definition over $\Gamma$
+      that defines it, then $\mathrm{NPc}(\Gamma)$.
+    \item (separation) For every $\Gamma$, $\mathrm{NPc}(\Gamma)$ implies not $\mathrm{EnP}(\Gamma)$.
+  \end{itemize}
+  The hypothesis is a structure of type \texttt{Prop}; this entry says that it is defined, not that
+  it holds.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{definition}
+
+\begin{theorem}[Dichotomy for finite Boolean languages, under the assumptions]
+  \label{thm:structure-dicotomia}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.dicotomia}
+  \leanok
+  \uses{def:structure-supuestos, def:structure-six}
+  Assume $\mathrm{Supuestos}(\mathrm{EnP}, \mathrm{NPc})$. Then for every finite language $\Gamma$,
+  either $\mathrm{EnP}(\Gamma)$ and not $\mathrm{NPc}(\Gamma)$, or $\mathrm{NPc}(\Gamma)$ and not
+  $\mathrm{EnP}(\Gamma)$.
+  \source{\cite{Schaefer78}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $\Gamma$ has one of the six, the easy side gives $\mathrm{EnP}$ and the separation excludes
+  $\mathrm{NPc}$. Otherwise it is $\mathrm{NPc}$: when negation is a polymorphism the relation ``not
+  all equal'' is defined over $\Gamma$ by its canonical definition, and when it is not, each clause
+  of 3-SAT is; the reduction assumption closes both cases.
+\end{proof}
+
+\begin{theorem}[Membership in $\cP$ is having one of the six, under the assumptions]
+  \label{thm:structure-interruptor}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.interruptor}
+  \leanok
+  \uses{def:structure-supuestos, def:structure-six}
+  Assume $\mathrm{Supuestos}(\mathrm{EnP}, \mathrm{NPc})$. For every finite language $\Gamma$,
+  $\mathrm{EnP}(\Gamma)$ if and only if $\Gamma$ has one of the six.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The easy side is the assumption; for the converse, if $\Gamma$ had none of the six it would be
+  $\mathrm{NPc}$ (the case analysis above), which the separation assumption makes incompatible with
+  $\mathrm{EnP}$.
+\end{proof}
+
+\begin{theorem}[No finite Boolean language is left in between, under the assumptions]
+  \label{thm:structure-sin-intermedios}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.sin_intermedios}
+  \leanok
+  \uses{def:structure-supuestos, thm:structure-dicotomia}
+  Assume $\mathrm{Supuestos}(\mathrm{EnP}, \mathrm{NPc})$. For every finite language $\Gamma$, it is
+  not the case that both $\mathrm{EnP}(\Gamma)$ fails and $\mathrm{NPc}(\Gamma)$ fails.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By Theorem~\ref{thm:structure-dicotomia} one of the two holds.
+\end{proof}
+
+\subsection{Horn and dual-Horn satisfiability by unit propagation}
+
+A Horn clause over $n$ variables is a body (a finite set of variables) and a head, which is a
+variable or absent; a set $S$ of variables (those set to $1$) satisfies it when the body is not
+contained in $S$, or the head is present and in $S$. A model of a list of clauses is a set that
+satisfies all of them. The algorithm $\mathrm{decideHorn}$ propagates the heads of the clauses whose
+body already holds, $n + 1$ times starting from the empty set, and checks the clauses on the set
+that results. The statements are about these finite objects and carry no machine model.
+
+\begin{definition}[Horn clauses and unit propagation]
+  \label{def:structure-horn}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.ClausulaHorn, Sagitta.Map.Borde.DicotomiaBooleana.ModeloHorn, Sagitta.Map.Borde.DicotomiaBooleana.ModeloDual, Sagitta.Map.Borde.DicotomiaBooleana.decideHorn}
+  \leanok
+  A Horn clause over $n$ variables is a pair (body, head) with body a finite set of $\mathrm{Fin}\,n$
+  and head an optional element of $\mathrm{Fin}\,n$. The model of a list $cs$ is a set $S$ that
+  satisfies every clause as described above. A dual model of $cs$ is a set $S$ whose complement is
+  a model. The algorithm $\mathrm{decideHorn}(cs)$ accepts if and only if every clause holds on the
+  set obtained by $n + 1$ propagation steps from the empty set.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{definition}
+
+\begin{theorem}[Unit propagation decides Horn satisfiability]
+  \label{thm:structure-horn-correcto}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.decideHorn_correcto}
+  \leanok
+  \uses{def:structure-horn}
+  For every list $cs$ of Horn clauses over $n$ variables, $\mathrm{decideHorn}(cs)$ is true if and
+  only if $cs$ has a model.
+  \source{\cite{DowlingGallier84}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Each propagation step that does not stay fixed adds a variable, so the set after $n + 1$ steps is
+  a fixed point; it is contained in every model, so it is the least model, and the check on it is
+  exactly the existence of a model.
+\end{proof}
+
+\begin{theorem}[The same algorithm decides dual-Horn satisfiability]
+  \label{thm:structure-dual-correcto}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.decideDual_correcto}
+  \leanok
+  \uses{def:structure-horn, thm:structure-horn-correcto}
+  For every list $cs$ of Horn clauses over $n$ variables, $\mathrm{decideHorn}(cs)$ is true if and
+  only if $cs$ has a dual model.
+  \source{\cite{DowlingGallier84}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Taking complements is a bijection between models and dual models, so the statement is
+  Theorem~\ref{thm:structure-horn-correcto}.
+\end{proof}
+
+\begin{proposition}[The models of a Horn list are closed under intersection]
+  \label{prop:structure-modelo-inter}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.modelo_inter}
+  \leanok
+  \uses{def:structure-horn}
+  If $S$ and $T$ are models of a list $cs$ of Horn clauses, then $S \cap T$ is a model of $cs$.
+  \source{\cite{DowlingGallier84}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  Case analysis on whether the body of a clause is contained in $S \cap T$: if so it is contained
+  in both, and the head, which is present, lies in both.
+\end{proof}
+
+\section{Concrete problems in $\cNP$}
+\label{sec:structure-concrete}
+
+The statements of this section place three concrete problems in $\cNP$: shortest common
+superstring, primality and the graph of the least prime factor, and satisfiability restricted to
+a set of lengths. The first two live in the class $\cNP$ of the map, whose problems are functions
+from binary words to Booleans and whose verifiers are computed by Turing machines of the Mathlib
+kind in polynomial time; the third lives in the class $\cNP$ of cslib-frontier for the encoding of
+CNF formulas.
+
+\begin{theorem}[Shortest common superstring is in $\cNP$, if its verifier is computable in polynomial time]
+  \label{thm:structure-supercadena}
+  \lean{Sagitta.Map.Supercadena.en_NP}
+  \leanok
+  % uses-lean: Sagitta.Map.NP, Sagitta.Map.EsPolinomial
+  Let the instance be read from a binary word as a bound $k$ (a first self-delimited block, in
+  binary) followed by a list of binary words (the remaining blocks). The problem asks whether some
+  binary word of length at most $k$ contains every word of the list as a contiguous factor. The
+  verifier takes the input and a certificate $y$ and accepts if and only if $|y| \le k$ and every
+  word of the list is a factor of $y$. Assume that the verifier is computable in polynomial time,
+  that is, that a Turing machine of the Mathlib kind computes it in polynomial time. Then the problem
+  is in the class $\cNP$ of the map.
+  \source{\cite{GallantMaierStorer80}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Supercadena.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The verifier decides the problem with a certificate no longer than the input: if a superstring
+  of length at most $k$ exists, either the given one is already short or the concatenation of all
+  the words, whose length is at most the length of the input, is also a superstring of length at
+  most $k$. The polynomial bound of the certificate is $X$.
+\end{proof}
+
+\begin{definition}[Pratt certificates and the check of the graph of the least prime factor]
+  \label{def:structure-pratt}
+  \lean{Sagitta.Map.Acotada.Pratt.entradaOK, Sagitta.Map.Acotada.Pratt.prattOK, Sagitta.Map.Acotada.Pratt.revisaGrafo, Sagitta.Map.Acotada.Pratt.grafoMinFac, Sagitta.Map.Acotada.Pratt.primos}
+  \leanok
+  A flat Pratt certificate is a list of entries $(p, a, [q_1, \dots, q_k])$. An entry is correct
+  inside a certificate $C$ when $p \ge 2$, $\prod q_i = p - 1$, $a^{p-1} \equiv 1 \pmod p$, and each
+  $q_i$ is the first component of some entry of $C$ and satisfies $a^{(p-1)/q_i} \not\equiv 1 \pmod
+  p$; the certificate is correct when all its entries are. The check $\mathrm{revisaGrafo}\,n\,m$ of
+  a pair $(L, C)$ accepts: for $n = 0$ when $m = 2$, for $n = 1$ when $m = 1$, and otherwise when
+  $\prod L = n$, $m \in L$, every $q \in L$ satisfies $m \le q$ and is the first component of an
+  entry of $C$, and $C$ is correct. The problem $\mathrm{primos}$ asks whether the number coded by
+  a binary word $w$ (the number $\mathrm{numeroDe}(w) - 1$) is prime; $\mathrm{grafoMinFac}$ asks
+  whether, writing $\mathrm{numeroDe}(w) - 1$ as the pair $\langle n, m \rangle$ of Mathlib, $m$ is the
+  least prime factor of $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/Pratt.lean}
+\end{definition}
+
+\begin{theorem}[Pratt certificates for the least prime factor have quadratic length]
+  \label{thm:structure-certificado-grafo}
+  \lean{Sagitta.Map.Acotada.Pratt.certificado_grafo}
+  \leanok
+  \uses{def:structure-pratt}
+  For every natural number $n$ there is a pair $c = (L, C)$ such that
+  $\mathrm{revisaGrafo}\,n\,(\mathrm{minFac}\,n)\,c$ accepts, and the binary encoding of $c$ has
+  length at most $63\,(\mathrm{size}(n) + 1)^2$.
+  \source{\cite{Pratt75}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/Pratt.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take $L$ the list of prime factors of $n$ and, from the existence of a certificate for each
+  prime with at most $2\log_2 p - 1$ entries, a certificate $C$ for all of them; the sum of the
+  sizes of the factors is bounded by the size of $n$ plus the number of factors, which gives the
+  quadratic bound. For $n < 2$ the pair $([], [])$ works.
+\end{proof}
+
+\begin{theorem}[Every prime has a short certificate: the primes are in $\cNP$]
+  \label{thm:structure-primos-np}
+  \lean{Sagitta.Map.Acotada.Pratt.primos_NP}
+  \leanok
+  \uses{def:structure-pratt}
+  % uses-lean: Sagitta.Map.NP
+  The problem $\mathrm{primos}$ is in the class $\cNP$ of the map.
+  \source{\cite{Pratt75}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/Pratt.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A prime has a correct certificate by the converse of Lucas's criterion (the units modulo a
+  prime form a cyclic group) with at most $2\log_2 p - 1$ entries of $O(|p|)$ bits each, hence of
+  quadratic length; checking a certificate is computable in polynomial time, and a correct
+  certificate implies primality by Lucas's criterion, by strong induction on $p$.
+\end{proof}
+
+\begin{theorem}[The graph of the least prime factor is in $\cNP$]
+  \label{thm:structure-grafo-minfac-np}
+  \lean{Sagitta.Map.Acotada.Pratt.grafoMinFac_NP}
+  \leanok
+  \uses{def:structure-pratt, thm:structure-certificado-grafo}
+  % uses-lean: Sagitta.Map.NP
+  The problem $\mathrm{grafoMinFac}$ is in the class $\cNP$ of the map.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/Pratt.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The verifier decodes the pair and the certificate and runs $\mathrm{revisaGrafo}$, which is
+  computable in polynomial time; the bound $63(|w|+2)^2$ on the certificate comes from
+  Theorem~\ref{thm:structure-certificado-grafo}.
+\end{proof}
+
+\begin{definition}[Satisfiability restricted to a set of lengths]
+  \label{def:structure-sat-en}
+  \lean{Sagitta.Map.Borde.Goodstein.satEn}
+  \leanok
+  \uses{def:threesat}
+  For a test $c : \mathbb{N} \to \mathrm{Bool}$, $\mathrm{satEn}\,c$ is the set of CNF formulas
+  $\varphi$ over $\mathbb{N}$ such that $c$ accepts the length of the encoding of $\varphi$ and
+  $\varphi \in \SAT$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/Goodstein.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: the test of lengths is computable in polynomial time]
+  \label{def:structure-longitudes-polinomiales}
+  \lean{Sagitta.Map.Borde.Goodstein.LongitudesPolinomiales}
+  \leanok
+  \uses{def:polytime}
+  For a test $c : \mathbb{N} \to \mathrm{Bool}$, $\mathrm{LongitudesPolinomiales}\,c$ says that the
+  function that sends a CNF formula $\varphi$ to $c$ applied to the length of its encoding is
+  computable in polynomial time, with the encoding of CNF formulas of cslib-frontier on the input.
+  This entry says that the definition exists, not that it holds for any given $c$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/Goodstein.lean}
+\end{definition}
+
+\begin{theorem}[Satisfiability on a polynomially decidable set of lengths is in $\cNP$]
+  \label{thm:structure-sat-en-np}
+  \lean{Sagitta.Map.Borde.Goodstein.satEn_NP}
+  \leanok
+  \uses{def:structure-sat-en, def:structure-longitudes-polinomiales, def:NP}
+  Let $c : \mathbb{N} \to \mathrm{Bool}$ and assume $\mathrm{LongitudesPolinomiales}\,c$. Then
+  $\mathrm{satEn}\,c \in \cNP$ for the encoding of CNF formulas.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/Goodstein.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take the verifier of $\SAT$ from cslib-frontier and put the length test in front of it
+  (as a guard); both are computable in polynomial time, and so is their conjunction.
+\end{proof}
+
+\section{Pumping: the lemma and the move against $\SAT$}
+\label{sec:structure-pumping}
+
+A pumping lemma has two halves: what every machine of the model satisfies, and a word that breaks it.
+The statements of this section state the break as a definition (the \emph{move}) and prove that, for
+search problems solved by the Turing machines of cslib, the move is the negation of the lemma; the
+move against $\SAT$ itself is not constructed here. The second group is the finite-memory case, where the move
+can be exhibited, and the third is a count in an abstract model of rivals.
+
+\begin{definition}[Depth move for a search problem]
+  \label{def:structure-jugada-profundidad}
+  \lean{Sagitta.Map.Borde.PBombeo.JugadaProfundidad, Sagitta.Map.Tiempo.LevinMaquinas.KtMTLog, Sagitta.Map.Tiempo.LevinMaquinas.ktMT, Sagitta.Map.Tiempo.LevinMaquinas.ResolubleMT}
+  \leanok
+  Let $\enc : \alpha \hookrightarrow \mathrm{List}\,\mathrm{Bool}$ be an encoding, $V : \alpha
+  \times \mathrm{List}\,\mathrm{Bool} \to \mathrm{Bool}$ a verifier and $A \subseteq \alpha$. An
+  instance $a$ is solvable when some machine of cslib, run for some number of steps, produces a
+  witness accepted by $V$; $\mathrm{kt}(a)$ is the least value of $i + \lceil \log_2 t \rceil$
+  over the machines $i$ and step counts $t$ with which $a$ is solved ($0$ if there is none). The
+  property $\mathrm{KtMTLog}$ of $A$ says that for some $c$ every $a \in A$ is solvable with
+  $\mathrm{kt}(a) \le c \lfloor \log_2 (|\enc(a)| + 2) \rfloor$. The \emph{depth move} says that for
+  every $c$ there is $a \in A$ such that, if $a$ is solvable, $c \lfloor \log_2 (|\enc(a)| + 2)
+  \rfloor < \mathrm{kt}(a)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/PBombeo.lean}
+\end{definition}
+
+\begin{theorem}[The depth move is the negation of bounded depth]
+  \label{thm:structure-jugada-iff}
+  \lean{Sagitta.Map.Borde.PBombeo.jugada_iff_no_bombea}
+  \leanok
+  \uses{def:structure-jugada-profundidad}
+  Let $\enc$, $V$ and $A$ be as in the definition. The depth move holds for $(\enc, V, A)$ if and
+  only if $\mathrm{KtMTLog}$ does not hold for $A$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/PBombeo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Unfold both sides and push the negation through the quantifiers.
+\end{proof}
+
+\begin{definition}[Finite-memory move]
+  \label{def:structure-jugada-finita}
+  \lean{Sagitta.Map.Borde.BombeoFinito.JugadaFinita, Sagitta.Map.Borde.BombeoFinito.Distinguibles, Sagitta.Map.Borde.BombeoFinito.anbn}
+  \leanok
+  Two words $u, v$ over an alphabet $\Gamma$ are distinguished by a language $L$ when the left
+  quotients of $L$ by $u$ and by $v$ differ. The \emph{finite-memory move} for $L$ says that for
+  every $k$ there are $k + 1$ words, indexed by $\mathrm{Fin}(k+1)$, any two of which (with different
+  indices) are distinguished by $L$. For letters $a, b$, the language $\mathrm{anbn}$ is the set of
+  words $a^n b^n$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/BombeoFinito.lean}
+\end{definition}
+
+\begin{theorem}[Pumping for finite automata, from the pigeonhole principle]
+  \label{thm:structure-bombeo-finito}
+  \lean{Sagitta.Map.Borde.BombeoFinito.bombeo_finito}
+  \leanok
+  Let $M$ be a deterministic finite automaton over $\Gamma$ with a finite set $\sigma$ of states,
+  $q \in \sigma$ a state and $w$ a word with $|\sigma| \le |w|$. Then there are words $x, y, z$ with
+  $w = xyz$, $y \neq \varepsilon$, $|x| + |y| \le |\sigma|$, and such that for every $m$ the
+  automaton started at $q$ ends in the same state on $x y^m z$ as on $w$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/BombeoFinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Among the $|\sigma| + 1$ prefixes of $w$ of length at most $|\sigma|$, two lead to the same state
+  (pigeonhole principle); the factor between them is $y$, and induction on $m$ shows that
+  repeating it does not change the final state.
+\end{proof}
+
+\begin{theorem}[The move for $\{a^n b^n\}$ is exhibited]
+  \label{thm:structure-anbn-jugada}
+  \lean{Sagitta.Map.Borde.BombeoFinito.anbn_jugada}
+  \leanok
+  \uses{def:structure-jugada-finita}
+  For letters $a \neq b$ of $\Gamma$, the finite-memory move holds for $\mathrm{anbn}(a, b)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/BombeoFinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The words $a^0, a^1, \dots, a^k$ are distinguished by the suffix $b^i$, which $\mathrm{anbn}$
+  accepts after $a^i$ and after no other power of $a$.
+\end{proof}
+
+\begin{theorem}[The depth beaten by a diagonal instance is at most $\log_2$ of its formula size, in an abstract count]
+  \label{thm:structure-profundidad-normalizada}
+  \lean{Sagitta.Map.Borde.JugadaDiagonal.profundidad_normalizada}
+  \leanok
+  Let $\ell, t, N$ be natural numbers with $0 < t$ and $2^\ell \cdot t \le N$. Then
+  $\ell + \lfloor \log_2 t \rfloor \le \lfloor \log_2 N \rfloor$. There is no machine in the
+  statement: $2^\ell$ stands for the number of rivals of level $\ell$, $t$ for the steps of each, and
+  $N$ for the size of a formula that writes all the runs.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/JugadaDiagonal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  $2^{\ell + \lfloor \log_2 t \rfloor} = 2^\ell \cdot 2^{\lfloor \log_2 t \rfloor} \le 2^\ell \cdot t
+  \le N$, and then the characterization of the floor of the logarithm.
+\end{proof}
+
+\section{Lower bounds on backtracking and on cutting planes}
+\label{sec:structure-bounds}
+
+The statements of this section are unconditional lower bounds in two restricted models. The first
+is a backtracking search over truth assignments of clauses, in an abstract cost model that counts
+the nodes visited; the second is the proof system of cutting planes, where a refutation is a list of
+integer linear inequalities.
+
+\begin{definition}[Backtracking on clauses]
+  \label{def:structure-backtracking}
+  \lean{Sagitta.Map.Tiempo.Vivo, Sagitta.Map.Tiempo.nodos, Sagitta.Map.Tiempo.buscar, Sagitta.Map.Tiempo.solCNF, Sagitta.Map.Tiempo.detCNF}
+  \leanok
+  A clause is a list of literals, a literal being a variable index with a sign. A node is a list $p$
+  of Booleans (a partial assignment of the first $|p|$ variables), and $k$ variables remain to be
+  fixed. The node is \emph{alive} for a test $\mathrm{sol}$ on lists of Booleans when some list
+  $q$ of length $k$ has $\mathrm{sol}(p \mathbin{+\!\!+} q) = \mathrm{true}$. For a list $F$ of
+  clauses, $\mathrm{solCNF}(F)$ accepts an assignment that makes every clause true, and the
+  detector $\mathrm{detCNF}(F)$ says that some clause of $F$ is already false in $p$ (all its
+  variables are fixed and none with its sign). The search $\mathrm{buscar}$ returns at a node whose
+  detector says dead; otherwise it tries $p\,\mathtt{false}$ and, if that branch finds nothing,
+  $p\,\mathtt{true}$; $\mathrm{nodos}$ is the number of nodes it visits.
+  \own{}
+  \leanfile{Sagitta/Map/ArbolElecciones.lean}
+\end{definition}
+
+\begin{lemma}[An unsatisfiable formula has a dead root]
+  \label{lem:structure-raiz-muerta}
+  \lean{Sagitta.Map.Tiempo.raiz_muerta}
+  \leanok
+  \uses{def:structure-backtracking}
+  Let $F$ be a list of clauses, read as a CNF formula over $\mathbb{N}$, that is not satisfiable,
+  and let $N$ be a natural number. Then the root (the empty partial assignment, with $N$ variables
+  to fix) is not alive for $\mathrm{solCNF}(F)$.
+  \source{\cite{BeyersdorffGalesiLauria13}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/RaizMuerta.lean}
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  A completion of the root accepted by $\mathrm{solCNF}(F)$ is read as an assignment that satisfies
+  every clause, which contradicts the hypothesis.
+\end{proof}
+
+\begin{theorem}[Backtracking with the falsified-clause detector visits many nodes on the pigeonhole formula]
+  \label{thm:structure-palomar-nodos}
+  \lean{Sagitta.Map.Tiempo.palomar_nodos}
+  \leanok
+  \uses{def:structure-backtracking, lem:structure-raiz-muerta}
+  Let $m, n, h$ be natural numbers with $n < m$ and $0 < n$, let $f : \mathrm{Fin}\,m \times
+  \mathrm{Fin}\,n \to \mathbb{N}$ be injective, and let $N$ be such that $f(v) < N$ for every $v$.
+  Let $F$ be the pigeonhole formula $\mathrm{PHP}^m_n$ with each variable $v$ renamed to $f(v)$.
+  Then $(n + 1 - h)^h < 2 \cdot \mathrm{nodos}$, where $\mathrm{nodos}$ is the number of nodes that
+  backtracking with the detector $\mathrm{detCNF}(F)$ visits from the root with $N$ variables to
+  fix (the subtraction $n + 1 - h$ is that of natural numbers).
+  \source{\cite{BeyersdorffGalesiLauria13}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/RaizMuerta.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The run of the search is a decision tree that finds a falsified clause (it is a leaf at every
+  dead node, and the root is dead by Lemma~\ref{lem:structure-raiz-muerta}); renaming the
+  variables back with the inverse of $f$ gives a tree for $\mathrm{PHP}^m_n$ with the same leaves.
+  The bound of cslib-frontier on the leaves of such trees applies, and the number of leaves is at
+  most the number of nodes visited.
+\end{proof}
+
+\begin{definition}[Cutting-plane refutation with bounded coefficients]
+  \label{def:structure-refuta-acotada}
+  \lean{Sagitta.Map.Tiempo.PlanosDeCorteClique.RefutaAcotada}
+  \leanok
+  For a set $\Gamma$ of integer linear inequalities and natural numbers $s, M$, $\Gamma$ has a
+  cutting-plane refutation of at most $s$ lines with coefficients of absolute value at most $M$
+  when some list $ls$ of inequalities is a cutting-plane proof from $\Gamma$, contains the
+  contradiction, has length at most $s$, and every coefficient of every inequality of $ls$ has
+  absolute value at most $M$.
+  \own{}
+  \leanfile{Sagitta/Map/PlanosDeCorteClique.lean}
+\end{definition}
+
+\begin{theorem}[No polynomial cutting-plane refutations with polynomial coefficients of the clique-coloring formulas]
+  \label{thm:structure-sin-refutacion-polinomial}
+  \lean{Sagitta.Map.Tiempo.PlanosDeCorteClique.sin_refutacion_polinomial}
+  \leanok
+  \uses{def:structure-refuta-acotada}
+  There are no functions $p, q : \mathbb{N} \to \mathbb{N}$ bounded by polynomials such that, for
+  infinitely many $j$, the inequalities of the clique-coloring formula with $n = 2^{4j}$ vertices,
+  clique size $k = 2^{2j} + 1$ and $r = 2^{2j}$ colors have a cutting-plane refutation of at most
+  $p(2^{4j})$ lines with coefficients of absolute value at most $q(2^{4j})$.
+  \source{\cite{Pudlak97,Krajicek97,AlonBoppana87}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/PlanosDeCorteClique.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A refutation with bounded coefficients gives, by the interpolation theorem of cslib-frontier, a
+  monotone circuit that separates the graphs with a $k$-clique from the $r$-colorable ones, of size
+  at most $(s \cdot 2^{2t} + 1)\, 2^{2t+1}$ with $t$ determined by the coefficient bound. The monotone
+  lower bound of cslib-frontier makes this size exceed $2^{\lfloor \lfloor \sqrt{\lfloor \sqrt n
+  \rfloor} \rfloor / 2 \rfloor}$, and for a large enough $j$ the polynomial bounds contradict this.
+\end{proof}
+
+\section{Grey boxes: resolution with bounded memory, a ladder of proof systems, and the limit}
+\label{sec:structure-grey}
+
+A \emph{grey box} sees the formula but works only with fixed rules. The statements of this section
+live in three models: resolution on configurations of clauses with a bound on the number of clauses
+held in memory; an abstract ladder of proof systems, each given by the sizes of the proofs of an
+indexed family of instances; and proof systems in the sense of Cook and Reckhow for the
+unsatisfiable CNF formulas.
+
+\begin{definition}[Configurational resolution in bounded space]
+  \label{def:structure-caja-gris}
+  \lean{Sagitta.Map.Tiempo.CajaGris.Jugada, Sagitta.Map.Tiempo.CajaGris.Avanza, Sagitta.Map.Tiempo.CajaGris.Recorre, Sagitta.Map.Tiempo.CajaGris.largoDe, Sagitta.Map.Tiempo.CajaGris.RefutaEn, Sagitta.Map.Tiempo.CajaGris.numVars}
+  \leanok
+  A configuration is a finite set of clauses. A move loads an axiom of the formula $F$ into the
+  configuration, adds the resolvent of two clauses of the configuration on a variable (that
+  occurs positively in the first and negatively in the second), or deletes a clause. A run in space
+  $s$ is a list of moves from the empty configuration in which every configuration reached has at
+  most $s$ clauses; its length counts loads and resolutions, not deletions. $F$ has a refutation in
+  space $s$ and length at most $L$ when some run in space $s$ of length at most $L$ ends in a
+  configuration that contains the empty clause. $\mathrm{numVars}(c)$ is the number of distinct
+  variables of the clause $c$.
+  \own{}
+  \leanfile{Sagitta/Map/CajaGris.lean}
+\end{definition}
+
+\begin{theorem}[Space is at least the minimal width of the axioms plus one]
+  \label{thm:structure-espacio-ancho}
+  \lean{Sagitta.Map.Tiempo.CajaGris.espacio_ge_ancho}
+  \leanok
+  \uses{def:structure-caja-gris}
+  Let $F$ be a list of clauses and $s, L, w$ natural numbers. If $F$ has a refutation in space $s$
+  and length at most $L$, and every axiom of $F$ has at least $w$ distinct variables, then $w + 1 \le
+  s$.
+  \own{}
+  \leanfile{Sagitta/Map/CajaGris.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Follow the run to the first load of an axiom $A$ that turns a satisfiable configuration $N$ into an
+  unsatisfiable one (resolving and deleting do not remove solutions). Flipping each variable of $A$ in
+  a model of $N$ satisfies $A$ and falsifies a different clause of $N$ for each variable, so $N$ has
+  at least $w$ clauses and the configuration after the load has at least $w + 1$.
+\end{proof}
+
+\begin{definition}[A ladder of proof systems over a family of instances]
+  \label{def:structure-peldano}
+  \lean{Sagitta.Map.Borde.EscaleraGris.Peldano, Sagitta.Map.Borde.EscaleraGris.Conserva, Sagitta.Map.Borde.EscaleraGris.Corto, Sagitta.Map.Borde.EscaleraGris.Simula, Sagitta.Map.Borde.EscaleraGris.arbol, Sagitta.Map.Borde.EscaleraGris.resolucion, Sagitta.Map.Borde.EscaleraGris.planos}
+  \leanok
+  A \emph{rung} over a type $\iota$ of instances is a predicate $R(i, s)$ (``the instance $i$ has a
+  proof of size at most $s$''). It \emph{conserves} the floor $c : \iota \to \mathbb{N}$ when $R(i, s)$
+  implies $c(i) \le s$; it is \emph{short} with ceiling $a$ when $R(i, a(i))$ holds for every $i$;
+  $Q$ \emph{simulates} $P$ with overhead $f$ when $P(i, s)$ implies $Q(i, f(i, s))$. Over the
+  pigeonhole formulas $\mathrm{PHP}^{n+1}_n$ the rungs $\mathrm{arbol}$, $\mathrm{resolucion}$ and
+  $\mathrm{planos}$ say that the formula has a tree-like resolution refutation of at most $s$
+  nodes, a resolution refutation of at most $s$ lines, and a cutting-plane refutation of at most $s$
+  lines.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/EscaleraGris.lean}
+\end{definition}
+
+\begin{theorem}[Resolution cannot simulate cutting planes on the pigeonhole formulas with small overhead]
+  \label{thm:structure-separa-resolucion-planos}
+  \lean{Sagitta.Map.Borde.EscaleraGris.separa_resolucion_planos}
+  \leanok
+  \uses{def:structure-peldano}
+  Let $f : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ and assume that $\mathrm{resolucion}$ simulates
+  $\mathrm{planos}$ with overhead $f$ over the family $\mathrm{PHP}^{n+1}_n$. Then for every $n$,
+  $2^{\lfloor n/24 \rfloor} \le f(n, (n+1)(n+2)^2)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/EscaleraGris.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Cutting planes refute $\mathrm{PHP}^{n+1}_n$ in $(n+1)(n+2)^2$ lines (it is short), resolution
+  conserves the floor $2^{\lfloor n/24 \rfloor}$ (the resolution lower bound of cslib-frontier), and an
+  abstract lemma says that a simulation of a short rung by a rung that conserves a floor pays that
+  floor.
+\end{proof}
+
+\begin{definition}[Hypothesis: conservation holds in every grey box]
+  \label{def:structure-ley-caja-gris}
+  \lean{Sagitta.Map.Borde.LimiteBlanco.LeyEnTodaCajaGris, Sagitta.Map.Borde.LimiteBlanco.ConservaCR, Sagitta.Map.Borde.LimiteBlanco.NPigualCoNP}
+  \leanok
+  \uses{def:P, def:NP}
+  $\mathrm{NPigualCoNP}$ says that $\cNP = \cconP$ for every type and every encoding into binary
+  words. For a proof system $P$ for the unsatisfiable CNF formulas, in the sense of Cook and
+  Reckhow (cslib-frontier), $\mathrm{ConservaCR}(P)$ says that $P$ is not polynomially bounded, that
+  is, that no polynomial bounds the length of a shortest proof of each unsatisfiable formula.
+  $\mathrm{LeyEnTodaCajaGris}$ says that every proof system for the unsatisfiable CNF formulas
+  satisfies $\mathrm{ConservaCR}$. This entry says that the definitions exist, not that the law holds;
+  it is open.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/LimiteBlanco.lean}
+\end{definition}
+
+\begin{theorem}[The law in every grey box is $\cNP \neq \cconP$]
+  \label{thm:structure-ley-iff}
+  \lean{Sagitta.Map.Borde.LimiteBlanco.ley_iff_np_ne_conp}
+  \leanok
+  \uses{def:structure-ley-caja-gris}
+  $\mathrm{LeyEnTodaCajaGris}$ holds if and only if $\mathrm{NPigualCoNP}$ does not hold.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/LimiteBlanco.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Unfold the definitions and rewrite with the theorem of cslib-frontier that $\cNP = \cconP$ if and
+  only if some proof system is polynomially bounded; the negation is moved outside the existential.
+\end{proof}
+
+\begin{theorem}[The law in every grey box would imply $\cP \neq \cNP$]
+  \label{thm:structure-ley-implica}
+  \lean{Sagitta.Map.Borde.LimiteBlanco.ley_implica_P_ne_NP}
+  \leanok
+  \uses{def:structure-ley-caja-gris, thm:structure-ley-iff, def:P, def:NP}
+  Assume $\mathrm{LeyEnTodaCajaGris}$. Then it is not the case that $\cP = \cNP$ for every type and
+  every encoding into binary words.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/LimiteBlanco.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $\cP = \cNP$ for every encoding, then $\cNP$ is closed under complement, so $\cNP = \cconP$,
+  which contradicts Theorem~\ref{thm:structure-ley-iff}.
+\end{proof}
+
+\section{The approximation rate and the Peano ceiling}
+\label{sec:structure-rate}
+
+The statements of this section are about an enumeration $M_0, M_1, \dots$ of problems, that is,
+functions from binary words to Booleans (the problems of the map), and a problem $L$. No machine
+appears: the enumeration is a parameter.
+
+\begin{definition}[Approximation rate]
+  \label{def:structure-tasa}
+  \lean{Sagitta.Map.PrimerFallo.FallaEn, Sagitta.Map.PrimerFallo.Falla, Sagitta.Map.PrimerFallo.primerFallo, Sagitta.Map.PrimerFallo.tasa}
+  \leanok
+  Machine $j$ \emph{fails at length $n$} when some word $x$ of length $n$ has $M_j(x) \neq L(x)$, and
+  it fails when it fails at some length. The first failure of $j$ is the least such length ($0$ if it
+  never fails). The approximation rate $R(i)$ of $L$ by the enumeration is the partial function whose
+  value is the maximum of the first failures of the machines $0, \dots, i - 1$, defined only when all
+  of them fail.
+  \source{\cite{BenDavidHalevi91}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/PrimerFallo.lean}
+\end{definition}
+
+\begin{lemma}[The rate is total if and only if $L$ is not in the enumeration]
+  \label{lem:structure-tasa-total}
+  \lean{Sagitta.Map.PrimerFallo.tasa_total_iff}
+  \leanok
+  \uses{def:structure-tasa}
+  Let $M : \mathbb{N} \to \mathrm{Problema}$ and $L$ be a problem. The rate $R(i)$ is defined for every $i$
+  if and only if $L$ is not in the range of $M$.
+  \source{\cite{BenDavidHalevi91}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/PrimerFallo.lean}
+\end{lemma}
+
+\begin{proof}
+  \leanok
+  Failing at some input is the same as being different from $L$; if $L = M_j$ then $R(j + 1)$ is
+  undefined, and if $L$ is none of them every machine fails.
+\end{proof}
+
+\begin{definition}[Hypothesis: $\cP \subseteq \cNP$ in the class of the map]
+  \label{def:structure-psubnp}
+  \lean{Sagitta.Map.PSubNP, Sagitta.Map.PDistintoNP}
+  \leanok
+  \uses{def:structure-tasa}
+  % uses-lean: Sagitta.Map.P, Sagitta.Map.NP
+  $\mathrm{PSubNP}$ says that the class $\cP$ of the map is contained in its class $\cNP$;
+  $\mathrm{PDistintoNP}$ says that the two classes are different. This entry says that the
+  definitions exist, not that $\cP \subseteq \cNP$ is assumed to hold.
+  \own{}
+  \leanfile{Sagitta/Map/Clases.lean}
+\end{definition}
+
+\begin{theorem}[$\cP \neq \cNP$ in terms of the approximation rate]
+  \label{thm:structure-pnp-tasa}
+  \lean{Sagitta.Map.PrimerFallo.pDistintoNP_iff_tasa_total}
+  \leanok
+  \uses{def:structure-tasa, def:structure-psubnp, lem:structure-tasa-total}
+  % uses-lean: Sagitta.Map.P, Sagitta.Map.NP
+  Let $M : \mathbb{N} \to \mathrm{Problema}$ be an enumeration whose range is exactly the class $\cP$ of
+  the map, and assume $\mathrm{PSubNP}$. Then $\cP \neq \cNP$ if and only if there is $L$ in the class
+  $\cNP$ of the map such that $R(i)$ is defined for every $i$.
+  \source{\cite{BenDavidHalevi91}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/PrimerFallo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Totality of the rate is $L \notin \cP$ by the lemma for $\cP$; with $\cP \subseteq \cNP$,
+  the classes differ exactly when some member of $\cNP$ is outside $\cP$.
+\end{proof}
+
+\begin{definition}[Statement (not proved): the Peano ceiling on the approximation rate]
+  \label{def:structure-teorema4}
+  \lean{Sagitta.Map.Techo.Teorema4, Sagitta.Map.Techo.TasaBajoElTecho, Sagitta.Map.Techo.Domina}
+  \leanok
+  \uses{def:structure-tasa}
+  A function $f$ dominates $g$ when $g(n) < f(n)$ for all large $n$. The rate $R$ of $L$ by $M$ is
+  \emph{under the ceiling} when there is a notation $o$ in Cantor normal form (an ordinal below
+  $\varepsilon_0$) and an $N$ such that for every $i \ge N$ the rate $R(i)$ is defined and lies below
+  $F_o(i)$, with $F_o$ the fast-growing hierarchy of Mathlib. For a proposition $\mathrm{Demuestra}$,
+  $\mathrm{Teorema4}$ is the statement ``$\mathrm{Demuestra}$ if and only if the rate is under the
+  ceiling''. There is no theory in Lean: $\mathrm{Demuestra}$ is a parameter standing for ``the theory
+  proves that $L$ is not in the enumeration'', and this entry says that the statement is defined, not
+  that it holds.
+  \source{\cite{BenDavidHalevi91}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Techo.lean}
+\end{definition}
+
+\section{Dichotomy against intermediate problems: the three switches}
+\label{sec:structure-switches}
+
+The statements of this section are about classes of languages over binary words, with the classes
+$\cP$ and $\cNP$, the polynomial-time many-one reductions and the $\cNP$-completeness of
+cslib-frontier. A class is a set of languages. The syntax of the fragments of existential
+second-order logic is not formalized: each fragment is a parameter, a class of languages, and what is
+taken from the literature about it is gathered in a named hypothesis.
+
+\begin{definition}[Polynomial equivalence, dichotomy, intermediate problems, capture of $\cNP$]
+  \label{def:structure-dicotomia-defs}
+  \lean{Sagitta.Map.Borde.TresInterruptores.Lenguaje, Sagitta.Map.Borde.TresInterruptores.Clase, Sagitta.Map.Borde.TresInterruptores.Reduce, Sagitta.Map.Borde.TresInterruptores.Equivalentes, Sagitta.Map.Borde.TresInterruptores.TieneDicotomia, Sagitta.Map.Borde.TresInterruptores.TieneIntermedios, Sagitta.Map.Borde.TresInterruptores.CapturaNP}
+  \leanok
+  \uses{def:reduction, def:P, def:NP}
+  A language is a set of binary words and a class is a set of languages. $\mathrm{Reduce}(L, L')$ is
+  the polynomial-time many-one reduction $L \red L'$ for the binary encoding of words;
+  $L$ and $L'$ are \emph{equivalent} when both $L \red L'$ and $L' \red L$. A class $F$ \emph{has the
+  dichotomy} when every $L \in F$ is in $\cP$ or $\cNP$-complete. It \emph{has intermediate problems}
+  when some $L \in F$ is in $\cNP$, not in $\cP$ and not $\cNP$-complete. It \emph{captures} $\cNP$
+  when every $L \in \cNP$ is equivalent to some $L' \in F$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{definition}
+
+\begin{theorem}[Being intermediate is preserved by polynomial equivalence]
+  \label{thm:structure-intermedio-equiv}
+  \lean{Sagitta.Map.Borde.TresInterruptores.Equivalentes.intermedio_iff}
+  \leanok
+  \uses{def:structure-dicotomia-defs, def:structure-intermedio}
+  If $L$ and $L'$ are equivalent, then $L$ is intermediate if and only if $L'$ is.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Membership in $\cNP$, membership in $\cP$ and $\cNP$-completeness are each preserved by
+  equivalence: the first two go down along a reduction, and completeness goes up along a reduction to
+  a language in $\cNP$.
+\end{proof}
+
+\begin{theorem}[The dichotomy is transported by polynomial equivalence]
+  \label{thm:structure-dicotomia-equiv}
+  \lean{Sagitta.Map.Borde.TresInterruptores.dicotomia_de_equivalentes}
+  \leanok
+  \uses{def:structure-dicotomia-defs}
+  Let $F, G$ be classes and assume that $G$ has the dichotomy and that every $L \in F$ is
+  equivalent to some $C \in G$. Then $F$ has the dichotomy.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $C$ is in $\cP$ then so is $L$, by $L \red C$; if $C$ is $\cNP$-complete then $L \in \cNP$ by
+  $L \red C$ and $L$ is hard by $C \red L$.
+\end{proof}
+
+\begin{theorem}[In a class that captures $\cNP$, intermediate problems exist if and only if $\cP \neq \cNP$]
+  \label{thm:structure-captura-iff}
+  \lean{Sagitta.Map.Borde.TresInterruptores.captura_iff, Sagitta.Map.Borde.TresInterruptores.intermedios_de_captura, Sagitta.Map.Borde.TresInterruptores.P_ne_NP_de_intermedios}
+  \leanok
+  \uses{def:structure-dicotomia-defs, thm:structure-ladner-fractal, thm:structure-intermedio-equiv}
+  Let $F$ be a class that captures $\cNP$. Then $F$ has intermediate problems if and only if $\cP \neq
+  \cNP$ over binary words. The direction from $\cP \neq \cNP$ is \texttt{intermedios\_de\_captura}; the
+  converse holds for every class, whether or not it captures $\cNP$ (\texttt{P\_ne\_NP\_de\_intermedios}).
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An intermediate problem is in $\cNP$ and not in $\cP$. Conversely, Theorem~\ref{thm:structure-ladner-fractal}
+  gives an intermediate language, which is equivalent to some language of $F$, and being intermediate
+  is preserved by equivalence.
+\end{proof}
+
+\begin{theorem}[If $\cP = \cNP$, a language of $\cNP$ is complete exactly when it is non-trivial]
+  \label{thm:structure-completo-no-trivial}
+  \lean{Sagitta.Map.Borde.TresInterruptores.completo_iff_no_trivial}
+  \leanok
+  \uses{thm:structure-completo-de-p-eq-np}
+  Assume that $\cP = \cNP$ for every type and every encoding into binary words. For a language $L
+  \in \cNP$ over binary words, $L$ is $\cNP$-complete if and only if $L \neq \emptyset$ and $L \neq
+  \Sigma^*$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Neither the empty language nor the set of all words is $\cNP$-complete, since the other one is in
+  $\cNP$ and does not reduce to it. A language with a member and a non-member is complete by
+  Theorem~\ref{thm:structure-completo-de-p-eq-np}.
+\end{proof}
+
+\begin{definition}[The three switches]
+  \label{def:structure-interruptores}
+  \lean{Sagitta.Map.Borde.TresInterruptores.Interruptores, Sagitta.Map.Borde.TresInterruptores.encendido, Sagitta.Map.Borde.TresInterruptores.sinM, Sagitta.Map.Borde.TresInterruptores.sinMo, Sagitta.Map.Borde.TresInterruptores.sinD, Sagitta.Map.Borde.TresInterruptores.Impone}
+  \leanok
+  A setting of the switches is a triple of Booleans (monotone, monadic, without inequality), where
+  true means that the restriction is imposed. $\mathrm{encendido}$ is the setting with all three
+  imposed; $\mathrm{sinM}$, $\mathrm{sinMo}$ and $\mathrm{sinD}$ are the settings in which only the
+  first, only the second, only the third is switched off. $\mathrm{Impone}(s, t)$ says that every
+  restriction imposed by $t$ is imposed by $s$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: what is taken from Feder and Vardi]
+  \label{def:structure-feder-vardi}
+  \lean{Sagitta.Map.Borde.TresInterruptores.FederVardi}
+  \leanok
+  \uses{def:structure-interruptores, def:structure-dicotomia-defs}
+  Let $\mathrm{frag}$ assign a class of languages to each setting of the switches and let $\mathrm{csp}$
+  be a class of languages. $\mathrm{FederVardi}(\mathrm{frag}, \mathrm{csp})$ is the conjunction of
+  the following statements.
+  \begin{itemize}
+    \item If $\mathrm{Impone}(s, t)$ then $\mathrm{frag}(s) \subseteq \mathrm{frag}(t)$.
+    \item $\mathrm{frag}(s) \subseteq \cNP$ for every $s$.
+    \item Every $L \in \mathrm{frag}(\mathrm{encendido})$ is equivalent to some $C \in \mathrm{csp}$.
+    \item $\mathrm{frag}(\mathrm{sinM})$, $\mathrm{frag}(\mathrm{sinMo})$ and $\mathrm{frag}(\mathrm{sinD})$
+      each capture $\cNP$.
+  \end{itemize}
+  The hypothesis is a structure of type \texttt{Prop}; this entry says that it is defined, not that it
+  holds.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{definition}
+
+\begin{theorem}[With one switch off, the fragment captures $\cNP$]
+  \label{thm:structure-captura-apagado}
+  \lean{Sagitta.Map.Borde.TresInterruptores.captura_de_apagado}
+  \leanok
+  \uses{def:structure-feder-vardi}
+  Assume $\mathrm{FederVardi}(\mathrm{frag}, \mathrm{csp})$ and let $s$ be a setting with $s \neq
+  \mathrm{encendido}$. Then $\mathrm{frag}(s)$ captures $\cNP$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Case analysis on the three switches: the setting imposes at least the restrictions of one of the
+  three corners, so its fragment is contained in the fragment of that corner, and capturing $\cNP$ is
+  inherited by larger classes.
+\end{proof}
+
+\begin{theorem}[All three switches on: the dichotomy, given the dichotomy of the finite-template class]
+  \label{thm:structure-encendido-dicotomia}
+  \lean{Sagitta.Map.Borde.TresInterruptores.encendido_dicotomia}
+  \leanok
+  \uses{def:structure-feder-vardi, thm:structure-dicotomia-equiv}
+  Assume $\mathrm{FederVardi}(\mathrm{frag}, \mathrm{csp})$ and that the class $\mathrm{csp}$ has the
+  dichotomy. Then $\mathrm{frag}(\mathrm{encendido})$ has the dichotomy.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Every language of the fragment is equivalent to a member of $\mathrm{csp}$
+  (Theorem~\ref{thm:structure-dicotomia-equiv}).
+\end{proof}
+
+\begin{theorem}[With a switch off, intermediate problems exist if and only if $\cP \neq \cNP$]
+  \label{thm:structure-apagado-iff}
+  \lean{Sagitta.Map.Borde.TresInterruptores.apagado_iff}
+  \leanok
+  \uses{def:structure-feder-vardi, thm:structure-captura-apagado, thm:structure-captura-iff}
+  Assume $\mathrm{FederVardi}(\mathrm{frag}, \mathrm{csp})$ and $s \neq \mathrm{encendido}$. Then
+  $\mathrm{frag}(s)$ has intermediate problems if and only if $\cP \neq \cNP$ over binary words.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Theorem~\ref{thm:structure-captura-iff} applied to the class $\mathrm{frag}(s)$, which captures
+  $\cNP$ by Theorem~\ref{thm:structure-captura-apagado}.
+\end{proof}
+
+\begin{theorem}[The switch decides which side of the table a fragment is on]
+  \label{thm:structure-interruptor-decide}
+  \lean{Sagitta.Map.Borde.TresInterruptores.interruptor_decide, Sagitta.Map.Borde.TresInterruptores.dicotomia_iff_encendido}
+  \leanok
+  \uses{def:structure-feder-vardi, thm:structure-encendido-dicotomia, thm:structure-apagado-iff}
+  Assume $\mathrm{FederVardi}(\mathrm{frag}, \mathrm{csp})$ and that $\mathrm{csp}$ has the dichotomy.
+  For every setting $s$, either $s = \mathrm{encendido}$ and $\mathrm{frag}(s)$ has the dichotomy, or $s
+  \neq \mathrm{encendido}$ and $\mathrm{frag}(s)$ has intermediate problems if and only if $\cP \neq
+  \cNP$ (\texttt{interruptor\_decide}). If moreover $\cP \neq \cNP$ over binary words, then
+  $\mathrm{frag}(s)$ has the dichotomy if and only if $s = \mathrm{encendido}$
+  (\texttt{dicotomia\_iff\_encendido}).
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Split on $s = \mathrm{encendido}$ and use the two previous theorems; for the second statement a
+  fragment with a switch off that had the dichotomy could not have an intermediate problem, but
+  $\cP \neq \cNP$ gives one.
+\end{proof}
+
+\begin{theorem}[If $\cP = \cNP$, every fragment has the dichotomy and none has intermediate problems]
+  \label{thm:structure-todos-dicotomia}
+  \lean{Sagitta.Map.Borde.TresInterruptores.todos_dicotomia_de_P_eq_NP}
+  \leanok
+  \uses{def:structure-feder-vardi}
+  Assume $\mathrm{FederVardi}(\mathrm{frag}, \mathrm{csp})$ and $\cP = \cNP$ over binary words. Then
+  for every setting $s$, $\mathrm{frag}(s)$ has the dichotomy and has no intermediate problems.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The fragment is contained in $\cNP = \cP$, so all its languages are in $\cP$; an intermediate
+  problem would give $\cP \neq \cNP$.
+\end{proof}
+
+\begin{definition}[Hypothesis: what is missing for Schaefer's theorem, without the separation]
+  \label{def:structure-schaefer-sin-separar}
+  \lean{Sagitta.Map.Borde.TresInterruptores.SchaeferSinSeparar}
+  \leanok
+  \uses{def:structure-supuestos, def:structure-dicotomia-defs}
+  For $\mathrm{cspDe}$ assigning to each Boolean language $\Gamma$ a language over binary words (the
+  encoding of the instances is a parameter), $\mathrm{SchaeferSinSeparar}(\mathrm{cspDe})$ is the
+  conjunction of the fields of the hypothesis $\mathrm{Supuestos}$ with membership in $\cP$ and
+  $\cNP$-completeness of cslib-frontier in place of the opaque predicates, except the separation
+  field, and with the added field that $\mathrm{cspDe}(\Gamma) \in \cNP$ for every finite $\Gamma$.
+  This entry says that the definition exists, not that it holds.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{definition}
+
+\begin{theorem}[The finite Boolean constraint languages have the dichotomy, without assuming $\cP \neq \cNP$]
+  \label{thm:structure-schaefer-bz}
+  \lean{Sagitta.Map.Borde.TresInterruptores.schaefer_da_BZ_booleano, Sagitta.Map.Borde.TresInterruptores.cspBooleanos}
+  \leanok
+  \uses{def:structure-schaefer-sin-separar, thm:structure-dicotomia}
+  Assume $\mathrm{SchaeferSinSeparar}(\mathrm{cspDe})$. Then the class of languages $\mathrm{cspDe}(\Gamma)$
+  for finite Boolean languages $\Gamma$ has the dichotomy.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/TresInterruptores.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $\cP = \cNP$ every such language is in $\cP$. Otherwise the fields give a
+  $\mathrm{Supuestos}$ whose separation field follows from $\cP \neq \cNP$, and
+  Theorem~\ref{thm:structure-dicotomia} applies.
+\end{proof}
+
+\section{Padding: what it conserves and what it costs}
+\label{sec:structure-padding}
+
+The statements of this section are about the padded language $\mathrm{relleno}(g, L)$, which
+contains the words made of a framing of a word $x \in L$ followed by $g(|x|)$ ones. Where the
+statement is about running time, the model is said: the Turing machines of cslib-frontier, or an
+additive cost model in which a decider is a pair of an answer function and a cost function.
+
+\begin{definition}[Padded language]
+  \label{def:structure-relleno}
+  \lean{Sagitta.Map.Borde.RellenoReloj.rellenar, Sagitta.Map.Borde.RellenoReloj.relleno, Sagitta.Map.Borde.RellenoReloj.largoRelleno}
+  \leanok
+  For $g : \mathbb{N} \to \mathbb{N}$ and a binary word $x$, $\mathrm{rellenar}(g, x)$ is the framing of
+  $x$ (the framing of cslib-frontier) followed by $g(|x|)$ copies of the bit $1$; its length is
+  $2|x| + 1 + g(|x|)$. The padded language $\mathrm{relleno}(g, L)$ is the set of words $y$ with $y =
+  \mathrm{rellenar}(g, x)$ and $x \in L$, where $x$ is the word framed in $y$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{definition}
+
+\begin{theorem}[Polynomial padding is a polynomial equivalence]
+  \label{thm:structure-relleno-equivalente}
+  \lean{Sagitta.Map.Borde.RellenoReloj.relleno_equivalente}
+  \leanok
+  \uses{def:structure-relleno, def:structure-dicotomia-defs}
+  Let $g$ be computable in polynomial time with input and output in unary, and let $L$ be a
+  language with some word $x_0 \notin L$. Then $L$ and $\mathrm{relleno}(g, L)$ are equivalent.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The map $x \mapsto \mathrm{rellenar}(g, x)$ is a reduction of $L$ to its padded language. The
+  reduction back sends a word of the form $\mathrm{rellenar}(g, \mathrm{unframe}\,y)$ to the framed word
+  and every other word to the fixed non-member $x_0$.
+\end{proof}
+
+\begin{theorem}[Polynomial padding preserves being intermediate]
+  \label{thm:structure-relleno-intermedio}
+  \lean{Sagitta.Map.Borde.RellenoReloj.relleno_intermedio}
+  \leanok
+  \uses{def:structure-relleno, thm:structure-relleno-equivalente, thm:structure-intermedio-equiv}
+  Let $g$ be computable in polynomial time, in unary, and let $L$ be intermediate. Then
+  $\mathrm{relleno}(g, L)$ is intermediate.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An intermediate language is not the set of all words (that set is in $\cP$), so it has a
+  non-member, and Theorem~\ref{thm:structure-relleno-equivalente} and
+  Theorem~\ref{thm:structure-intermedio-equiv} apply.
+\end{proof}
+
+\begin{definition}[Deciders with a cost, and the padded decider]
+  \label{def:structure-decisor}
+  \lean{Sagitta.Map.Borde.RellenoReloj.Decisor, Sagitta.Map.Borde.RellenoReloj.Decisor.DecideEn, Sagitta.Map.Borde.RellenoReloj.Decisor.rellenado, Sagitta.Map.Borde.RellenoReloj.inversa}
+  \leanok
+  \uses{def:structure-relleno}
+  A decider is a pair of functions on binary words: the answer and the cost. It decides $L$ in time $T$
+  when the answer is $\mathrm{true}$ exactly on the words of $L$ and the cost on $x$ is at most
+  $T(|x|)$. For a decider $D$ and functions $g, p$, the padded decider answers $\mathrm{true}$ on $y$
+  when $y = \mathrm{rellenar}(g, \mathrm{unframe}\,y)$ and $D$ accepts $\mathrm{unframe}\,y$; its cost on
+  $y$ is $p(|y|)$ plus, if $y$ has that form, the cost of $D$ on $\mathrm{unframe}\,y$. The function
+  $\mathrm{inversa}(g, m)$ is the greatest $n \le m$ with $2n + 1 + g(n) \le m$ ($0$ if there is
+  none). This is an additive cost model, not a machine.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{definition}
+
+\begin{theorem}[The work of a padded word is the old work plus the guard]
+  \label{thm:structure-trabajo}
+  \lean{Sagitta.Map.Borde.RellenoReloj.trabajo_no_se_destruye}
+  \leanok
+  \uses{def:structure-decisor}
+  For a decider $D$, functions $g, p$ and a binary word $x$, the cost of the padded decider on
+  $\mathrm{rellenar}(g, x)$ is $p(2|x| + 1 + g(|x|)) + \mathrm{cost}_D(x)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Unfold the cost of the padded decider; the word has the right form and $\mathrm{unframe}$ returns
+  $x$.
+\end{proof}
+
+\begin{theorem}[Translation by exponential padding, in the additive cost model]
+  \label{thm:structure-traslacion-exp}
+  \lean{Sagitta.Map.Borde.RellenoReloj.traslacion_exponencial}
+  \leanok
+  \uses{def:structure-decisor}
+  Let $D$ be a decider that decides $L$ in time $n \mapsto 2^n$ and let $p : \mathbb{N} \to
+  \mathbb{N}$. Then the padded decider, for $g(n) = 2^n$, decides $\mathrm{relleno}(2^n, L)$ in time
+  $m \mapsto p(m) + (m + 1)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The general translation gives time $p(m) + T(\mathrm{inversa}(g, m))$ for a monotone $T$, and with $T(n) =
+  2^n$ and $g(n) = 2^n$ the second term is at most $m + 1$.
+\end{proof}
+
+\begin{definition}[Diluted language and uniform witnesses]
+  \label{def:structure-diluido}
+  \lean{Sagitta.Map.Borde.RellenoReloj.diluido, Sagitta.Map.Borde.RellenoReloj.TestigosUniformes}
+  \leanok
+  For a language $A$ and a set $S \subseteq \mathbb{N}$ of lengths, $\mathrm{diluido}(A, S)$ is the set of
+  words of $A$ whose length is in $S$. The language $A$ has \emph{uniform witnesses} from $N$ when
+  some function $w$, computable in polynomial time with input in unary and output a binary word, has
+  for every $n \ge N$ a word $w(n)$ of length $n$ in $A$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{definition}
+
+\begin{theorem}[Deciding a diluted language in $\cP$ needs a clock for the set of lengths]
+  \label{thm:structure-reloj-diluido}
+  \lean{Sagitta.Map.Borde.RellenoReloj.reloj_de_diluido}
+  \leanok
+  \uses{def:structure-diluido}
+  Let $A$ have uniform witnesses from $N$ and let $S \subseteq \mathbb{N}$. If $\mathrm{diluido}(A, S)
+  \in \cP$ over binary words, then some $c : \mathbb{N} \to \mathrm{Bool}$ computable in polynomial time
+  with input in unary satisfies $c(n) = \mathrm{true} \iff n \in S$ for every $n \ge N$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take $c(n)$ to be the decider of $\mathrm{diluido}(A, S)$ applied to $w(n)$; since $w(n) \in A$ and
+  $|w(n)| = n$, the answer is whether $n \in S$.
+\end{proof}
+
+\begin{definition}[Strict reduction, quantized and dense classes]
+  \label{def:structure-denso}
+  \lean{Sagitta.Map.Borde.RellenoReloj.Estricta, Sagitta.Map.Borde.RellenoReloj.Cuantizado, Sagitta.Map.Borde.RellenoReloj.Denso}
+  \leanok
+  \uses{def:structure-dicotomia-defs}
+  $A <_{\mathrm{p}} B$ (\texttt{Estricta}) means $A \red B$ and not $B \red A$. A class $F$ is
+  \emph{quantized} when it has the dichotomy. It is \emph{dense} when for all $A, B \in F$ with $B
+  \notin \cP$ and $A <_{\mathrm{p}} B$ there is $C \in F$ with $A <_{\mathrm{p}} C <_{\mathrm{p}} B$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{definition}
+
+\begin{theorem}[$\cNP$ is dense]
+  \label{thm:structure-denso-np}
+  \lean{Sagitta.Map.Borde.RellenoReloj.denso_NP}
+  \leanok
+  \uses{def:structure-denso, def:NP}
+  The class $\cNP$ of languages over binary words is dense.
+  \source{\cite{Ladner75}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the density theorem of cslib-frontier ($A <_{\mathrm{p}} B$ with $B \notin \cP$ in $\cNP$ has a
+  language of $\cNP$ strictly between them), stated with the two strict reductions.
+\end{proof}
+
+\begin{theorem}[A dense class with a non-trivial member of $\cP$ and a complete problem is not quantized]
+  \label{thm:structure-denso-no-cuantizado}
+  \lean{Sagitta.Map.Borde.RellenoReloj.denso_no_cuantizado}
+  \leanok
+  \uses{def:structure-denso}
+  Assume $\cP \neq \cNP$ over binary words and let $F$ be a dense class. Let $A \in F \cap \cP$ with
+  words $a_1 \in A$ and $a_0 \notin A$, and let $B \in F$ be $\cNP$-complete. Then $F$ is not
+  quantized.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  $B \notin \cP$ because $\cP \neq \cNP$, and $A <_{\mathrm{p}} B$; density gives a $C \in F$ strictly
+  between, which is neither in $\cP$ nor complete, so the dichotomy fails.
+\end{proof}
+
+\begin{definition}[A class with a clock]
+  \label{def:structure-admite-reloj}
+  \lean{Sagitta.Map.Borde.RellenoReloj.AdmiteReloj}
+  \leanok
+  \uses{def:structure-dicotomia-defs}
+  A class $F$ \emph{admits a clock} when for every $B \in F$ and every $G \in \cP$ there is $C \in F$
+  equivalent to the set of words of $B$ that are not in $G$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{definition}
+
+\begin{theorem}[A class with a clock and a complete problem has intermediate problems, if $\cP \neq \cNP$]
+  \label{thm:structure-medio-reloj}
+  \lean{Sagitta.Map.Borde.RellenoReloj.medio_de_reloj}
+  \leanok
+  \uses{def:structure-admite-reloj, thm:structure-ladner-palabras}
+  Assume $\cP \neq \cNP$ over binary words. Let $F$ be a class that admits a clock and let $B \in F$ be
+  $\cNP$-complete. Then $F$ has intermediate problems.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The set $B$ is not in $\cP$. The downward form of Ladner's theorem of cslib-frontier gives $G \in
+  \cP$ with the words of $B$ outside $G$ in $\cNP$, outside $\cP$ and strictly below $B$; the clock
+  puts an equivalent language in $F$, and it is not complete because a reduction from $B$ would
+  contradict strictness.
+\end{proof}
+
+\begin{definition}[Hypothesis: switching off an interrupter gives a clock]
+  \label{def:structure-interruptor-reloj}
+  \lean{Sagitta.Map.Borde.RellenoReloj.InterruptorEsReloj}
+  \leanok
+  \uses{def:structure-admite-reloj, def:structure-interruptores}
+  For an assignment $\mathrm{frag}$ of a class to each setting of the switches,
+  $\mathrm{InterruptorEsReloj}(\mathrm{frag})$ says that $\mathrm{frag}(s)$ admits a clock for every
+  setting $s \neq \mathrm{encendido}$. This entry says that the definition exists, not that it holds.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{definition}
+
+\begin{theorem}[From the captures of Feder and Vardi, switching off gives a clock]
+  \label{thm:structure-reloj-de-fv}
+  \lean{Sagitta.Map.Borde.RellenoReloj.interruptorEsReloj_de_FV}
+  \leanok
+  \uses{def:structure-feder-vardi, def:structure-interruptor-reloj, thm:structure-captura-apagado}
+  Assume $\mathrm{FederVardi}(\mathrm{frag}, \mathrm{csp})$. Then $\mathrm{InterruptorEsReloj}(\mathrm{frag})$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A class contained in $\cNP$ that captures $\cNP$ admits a clock: the set of words of $B$ outside $G$ is
+  in $\cNP$, and the capture gives an equivalent member of the class. The fragments with a switch off
+  capture $\cNP$ by Theorem~\ref{thm:structure-captura-apagado}.
+\end{proof}
+
+\begin{theorem}[With all switches on there is no clock, under the assumptions]
+  \label{thm:structure-encendido-sin-reloj}
+  \lean{Sagitta.Map.Borde.RellenoReloj.encendido_sin_reloj}
+  \leanok
+  \uses{def:structure-feder-vardi, def:structure-admite-reloj, thm:structure-medio-reloj, thm:structure-encendido-dicotomia}
+  Assume $\mathrm{FederVardi}(\mathrm{frag}, \mathrm{csp})$, that $\mathrm{csp}$ has the dichotomy, and that
+  $\cP \neq \cNP$ over binary words. If $B \in \mathrm{frag}(\mathrm{encendido})$ is $\cNP$-complete, then
+  $\mathrm{frag}(\mathrm{encendido})$ does not admit a clock.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoReloj.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A clock would give intermediate problems in the fragment (Theorem~\ref{thm:structure-medio-reloj}),
+  contradicting its dichotomy (Theorem~\ref{thm:structure-encendido-dicotomia}).
+\end{proof}
+
+\begin{definition}[Exponential padding of the diagonal language, and the first law as a statement]
+  \label{def:structure-relleno-exp}
+  \lean{Sagitta.Map.Borde.RellenoExponencial.expo, Sagitta.Map.Borde.RellenoExponencial.diagonalL, Sagitta.Map.Borde.RellenoExponencial.diagonalRellena, Sagitta.Map.Borde.RellenoExponencial.PrimeraLey}
+  \leanok
+  \uses{def:structure-relleno}
+  $\mathrm{expo}(n) = 2^n$. $\mathrm{diagonalL}$ is the set of words $x$ with $\mathrm{diagonal}(x) =
+  \mathrm{true}$, the diagonal language of the time hierarchy of cslib-frontier;
+  $\mathrm{diagonalRellena}$ is $\mathrm{relleno}(\mathrm{expo}, \mathrm{diagonalL})$. For $g : \mathbb{N}
+  \to \mathbb{N}$, $\mathrm{PrimeraLey}(g)$ says that for every language $L$ with some non-member,
+  $L \in \cP$ if and only if $\mathrm{relleno}(g, L) \in \cP$, over binary words.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoExponencial.lean}
+\end{definition}
+
+\begin{theorem}[A language outside $\cP$ whose exponentially padded version is in $\cP$]
+  \label{thm:structure-dificil-relleno-facil}
+  \lean{Sagitta.Map.Borde.RellenoExponencial.existe_dificil_con_relleno_facil}
+  \leanok
+  \uses{def:structure-relleno-exp, def:P}
+  There is a language $A$ of binary words with $A \notin \cP$ and $\mathrm{relleno}(\mathrm{expo}, A) \in
+  \cP$, for the Turing machines of cslib-frontier.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoExponencial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take $A = \mathrm{diagonalL}$, which is not in $\cP$ by the time hierarchy of cslib-frontier. A machine
+  first checks cheaply that the framed word is shorter than $\log_2$ of the input, then that the input
+  is the padded word, and then runs the diagonal on the framed word in time at most polynomial in the
+  length of the input.
+\end{proof}
+
+\begin{theorem}[The first law holds for polynomial padding and fails for exponential padding]
+  \label{thm:structure-primera-ley}
+  \lean{Sagitta.Map.Borde.RellenoExponencial.primeraLey_de_polinomial, Sagitta.Map.Borde.RellenoExponencial.no_primeraLey_expo}
+  \leanok
+  \uses{def:structure-relleno-exp, thm:structure-relleno-equivalente, thm:structure-dificil-relleno-facil}
+  If $g$ is computable in polynomial time, with input and output in unary, then $\mathrm{PrimeraLey}(g)$
+  holds. The statement $\mathrm{PrimeraLey}(\mathrm{expo})$ does not hold.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/RellenoExponencial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first statement is the equivalence of Theorem~\ref{thm:structure-relleno-equivalente}. For the
+  second, the diagonal language is not in $\cP$ and has a non-member, while its exponential padding is
+  in $\cP$ by Theorem~\ref{thm:structure-dificil-relleno-facil}.
+\end{proof}
+
+\section{Universal enumerations, the diagonal and the lazy diagonal}
+\label{sec:structure-diagonal}
+
+The statements of this section are about enumerations of sets or functions, in a model with no
+machine; the last two are about the class $\cP$ of cslib-frontier.
+
+\begin{definition}[Universal family, diagonal of an enumeration]
+  \label{def:structure-universal}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.Universal, Sagitta.Map.Borde.UniversalDiagonal.diagonal}
+  \leanok
+  A family $e : A \to A \to B$ is \emph{universal} when it is surjective as a map from $A$ to the
+  functions $A \to B$: every function $A \to B$ is a row of $e$. For an enumeration $M : \mathbb{N}
+  \to \mathrm{Set}\,\alpha$ and a map $\mathrm{idx} : \alpha \to \mathbb{N}$, the diagonal is the set of
+  $a \in \alpha$ with $a \notin M(\mathrm{idx}(a))$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{definition}
+
+\begin{theorem}[No universal family if some self-map of the codomain has no fixed point]
+  \label{thm:structure-sin-universal}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.sin_enumeracion_universal}
+  \leanok
+  \uses{def:structure-universal}
+  Let $f : B \to B$ with $f(b) \neq b$ for every $b$. Then no family $e : A \to A \to B$ is universal.
+  \source{\cite{Lawvere69}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A universal family forces every self-map of $B$ to have a fixed point (Lawvere's fixed-point
+  theorem, which is that of Mathlib), contradicting the hypothesis.
+\end{proof}
+
+\begin{theorem}[The diagonal of an enumeration is not in the enumeration]
+  \label{thm:structure-diagonal-fuera}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.diagonal_fuera}
+  \leanok
+  \uses{def:structure-universal}
+  Let $M : \mathbb{N} \to \mathrm{Set}\,\alpha$ and let $\mathrm{idx} : \alpha \to \mathbb{N}$ be
+  surjective. Then the diagonal of $M$ is not in the range of $M$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The diagonal is in the range exactly when the family $(a, b) \mapsto b \in M(\mathrm{idx}(a))$
+  represents the function that negates its own diagonal, and Lawvere's argument with negation, which
+  has no fixed point, rules this out.
+\end{proof}
+
+\begin{theorem}[The diagonal of the presentation of $\cP$ is not in $\cP$]
+  \label{thm:structure-diagonal-fuera-p}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.diagonal_fuera_de_P}
+  \leanok
+  \uses{thm:structure-diagonal-fuera, def:P}
+  There is a function $F : \mathbb{N} \times \mathrm{List}\,\mathrm{Bool} \to \mathrm{Bool}$ such that the set
+  of binary words $w$ with $F(\mathrm{index}(w), w) = \mathrm{false}$ is not in $\cP$, where
+  $\mathrm{index}$ is the bijection between binary words and natural numbers of cslib-frontier.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The class $\cP$ is recursively presentable in cslib-frontier, by an $F$ whose rows are the sets of
+  the class; its diagonal is outside the class by Theorem~\ref{thm:structure-diagonal-fuera}.
+\end{proof}
+
+\begin{theorem}[Lazy diagonal: a mixed set outside two enumerated classes]
+  \label{thm:structure-schoning-abstracto}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.schoning_abstracto}
+  \leanok
+  Let $M_1, M_2 : \mathbb{N} \to \mathrm{Set}\,\mathbb{N}$ and let $C_1 = \mathrm{range}\,M_1$ and $C_2 =
+  \mathrm{range}\,M_2$. Assume that $C_1$ and $C_2$ are closed under finite variation, and let $A_1,
+  A_2 \subseteq \mathbb{N}$ with $A_1 \notin C_1$ and $A_2 \notin C_2$. Then there is $G \subseteq
+  \mathbb{N}$ such that the set equal to $A_1$ on $G$ and to $A_2$ outside $G$ is neither in $C_1$ nor
+  in $C_2$.
+  \source{\cite{Schoning82}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Closure under finite variation makes each difference $A_1 \mathbin{\triangle} M_1(i)$ and $A_2
+  \mathbin{\triangle} M_2(i)$ infinite; choose a strictly increasing sequence of witnesses, alternating
+  between the two enumerations, and let $G$ be the set of the even-indexed witnesses.
+\end{proof}
+
+\begin{definition}[Hypothesis: a class is recursively presentable]
+  \label{def:structure-enumeracion}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.Enumeracion}
+  \leanok
+  For a class $C$ of sets of binary words, $\mathrm{Enumeracion}(C)$ says that $C$ is recursively
+  presentable for the binary encoding of words, in the sense of cslib-frontier. This entry says that
+  the definition exists, not that it holds for a given $C$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{definition}
+
+\begin{theorem}[Ladner's theorem downward, from two enumerations]
+  \label{thm:structure-ladner-enumeraciones}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.ladner_de_enumeraciones}
+  \leanok
+  \uses{def:structure-enumeracion}
+  Let $B$ be a decidable set of binary words with $B \notin \cP$. Assume $\mathrm{Enumeracion}$ of the
+  polynomial-time degree of $B$ (the set of languages equivalent to $B$ under reductions in both
+  directions) and of the class $\cP$. Then there is $G \in \cP$ such that the set of words of $B$
+  outside $G$ is not in $\cP$, reduces to $B$ and is not reducible from $B$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It applies the effective lazy diagonal of cslib-frontier to the two enumerations, using the closure of
+  both classes under finite variation and that the empty set is not in the degree of $B$.
+\end{proof}
+
+\begin{theorem}[Ladner's theorem downward, without hypotheses]
+  \label{thm:structure-ladner-universal}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.ladner_cslib_universal}
+  \leanok
+  \uses{thm:structure-ladner-enumeraciones, thm:ladner}
+  Let $B$ be a decidable set of binary words with $B \notin \cP$. Then there is $G \in \cP$ such that the
+  set of words of $B$ outside $G$ is not in $\cP$, reduces to $B$ and is not reducible from $B$.
+  \source{\cite{Ladner75,Schoning82}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Theorem~\ref{thm:structure-ladner-enumeraciones} with the two enumerations that cslib-frontier proves
+  to exist (those of $\cP$ and of the degree of $B$).
+\end{proof}
+
+\begin{proposition}[Without a universal family there is no diagonal: the constants]
+  \label{prop:structure-constantes}
+  \lean{Sagitta.Map.Borde.UniversalDiagonal.constantes, Sagitta.Map.Borde.UniversalDiagonal.constantes_no_universal}
+  \leanok
+  \uses{def:structure-universal}
+  Let $\mathrm{constantes} : \mathrm{Bool} \to \mathrm{Bool} \to \mathrm{Bool}$ be the family $a \mapsto (b
+  \mapsto a)$. Then $\mathrm{constantes}$ is not universal.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/UniversalDiagonal.lean}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  If the identity were a row $a$, evaluating at $\mathrm{false}$ and at $\mathrm{true}$ would give
+  $a = \mathrm{false}$ and $a = \mathrm{true}$.
+\end{proof}
