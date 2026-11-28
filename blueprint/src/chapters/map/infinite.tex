@@ -4,4 +4,823 @@
 \chapter{The infinite, the continuum and ordinals}
 \label{chap:infinite}
 
-This chapter is not written yet.
+This chapter collects the statements of the map that pass to an infinite object: non-principal ultrafilters on the
+lengths of inputs, the space of infinite bit sequences with its category and measure, analytic and Borel sets, and
+ordinals. The first sections treat costs $\mathbb{N} \to \mathbb{N}$ and circuit sizes seen at an infinite length, and
+the trichotomy of a cost at the edge of the polynomials. The next ones state a version of $\cP \ne \cNP$ for sets of
+infinite sequences, the continuity and the zero-one laws on the space $\mathbb{N} \to \mathrm{Bool}$, and well-founded
+descent. The last ones state that Goodstein sequences terminate, with an ordinal that decreases, and a hierarchy of
+layers of fast-growing functions. Each statement says in which model it is made; none of them is a statement about
+Turing machines.
+
+\section{Infinite lengths and non-uniform polynomial size}
+\label{sec:infinite-lengths}
+
+A length that is infinite is a non-principal ultrafilter $U$ on $\mathbb{N}$. For a problem $L$, $\mathrm{sucNat}(L, n)$
+denotes the number of gates of a smallest circuit that decides $L$ on the inputs of $n$ bits. The statements of this
+section are about such sizes and about arbitrary cost functions $\mathbb{N} \to \mathbb{N}$.
+
+\begin{definition}[Infinite length]
+  \label{def:infinite-largo-infinito}
+  \lean{Sagitta.Map.Tiempo.Infinito.LargoInfinito}
+  \leanok
+  \own{}
+  An \emph{infinite length} is an ultrafilter $U$ on $\mathbb{N}$ such that $U \le$ the filter of cofinite subsets
+  of $\mathbb{N}$, that is, a non-principal ultrafilter. ``A property $P$ holds at the infinite length $U$'' means
+  that $\{n : P(n)\} \in U$.
+  \leanfile{Sagitta/Map/Infinito.lean}
+\end{definition}
+
+\begin{theorem}[A problem has circuits of polynomial size if and only if one polynomial bounds its optimal circuit at all infinite lengths]
+  \label{thm:infinite-psobrepoly-iff-infinito}
+  \lean{Sagitta.Map.Tiempo.Infinito.psobrePoly_iff_infinito}
+  \leanok
+  \uses{def:infinite-largo-infinito}
+  \own{}
+  Let $L$ be a problem. Then $L \in \cPpoly$ if and only if there are $c, k \in \mathbb{N}$ such that, for every
+  infinite length $U$, the inequality $\mathrm{sucNat}(L, n) \le c\,(n+1)^k$ holds at $U$. Here $\cPpoly$ is the class
+  of problems for which some polynomial with natural coefficients bounds the size of a smallest circuit at every length.
+  \leanfile{Sagitta/Map/Infinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Rewrite $\cPpoly$ as finiteness of the polynomial degree of $\mathrm{sucNat}(L, \cdot)$, and then use the equivalence
+  for an arbitrary cost: if $c(n+1)^k < T(n)$ held for infinitely many $n$, some infinite length would contain them,
+  which contradicts the bound at that length; so the bound holds from some $N$ on, and the first $N$ values are
+  absorbed in the constant.
+\end{proof}
+
+\begin{theorem}[One cost can be zero at one infinite length and beat every polynomial at another]
+  \label{thm:infinite-ambos}
+  \lean{Sagitta.Map.Tiempo.Infinito.ambos_a_la_vez}
+  \leanok
+  \uses{def:infinite-largo-infinito}
+  \own{}
+  Let $\mathrm{pendulo}(n) = 0$ if $n$ is even and $\mathrm{pendulo}(n) = 2^n$ if $n$ is odd. There is an infinite
+  length $U$ at which $\mathrm{pendulo}(n) = 0$, and there is an infinite length $U$ such that, for all
+  $c, k \in \mathbb{N}$, $c\,(n+1)^k < \mathrm{pendulo}(n)$ holds at $U$.
+  \leanfile{Sagitta/Map/Infinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The even numbers are infinite, so some infinite length contains them. For the second part, a cost that does not
+  lie in the polynomial class has an infinite length where it beats all polynomials, and $\mathrm{pendulo}$ is not
+  polynomial because $2^n$ exceeds $c\,(n+1)^k$ at a large odd $n$.
+\end{proof}
+
+\begin{theorem}[A sequence of costs none of which is polynomial has limit degree infinity]
+  \label{thm:infinite-no-llega}
+  \lean{Sagitta.Map.Tiempo.Finitud.no_llega}
+  \leanok
+  \own{}
+  Let $T : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ be such that, for every $k$, the function $T_k$ is not bounded by
+  $c\,(n+1)^d$ for any $c, d$. Then the infimum over $k$ of the polynomial degree of $T_k$ is $\top$, the top element of
+  $\mathbb{N} \cup \{\infty\}$. The polynomial degree of a cost is the infimum of the $d$ such that
+  $T(n) \le c\,(n+1)^d$ for some $c$ and all $n$, and is $\top$ if there is no such $d$.
+  \leanfile{Sagitta/Map/Finitud.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The infimum of the degrees is finite if and only if some $T_k$ is polynomial; a finite infimum would give such a $k$.
+\end{proof}
+
+\section{Padding and the gaps of SAT}
+\label{sec:infinite-padding}
+
+A problem is paddable when a short instance can be written as a longer one by fixing inputs of a circuit. The statements
+of this section are in the model of circuits over the Boolean basis, with $\mathrm{sucNat}$ as in the previous section.
+SAT enters in two forms: $\mathrm{satBits}$, the strings that are the encoding of a satisfiable CNF formula, and
+$\mathrm{satMarco}$, the same problem on strings that begin with a framed formula.
+
+\begin{definition}[Paddable problem, dense good lengths, gap]
+  \label{def:infinite-rellenable}
+  \lean{Sagitta.Map.Tiempo.Relleno.Rellenable, Sagitta.Map.Tiempo.Relleno.Denso, Sagitta.Map.Tiempo.Relleno.Hueco}
+  \leanok
+  \own{}
+  For $g : \{0,1\}^n \to \{0,1\}$ and $f : \{0,1\}^m \to \{0,1\}$, say that $g$ is obtained from $f$ by fixing
+  inputs if there is a map $\sigma$ sending each input position of $f$ to an input position of $g$ or to a constant
+  such that $g(x) = f(\sigma(x))$ for all $x$. A problem $L$ is \emph{paddable} if, for all $n \le m$, the restriction of
+  $L$ to the inputs of $n$ bits is obtained from its restriction to the inputs of $m$ bits by fixing inputs.
+  For $c, k, a, b \in \mathbb{N}$, the good lengths of $L$ are \emph{dense} if there is $N$ such that for every $n \ge N$
+  there is $m$ with $n \le m \le a\,(n+1)^b$ and $\mathrm{sucNat}(L, m) \le c\,(m+1)^k$. There is a \emph{gap} at $n$ if
+  $c\,(m+1)^k < \mathrm{sucNat}(L, m)$ for every $m$ with $n \le m \le a\,(n+1)^b$.
+  \leanfile{Sagitta/Map/Relleno.lean}
+\end{definition}
+
+\begin{definition}[SAT with framed input]
+  \label{def:infinite-satmarco}
+  \lean{Sagitta.Map.Tiempo.Relleno.satMarco}
+  \leanok
+  \own{}
+  $\mathrm{satMarco}(w) = \mathrm{satBits}(\mathrm{unframe}(w))$, where $\mathrm{unframe}$ reads the framed prefix
+  of $w$ (each bit $b$ written as $\mathrm{true}, b$, closed by $\mathrm{false}$) and ignores what follows.
+  % uses-lean: Sagitta.Map.CookS12.satBits
+  \leanfile{Sagitta/Map/Relleno.lean}
+\end{definition}
+
+\begin{theorem}[For a paddable problem, circuits of polynomial size are the same as dense good lengths]
+  \label{thm:infinite-psobrepoly-iff-denso}
+  \lean{Sagitta.Map.Tiempo.Relleno.psobrePoly_iff_denso}
+  \leanok
+  \uses{def:infinite-rellenable}
+  \own{}
+  Let $L$ be a paddable problem. Then $L \in \cPpoly$ if and only if there are $c, k, a, b$ such that the good lengths
+  of $L$ are dense for $(c, k, a, b)$.
+  \leanfile{Sagitta/Map/Relleno.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $L \in \cPpoly$, take $a = b = 1$, $N = 0$ and $m = n$. Conversely, the circuit at length $n$ is the one of a good
+  length $m \ge n$ with the extra inputs fixed, which costs two gates, and $c(m+1)^k + 2 \le (c(a+1)^k + 2)(n+1)^{bk}$.
+\end{proof}
+
+\begin{theorem}[Outside polynomial size, the framed SAT has infinitely many gaps for every polynomial and every window]
+  \label{thm:infinite-huecos-de-sat}
+  \lean{Sagitta.Map.Tiempo.Relleno.huecos_de_sat}
+  \leanok
+  \uses{def:infinite-rellenable, def:infinite-satmarco}
+  \own{}
+  Assume that $\mathrm{satBits} \notin \cPpoly$. Then, for all $c, k, a, b \in \mathbb{N}$, the set of $n$ such that
+  $\mathrm{satMarco}$ has a gap at $n$ for $(c, k, a, b)$ is infinite.
+  % uses-lean: Sagitta.Map.CookS12.satBits
+  \leanfile{Sagitta/Map/Relleno.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The problem $\mathrm{satMarco}$ is paddable, and a paddable problem outside $\cPpoly$ has infinitely many gaps for
+  every $(c, k, a, b)$. Moreover $\mathrm{satMarco} \in \cPpoly$ would give $\mathrm{satBits} \in \cPpoly$, because
+  $\mathrm{satBits}$ is obtained from $\mathrm{satMarco}$ by fixing inputs.
+\end{proof}
+
+\begin{theorem}[The two forms of SAT have circuits of polynomial size together]
+  \label{thm:infinite-satmarco-iff-satbits}
+  \lean{Sagitta.Map.Borde.MarcoDeBits.satMarco_iff_satBits}
+  \leanok
+  \uses{def:infinite-satmarco}
+  \own{}
+  $\mathrm{satMarco} \in \cPpoly$ if and only if $\mathrm{satBits} \in \cPpoly$.
+  % uses-lean: Sagitta.Map.CookS12.satBits
+  \leanfile{Sagitta/Map/Borde/MarcoDeBits.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  One direction is that $\mathrm{satBits}$ is obtained from $\mathrm{satMarco}$ by fixing inputs. For the other, an
+  input of $m$ bits is unframed to some length $j \le m/2$, so $\mathrm{satMarco}$ is a disjunction over $j$ of a test
+  that the frame has length $j$ and of $\mathrm{satBits}$ on $j$ bits; counting gates gives
+  $\mathrm{sucNat}(\mathrm{satMarco}, m) \le (c+13)(m+1)^{k+2}$ when $\mathrm{sucNat}(\mathrm{satBits}, j) \le c(j+1)^k$.
+\end{proof}
+
+\begin{theorem}[Eventually having no two consecutive zeros is a meagre set of infinite bit sequences]
+  \label{thm:infinite-sin-dos-ceros-magro}
+  \lean{Sagitta.Map.Borde.HuecosFlacos.sin_dos_ceros_magro}
+  \leanok
+  \own{}
+  In the space $\mathbb{N} \to \mathrm{Bool}$ of infinite bit sequences with the product topology, the set of
+  sequences $d$ such that, from some $n$ on, $d(n) = \mathrm{true}$ or $d(n+1) = \mathrm{true}$, is meagre.
+  \leanfile{Sagitta/Map/Borde/HuecosFlacos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The set is the union over $N$ of the sets of sequences with no two consecutive zeros from $N$ on; each of them is closed
+  with empty interior, hence nowhere dense, and a countable union of nowhere dense sets is meagre.
+\end{proof}
+
+\section{The trichotomy at the edge of the polynomials}
+\label{sec:infinite-trichotomy}
+
+A cost $f : \mathbb{N} \to \mathbb{N}$ is classified by how it compares with the polynomials $c\,(n+1)^k$. The statements
+of this section are about such costs, and about the circuit sizes $\mathrm{sucNat}$ of SAT, of a padded variant of SAT,
+and of a game of queries to a verifier. None of them is about Turing machines.
+
+\begin{definition}[Below, above and oscillating costs; easy and hard almost always]
+  \label{def:infinite-bajo-sobre-oscila}
+  \lean{Sagitta.Map.Borde.Tricotomia.Bajo, Sagitta.Map.Borde.Tricotomia.Sobre, Sagitta.Map.Borde.Tricotomia.Oscila, Sagitta.Map.Borde.BordeAlto.pol, Sagitta.Map.Borde.BordeAlto.FacilCS, Sagitta.Map.Borde.BordeAlto.DificilCS}
+  \leanok
+  \own{}
+  Let $f : \mathbb{N} \to \mathbb{N}$ and $\mathrm{pol}_{c,k}(n) = c\,(n+1)^k$. The cost $f$ is \emph{below} if
+  $f(n) \le c\,(n+1)^k$ for some $c, k$ and all $n$. It is \emph{above} if, for all $c, k$,
+  $c\,(n+1)^k < f(n)$ for all large $n$. It \emph{oscillates} if it is neither below nor above. For a bound $s$,
+  $f$ is \emph{easy almost always} for $s$ if $f(n) \le s(n)$ for all large $n$, and \emph{hard almost always} for $s$ if
+  $s(n) < f(n)$ for all large $n$.
+  \leanfile{Sagitta/Map/Borde/Tricotomia.lean}
+\end{definition}
+
+\begin{theorem}[Every cost is below, above or oscillating]
+  \label{thm:infinite-tricotomia}
+  \lean{Sagitta.Map.Borde.Tricotomia.tricotomia}
+  \leanok
+  \uses{def:infinite-bajo-sobre-oscila}
+  \own{}
+  For every $f : \mathbb{N} \to \mathbb{N}$, $f$ is below, or $f$ is above, or $f$ oscillates.
+  \leanfile{Sagitta/Map/Borde/Tricotomia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Case analysis on whether $f$ is below and whether it is above; the oscillating case is the conjunction of the two
+  negations.
+\end{proof}
+
+\begin{theorem}[Oscillating is neither easy almost always for some polynomial nor hard almost always for all polynomials]
+  \label{thm:infinite-oscila-iff-ni-ni}
+  \lean{Sagitta.Map.Borde.BordeAlto.oscila_iff_ni_ni}
+  \leanok
+  \uses{def:infinite-bajo-sobre-oscila}
+  \own{}
+  Let $f : \mathbb{N} \to \mathbb{N}$. Then $f$ oscillates if and only if there are no $c, k$ such that $f$ is easy
+  almost always for $\mathrm{pol}_{c,k}$, and it is not the case that for all $c, k$, $f$ is hard almost always for
+  $\mathrm{pol}_{c,k}$.
+  \leanfile{Sagitta/Map/Borde/BordeAlto.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Rewrite ``below'' as easy almost always for some polynomial and ``above'' as hard almost always for every polynomial;
+  both are the definitions.
+\end{proof}
+
+\begin{definition}[SAT by blocks]
+  \label{def:infinite-por-bloques}
+  \lean{Sagitta.Map.Borde.SatPorBloques.porBloques}
+  \leanok
+  \uses{def:infinite-satmarco}
+  \own{}
+  For $B \subseteq \mathbb{N}$, the problem $\mathrm{porBloques}(B)$ is $\mathrm{satMarco}(x)$ if $|x| \in B$ and
+  $\mathrm{false}$ otherwise.
+  \leanfile{Sagitta/Map/Borde/SatPorBloques.lean}
+\end{definition}
+
+\begin{theorem}[SAT with circuits of polynomial size, above the edge, or oscillating with gaps, in the circuit model]
+  \label{thm:infinite-tricotomia-sat}
+  \lean{Sagitta.Map.Borde.SatEnElBorde.tricotomia_sat}
+  \leanok
+  \uses{def:infinite-bajo-sobre-oscila, def:infinite-rellenable, def:infinite-satmarco}
+  \own{}
+  At least one of the following holds: $\mathrm{satBits} \in \cPpoly$; the cost $\mathrm{sucNat}(\mathrm{satMarco}, \cdot)$ is
+  above; or $\mathrm{sucNat}(\mathrm{satMarco}, \cdot)$ oscillates and, for all $c, k, a, b$, the set of $n$ at which
+  $\mathrm{satMarco}$ has a gap for $(c, k, a, b)$ is infinite.
+  % uses-lean: Sagitta.Map.CookS12.satBits
+  \leanfile{Sagitta/Map/Borde/SatEnElBorde.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $\mathrm{satBits} \in \cPpoly$ we are done. Otherwise $\mathrm{satMarco} \notin \cPpoly$, because $\mathrm{satBits}$
+  is obtained from it by fixing inputs, and the trichotomy for paddable problems gives that the cost of $\mathrm{satMarco}$
+  is above or oscillates with infinitely many gaps for every $(c, k, a, b)$.
+\end{proof}
+
+\begin{theorem}[If SAT is outside polynomial size, some choice of lengths gives a problem outside polynomial size whose cost oscillates, in the circuit model]
+  \label{thm:infinite-ladner-no-constructivo}
+  \lean{Sagitta.Map.Borde.SatPorBloques.ladner_no_constructivo}
+  \leanok
+  \uses{def:infinite-por-bloques, def:infinite-bajo-sobre-oscila, def:infinite-satmarco}
+  \own{}
+  Assume that $\mathrm{satBits} \notin \cPpoly$. Then there is $B \subseteq \mathbb{N}$ such that the complement of $B$ is
+  infinite, $\mathrm{porBloques}(B) \notin \cPpoly$, and $\mathrm{sucNat}(\mathrm{porBloques}(B), \cdot)$ oscillates.
+  The set $B$ is given by an existence proof; the statement says nothing about deciding $B$ in polynomial time.
+  % uses-lean: Sagitta.Map.CookS12.satBits
+  \leanfile{Sagitta/Map/Borde/SatPorBloques.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Choose lengths $g(0) < g(1) < \dots$ with $g(m+1) > g(m) + 1$ such that the cost of $\mathrm{satMarco}$ at $g(m)$
+  exceeds $m\,(g(m)+1)^m$, which is possible because there are infinitely many such lengths for each $m$; let $B$ be the
+  range of $g$. The numbers $g(m)+1$ are outside $B$. At the lengths $g(m)$ the cost of $\mathrm{porBloques}(B)$ is that
+  of $\mathrm{satMarco}$, which beats every polynomial; outside $B$ it is at most one gate, so the cost is not above.
+\end{proof}
+
+\begin{theorem}[In a black-box query model with a fixed set of programs and no advice, the query count does not oscillate and is not below]
+  \label{thm:infinite-tiempo-no-oscila}
+  \lean{Sagitta.Map.Borde.CuboSinOscilar.tiempo_no_oscila_sin_cita}
+  \leanok
+  \uses{def:infinite-bajo-sobre-oscila}
+  \own{}
+  For each $m$ let $Y_m$ and $C_m$ be finite types, with decidable equality on $Y_m$, let $P$ be a finite type, and let
+  $L \in \mathbb{N}$ and $t : \mathbb{N} \to \mathbb{N}$. Assume $|Y_m| = 2^m$ for all $m$, $|P| \le 2^L$ and
+  $|C_m| \le 2^0$ for all $m$. Let $A_m : P \to C_m \to$ (query trees with questions in $Y_m$, answers in $\mathrm{Bool}$
+  and outputs in $Y_m$). Assume that, for every $m$, the family $A_m$ solves the verifier game in $t(m)$ queries: for
+  every $y \in Y_m$ there are $p \in P$ and $c \in C_m$ such that the tree $A_m(p, c)$, run against the verifier that
+  answers ``is $z = y$?'' to each question $z$, outputs $y$ after at most $t(m)$ queries. Then $t$ does not oscillate
+  and $t$ is not below.
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.ArbolV, Sagitta.Map.Tiempo.LeyTresMemorias.Resuelve
+  \leanfile{Sagitta/Map/Borde/CuboSinOscilar.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A counting bound for the fixed set of programs without advice gives $2^{m-L} \le t(m) + 1$ for all $m$; this makes $t$
+  above, and above excludes both below and oscillating.
+\end{proof}
+
+\section{Analytic sets and Borel sets as the infinite versions of $\cNP$ and $\cP$}
+\label{sec:infinite-analytic}
+
+Here ``$\cP$'', ``$\cNP$'' and ``$\cconP$'' are names for classes of subsets of a topological space with a
+measurable structure, not classes of languages of finite words. The statements are about Polish spaces, in particular
+the spaces $\mathbb{N} \to K$ of infinite sequences with the product topology, and they are statements of descriptive set
+theory.
+
+\begin{definition}[The infinite analogues of $\cP$, $\cNP$ and $\cconP$]
+  \label{def:infinite-clases-analiticas}
+  \lean{Sagitta.Map.Informacion.NPInfinito.claseP, Sagitta.Map.Informacion.NPInfinito.claseNP, Sagitta.Map.Informacion.NPInfinito.claseCoNP}
+  \leanok
+  \own{}
+  Let $\alpha$ be a topological space with a measurable structure and $s \subseteq \alpha$. The set $s$ is in
+  $\mathrm{claseP}$ if it is measurable; in $\mathrm{claseNP}$ if it is analytic, that is, the image of a continuous
+  map from $\mathbb{N} \to \mathbb{N}$ or empty; and in $\mathrm{claseCoNP}$ if its complement is analytic.
+  \leanfile{Sagitta/Map/Informacion/NPInfinito.lean}
+\end{definition}
+
+\begin{theorem}[In sequence spaces over a discrete Polish alphabet with two letters, some analytic set is not Borel]
+  \label{thm:infinite-p-ne-np}
+  \lean{Sagitta.Map.Informacion.NPInfinito.p_ne_np_infinito}
+  \leanok
+  \uses{def:infinite-clases-analiticas}
+  \own{}
+  Let $K$ be an inhabited type with a topology that is discrete and Polish, with at least two elements, with a
+  measurable structure that is the Borel one. Then there is a set $s \subseteq (\mathbb{N} \to K)$ that is in
+  $\mathrm{claseNP}$ and not in $\mathrm{claseP}$.
+  \leanfile{Sagitta/Map/Informacion/NPInfinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Build a universal analytic set from a universal open set, using a countable basis. Its diagonal $D$ is analytic, and
+  the complement of $D$ is not analytic: if it were a section of the universal set, the index would belong to $D$ if and
+  only if it does not. A measurable $D$ would have analytic complement.
+\end{proof}
+
+\begin{theorem}[In a Polish space, a set is analytic with analytic complement if and only if it is Borel]
+  \label{thm:infinite-np-inter-conp}
+  \lean{Sagitta.Map.Informacion.NPInfinito.np_inter_coNP_iff_P}
+  \leanok
+  \uses{def:infinite-clases-analiticas}
+  \own{}
+  Let $\alpha$ be a topological space with a measurable structure that is Polish and has the Borel $\sigma$-algebra, and
+  let $s \subseteq \alpha$. Then $s \in \mathrm{claseNP}$ and $s \in \mathrm{claseCoNP}$ if and only if
+  $s \in \mathrm{claseP}$.
+  \leanfile{Sagitta/Map/Informacion/NPInfinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  One direction is the theorem of Mathlib that an analytic set with analytic complement is measurable. For the other,
+  a measurable set of a Polish space is analytic, and so is its complement.
+\end{proof}
+
+\begin{theorem}[Two disjoint analytic sets are separated by a Borel set]
+  \label{thm:infinite-separacion-lusin}
+  \lean{Sagitta.Map.Informacion.NPInfinito.separacion_lusin}
+  \leanok
+  \uses{def:infinite-clases-analiticas}
+  \own{}
+  Let $\alpha$ be a topological space that is Hausdorff, with a measurable structure for which open sets are
+  measurable. If $s$ and $t$ are in $\mathrm{claseNP}$ and are disjoint, there is $u \in \mathrm{claseP}$ with
+  $s \subseteq u$ and $t \subseteq u^{c}$.
+  \leanfile{Sagitta/Map/Informacion/NPInfinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the separation theorem of Mathlib for analytic sets, \texttt{AnalyticSet.measurablySeparable}, with its
+  conclusion rewritten as $s \subseteq u$ and $t \subseteq u^{c}$.
+\end{proof}
+
+\begin{theorem}[In the Cantor space, an analytic set with analytic complement is measurable]
+  \label{thm:infinite-suslin-cantor}
+  \lean{Sagitta.Map.Continuo.suslin_cantor}
+  \leanok
+  \own{}
+  Let $s \subseteq (\mathbb{N} \to \mathrm{Bool})$. If $s$ and its complement are analytic, then $s$ is measurable.
+  \leanfile{Sagitta/Map/Continuo/ClaseNoContinua.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the theorem of Mathlib \texttt{AnalyticSet.measurableSet\_of\_compl} applied to the space
+  $\mathbb{N} \to \mathrm{Bool}$.
+\end{proof}
+
+\section{Continuity on infinite descriptions}
+\label{sec:infinite-continuity}
+
+A description is an infinite sequence $d : \mathbb{N} \to \mathrm{Bool}$, a point of the Cantor space with the product
+topology. The statements of this section use a toy cost model on descriptions, and the circuit model of the earlier
+sections.
+
+\begin{definition}[Cost of a description, and its class]
+  \label{def:infinite-t-clase}
+  \lean{Sagitta.Map.Continuo.t, Sagitta.Map.Continuo.clase}
+  \leanok
+  \own{}
+  For $d : \mathbb{N} \to \mathrm{Bool}$, the cost of the description $d$ at $n$ is $t_d(n) = 2^n$ if $d(n) = \mathrm{true}$
+  and $t_d(n) = n$ otherwise. The class of $d$ is $\mathrm{true}$ if $t_d$ is bounded by $c\,(n+1)^k$ for some $c, k$ and
+  all $n$, and $\mathrm{false}$ otherwise.
+  \leanfile{Sagitta/Map/Continuo/ClaseNoContinua.lean}
+\end{definition}
+
+\begin{theorem}[In the toy cost model, the class of a description is continuous at no point]
+  \label{thm:infinite-clase-no-continua}
+  \lean{Sagitta.Map.Continuo.clase_no_continua}
+  \leanok
+  \uses{def:infinite-t-clase}
+  \own{}
+  For every $d : \mathbb{N} \to \mathrm{Bool}$, the map $\mathrm{clase} : (\mathbb{N} \to \mathrm{Bool}) \to \mathrm{Bool}$
+  is not continuous at $d$.
+  \leanfile{Sagitta/Map/Continuo/ClaseNoContinua.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Continuity at $d$ would make the value depend on a finite prefix of length $N$. Gluing that prefix of $d$ to a tail of
+  all $\mathrm{false}$ gives a polynomial cost, and to a tail of all $\mathrm{true}$ gives a cost that is not polynomial; the
+  two sequences agree with $d$ on the prefix and have different classes.
+\end{proof}
+
+\begin{theorem}[A continuous map of the Cantor space gives, for each output bit, a circuit on a finite prefix]
+  \label{thm:infinite-bit-tiene-circuito}
+  \lean{Sagitta.Map.Continuo.Compacidad.bit_tiene_circuito}
+  \leanok
+  \own{}
+  Let $F : (\mathbb{N} \to \mathrm{Bool}) \to (\mathbb{N} \to \mathrm{Bool})$ be continuous and $k \in \mathbb{N}$. Then there
+  are $m, t \in \mathbb{N}$ and a circuit $C$ with $m$ inputs and $t$ gates, in the Boolean circuit model, such that
+  $F(d)(k)$ is the value of $C$ on $(d(0), \dots, d(m-1))$ for every $d$.
+  \leanfile{Sagitta/Map/Continuo/CompacidadCircuitos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By compactness of the Cantor space, covered by the cylinders that continuity gives at each point, one finite prefix
+  length $m$ works for all $d$; so bit $k$ is a Boolean function of the first $m$ bits, and every Boolean function has a circuit.
+\end{proof}
+
+\begin{definition}[First halt before $t$]
+  \label{def:infinite-largo-hasta}
+  \lean{Sagitta.Map.Continuo.Regreso.largoHasta}
+  \leanok
+  \own{}
+  Let $\alpha$ be a type with decidable equality and $h \in \alpha$. For $x : \mathbb{N} \to \alpha$ and $t \in \mathbb{N}$,
+  $\mathrm{largoHasta}(h, t, x)$ is the least $n$ such that $n = t$ or $x(n) = h$.
+  \leanfile{Sagitta/Map/Continuo/RegresoFinito.lean}
+\end{definition}
+
+\begin{theorem}[The first halt before $t$ is a continuous function of the trace]
+  \label{thm:infinite-reloj-continuo}
+  \lean{Sagitta.Map.Continuo.Regreso.reloj_continuo}
+  \leanok
+  \uses{def:infinite-largo-hasta}
+  \own{}
+  Let $\alpha$ be a discrete topological space with decidable equality, $h \in \alpha$ and $t \in \mathbb{N}$. Then the map
+  $x \mapsto \mathrm{largoHasta}(h, t, x)$, from $\mathbb{N} \to \alpha$ with the product topology to $\mathbb{N}$ with its
+  discrete topology, is continuous.
+  \leanfile{Sagitta/Map/Continuo/RegresoFinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The value depends only on the first $t$ symbols of $x$, and the set of sequences that agree with $x$ on those symbols
+  is a neighbourhood of $x$; so the map is locally constant.
+\end{proof}
+
+\begin{definition}[The fair coin on the Cantor space]
+  \label{def:infinite-lanzar}
+  \lean{Sagitta.Map.Continuo.Moneda.moneda, Sagitta.Map.Continuo.Moneda.lanzar}
+  \leanok
+  \own{}
+  $\mathrm{moneda}$ is the measure on $\mathrm{Bool}$ that gives weight $1/2$ to each value. $\mathrm{lanzar}$ is the
+  infinite product of copies of $\mathrm{moneda}$, a probability measure on $\mathbb{N} \to \mathrm{Bool}$.
+  \leanfile{Sagitta/Map/Continuo/MonedaOscila.lean}
+\end{definition}
+
+\begin{theorem}[Almost surely, a random bit sequence has infinitely many true and infinitely many false values]
+  \label{thm:infinite-casi-seguro-oscila}
+  \lean{Sagitta.Map.Continuo.Moneda.casi_seguro_oscila}
+  \leanok
+  \uses{def:infinite-lanzar}
+  \own{}
+  For $\mathrm{lanzar}$-almost every $d : \mathbb{N} \to \mathrm{Bool}$, there are infinitely many $n$ with $d(n) = \mathrm{true}$
+  and infinitely many $n$ with $d(n) = \mathrm{false}$.
+  \leanfile{Sagitta/Map/Continuo/MonedaOscila.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For each $N$ and each value $b$, the sequences equal to $b$ from $N$ on have measure at most $2^{-k}$ for every $k$,
+  so measure zero; a countable union over $N$ gives measure zero for ``eventually $b$'', and the complement of the
+  union of the two cases is the claim.
+\end{proof}
+
+\section{Zero-one laws}
+\label{sec:infinite-zero-one}
+
+The zero-one laws of this section are stated on the Cantor space, with the measure $\mathrm{lanzar}$ for the
+probabilistic law and with the product topology for the topological one.
+
+\begin{definition}[Tail sets and asymptotic properties of costs]
+  \label{def:infinite-cola}
+  \lean{Sagitta.Map.Continuo.CeroUno.Cola, Sagitta.Map.Continuo.CeroUno.Asintotica}
+  \leanok
+  \own{}
+  A set $S \subseteq (\mathbb{N} \to \mathrm{Bool})$ is a \emph{tail set} if, for all $d, d'$ that agree from some point
+  on, $d \in S$ if and only if $d' \in S$. A property $Q$ of functions $\mathbb{N} \to \mathbb{N}$ is \emph{asymptotic} if,
+  for all $f, g$ that agree from some point on, $Q(f)$ if and only if $Q(g)$.
+  \leanfile{Sagitta/Map/Continuo/CeroUno.lean}
+\end{definition}
+
+\begin{theorem}[Kolmogorov's zero-one law for asymptotic properties of the cost of a random description]
+  \label{thm:infinite-cero-uno-costos}
+  \lean{Sagitta.Map.Continuo.CeroUno.cero_uno_costos}
+  \leanok
+  \uses{def:infinite-cola, def:infinite-t-clase, def:infinite-lanzar}
+  \source{\cite{Kolmogorov33}.}
+  \fidelity{Not checked against the printed source.}
+  Let $Q$ be an asymptotic property of functions $\mathbb{N} \to \mathbb{N}$ such that the set
+  $\{d : Q(t_d)\}$ is measurable. Then $\mathrm{lanzar}\{d : Q(t_d)\}$ is $0$ or $1$.
+  \leanfile{Sagitta/Map/Continuo/CeroUno.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The set $\{d : Q(t_d)\}$ is a tail set, because $t_d$ and $t_{d'}$ agree from the point where $d$ and $d'$ do. The bits
+  are independent under $\mathrm{lanzar}$, and a measurable tail set is measurable for the tail $\sigma$-algebra, so
+  the zero-one law of Mathlib applies.
+\end{proof}
+
+\begin{theorem}[The topological zero-one law on the Cantor space]
+  \label{thm:infinite-cero-uno-topologica}
+  \lean{Sagitta.Map.Continuo.CeroUnoTop.cero_uno_topologica}
+  \leanok
+  \uses{def:infinite-cola}
+  \source{\cite{Oxtoby80}.}
+  \fidelity{Not checked against the printed source.}
+  Let $S \subseteq (\mathbb{N} \to \mathrm{Bool})$ have the Baire property and be a tail set. Then $S$ is meagre or its
+  complement is meagre.
+  \leanfile{Sagitta/Map/Continuo/CeroUnoTopologica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The set $S$ differs from an open set $U$ by a meagre set. If $U$ is empty, $S$ is meagre. Otherwise $U \setminus S$ is
+  meagre; flipping finitely many bits is a homeomorphism that preserves $S$, the images of $U$ under these countably many
+  flips cover the space, so the complement of $S$ is a countable union of meagre sets.
+\end{proof}
+
+\begin{theorem}[Eventually having no two consecutive zeros has measure zero for the fair coin]
+  \label{thm:infinite-sin-dos-ceros-nulo}
+  \lean{Sagitta.Map.Continuo.DosCeros.sin_dos_ceros_nulo}
+  \leanok
+  \uses{def:infinite-lanzar}
+  \source{\cite{Kolmogorov33}.}
+  \fidelity{Not checked against the printed source.}
+  The set of sequences $d : \mathbb{N} \to \mathrm{Bool}$ such that, from some $n$ on, $d(n) = \mathrm{true}$ or
+  $d(n+1) = \mathrm{true}$, has $\mathrm{lanzar}$-measure $0$.
+  \leanfile{Sagitta/Map/Continuo/DosCeros.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The events that the block $\{2j, 2j+1\}$ is $00$ are independent, each of measure $1/4$, so by the second
+  Borel--Cantelli lemma infinitely many occur almost surely; a sequence in the set has no such block from some point on.
+\end{proof}
+
+\section{Well-founded relations and descent}
+\label{sec:infinite-wellfounded}
+
+The statements of this section are about relations on an arbitrary type and about descent on bit strings, where a
+step goes to a neighbour of the same length and the cost lives in a well-founded order. They are not statements about
+the running time of a machine: the neighbour function and the cost are arbitrary functions.
+
+\begin{definition}[No infinite descending chain]
+  \label{def:infinite-sin-descenso-infinito}
+  \lean{Sagitta.Map.SinDescensoInfinito}
+  \leanok
+  \own{}
+  \infrastructure{}
+  For a relation $r$ on a type $\alpha$, $\mathrm{SinDescensoInfinito}(r)$ says that there is no
+  $a : \mathbb{N} \to \alpha$ with $r(a(n+1), a(n))$ for all $n$.
+  \leanfile{Sagitta/Map/BuenaFundacion.lean}
+\end{definition}
+
+\begin{theorem}[A relation is well-founded if and only if it has no infinite descending chain]
+  \label{thm:infinite-bien-fundado}
+  \lean{Sagitta.Map.bienFundado_iff_sinDescensoInfinito}
+  \leanok
+  \uses{def:infinite-sin-descenso-infinito}
+  \own{}
+  \infrastructure{}
+  For every type $\alpha$ and relation $r$ on $\alpha$, $r$ is well-founded if and only if
+  $\mathrm{SinDescensoInfinito}(r)$.
+  \leanfile{Sagitta/Map/BuenaFundacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Mathlib characterizes well-foundedness as the absence of descending chains, and the two statements are the same
+  up to the packaging of the chain.
+\end{proof}
+
+\begin{definition}[Descent on bit strings with cost in a linear order, and the recharging counter]
+  \label{def:infinite-descenso-en}
+  \lean{Sagitta.Map.DescensoEn, Sagitta.Map.DescensoEn.EsOptimo, Sagitta.Map.Recarga.recarga}
+  \leanok
+  \own{}
+  \infrastructure{}
+  Let $\alpha$ be a linear order. A \emph{descent with cost in $\alpha$} is a pair of functions, a cost
+  $\mathrm{costo} : \{0,1\}^* \to \alpha$ and a neighbour $\mathrm{vecino} : \{0,1\}^* \to \{0,1\}^*$, such that
+  $\mathrm{vecino}$ preserves length. A string $x$ is a \emph{local optimum} if $\mathrm{costo}(x) \le \mathrm{costo}(\mathrm{vecino}(x))$.
+  The \emph{recharging counter} is the descent with cost in $\mathbb{N} \times_{\mathrm{lex}} \mathbb{N}$, the pairs
+  ordered lexicographically: a string beginning with $\mathrm{true}$ costs $(1, 0)$, a string $\mathrm{false}\,{:}{:}\,bs$
+  costs $(0, \mathrm{valor}(bs))$, where $\mathrm{valor}$ reads the bits as a binary number with the first bit least
+  significant; the neighbour of $\mathrm{true}\,{:}{:}\,bs$ is $\mathrm{false}$ followed by $|bs|$ copies of
+  $\mathrm{true}$, and the neighbour of $\mathrm{false}\,{:}{:}\,bs$ is $\mathrm{false}$ followed by $bs$ with one
+  subtracted in binary, with zero left at zero.
+  % uses-lean: Sagitta.Map.Contador.valor, Sagitta.Map.Contador.dec
+  \leanfile{Sagitta/Map/DescensoOrdinal.lean}
+\end{definition}
+
+\begin{theorem}[In a well-founded order, following the neighbour reaches a local optimum]
+  \label{thm:infinite-descenso-termina}
+  \lean{Sagitta.Map.DescensoEn.termina}
+  \leanok
+  \uses{def:infinite-descenso-en}
+  \own{}
+  \infrastructure{}
+  Let $\alpha$ be a linear order that is well-founded, $D$ a descent with cost in $\alpha$ and $x$ a bit string. Then
+  there is $k$ such that $\mathrm{vecino}^k(x)$ is a local optimum of $D$.
+  \leanfile{Sagitta/Map/DescensoOrdinal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Well-founded induction on the cost of $x$: if $x$ is not a local optimum, the cost of $\mathrm{vecino}(x)$ is smaller,
+  and the induction hypothesis applies to it. The proof gives no bound on $k$.
+\end{proof}
+
+\begin{theorem}[The recharging counter reaches a local optimum from every string]
+  \label{thm:infinite-recarga-termina}
+  \lean{Sagitta.Map.Recarga.termina}
+  \leanok
+  \uses{def:infinite-descenso-en, thm:infinite-descenso-termina}
+  \own{}
+  \infrastructure{}
+  For every bit string $x$ there is $k$ such that $\mathrm{vecino}^k(x)$ is a local optimum of the recharging counter.
+  \leanfile{Sagitta/Map/DescensoOrdinal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Apply Theorem~\ref{thm:infinite-descenso-termina} to the recharging counter, whose cost order
+  $\mathbb{N} \times_{\mathrm{lex}} \mathbb{N}$ is well-founded.
+\end{proof}
+
+\section{Goodstein sequences terminate}
+\label{sec:infinite-goodstein}
+
+The statements of this section are about natural numbers written in hereditary base $b$ and about the ordinals
+below $\varepsilon_0$ obtained by replacing the base with $\omega$. The ordinals are those of Mathlib.
+
+\begin{definition}[Goodstein sequence, with Mathlib digits and with the hereditary base]
+  \label{def:infinite-goodstein}
+  \lean{Sagitta.Map.subeBase, Sagitta.Map.goodstein, Sagitta.Map.Borde.Goodstein.subir, Sagitta.Map.Borde.Goodstein.aONote, Sagitta.Map.Borde.Goodstein.ord, Sagitta.Map.Borde.Goodstein.gs, Sagitta.Map.Borde.Goodstein.ordinalDe}
+  \leanok
+  \own{}
+  For $b \ge 2$ and $n \in \mathbb{N}$, $\mathrm{subeBase}(b, n)$ and $\mathrm{subir}(b, n)$ are the number obtained by
+  writing $n$ in hereditary base $b$ and replacing $b$ with $b+1$ everywhere. The first is defined by the digits of
+  Mathlib with a fuel argument; the second by the decomposition $n = b^e d + r$ with $e = \lfloor \log_b n \rfloor$,
+  $1 \le d < b$ and $r < b^e$, as $(b+1)^{\mathrm{subir}(b,e)} d + \mathrm{subir}(b, r)$. The sequences
+  $\mathrm{goodstein}(m)$ and $\mathrm{gs}(m)$ start at $m$ and go from $k$ to $k+1$ by replacing the base $k+2$ with
+  $k+3$ in the term and subtracting one, using $\mathrm{subeBase}$ and $\mathrm{subir}$ respectively. The ordinal
+  $\mathrm{ord}(b, n)$ is the value of the notation $\mathrm{aONote}(b, n)$, which is the hereditary base $b$
+  expansion of $n$ with $b$ replaced by $\omega$, and $\mathrm{ordinalDe}(m, k) = \mathrm{ord}(k+2, \mathrm{gs}(m)(k))$.
+  \leanfile{Sagitta/Map/Borde/Goodstein.lean}
+\end{definition}
+
+\begin{theorem}[The ordinal of a Goodstein term decreases at each step]
+  \label{thm:infinite-ordinal-baja}
+  \lean{Sagitta.Map.Borde.Goodstein.ordinal_baja}
+  \leanok
+  \uses{def:infinite-goodstein}
+  \source{\cite{Goodstein44}.}
+  \fidelity{Not checked against the printed source.}
+  Let $m, k \in \mathbb{N}$ with $\mathrm{gs}(m)(k) \ne 0$. Then $\mathrm{ordinalDe}(m, k+1) < \mathrm{ordinalDe}(m, k)$.
+  \leanfile{Sagitta/Map/Borde/Goodstein.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Changing the base does not change the ordinal, and $\mathrm{ord}(b, \cdot)$ is strictly increasing in $n$; subtracting
+  one from the term after the base change lowers it.
+\end{proof}
+
+\begin{theorem}[Every Goodstein sequence reaches zero]
+  \label{thm:infinite-goodstein-termina}
+  \lean{Sagitta.Map.Borde.Goodstein.goodstein_termina}
+  \leanok
+  \uses{def:infinite-goodstein, thm:infinite-ordinal-baja}
+  \source{\cite{Goodstein44}.}
+  \fidelity{Not checked against the printed source.}
+  For every $m \in \mathbb{N}$ there is $k$ with $\mathrm{gs}(m)(k) = 0$.
+  \leanfile{Sagitta/Map/Borde/Goodstein.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Well-founded induction on the ordinal $\mathrm{ordinalDe}(m, k)$: if the term is not zero, the ordinal of the next
+  term is smaller by Theorem~\ref{thm:infinite-ordinal-baja}.
+\end{proof}
+
+\begin{theorem}[The two definitions of the Goodstein sequence agree]
+  \label{thm:infinite-goodstein-eq-gs}
+  \lean{Sagitta.Map.Borde.Goodstein.goodstein_eq_gs}
+  \leanok
+  \uses{def:infinite-goodstein}
+  \source{\cite{Goodstein44}.}
+  \fidelity{Not checked against the printed source.}
+  For all $m, k \in \mathbb{N}$, $\mathrm{goodstein}(m)(k) = \mathrm{gs}(m)(k)$.
+  \leanfile{Sagitta/Map/Borde/Goodstein.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $k$, using that $\mathrm{subeBase}(b, n) = \mathrm{subir}(b, n)$ for $b \ge 2$, which is proved by
+  comparing the sum of digits of the fueled definition with the decomposition of $\mathrm{subir}$.
+\end{proof}
+
+\section{The fast-growing hierarchy and its layers}
+\label{sec:infinite-hierarchy}
+
+The statements of this section are about functions $\mathbb{N} \to \mathbb{N}$ and the finite levels of the
+fast-growing hierarchy. The polynomial functions are those $f$ with $f(n) \le c\,(n+1)^k$ for some $c, k$ and all $n$.
+
+\begin{definition}[The fast-growing hierarchy and its layers]
+  \label{def:infinite-F-capa}
+  \lean{Sagitta.Map.Tiempo.F, Sagitta.Map.Tiempo.Capa}
+  \leanok
+  \own{}
+  $F_0$ is the successor function and $F_{k+1}(n) = F_k^{\,n}(n)$, the $n$-th iterate of $F_k$ applied to $n$. The layer
+  $\mathrm{Capa}(k)$ is the set of functions $f : \mathbb{N} \to \mathbb{N}$ such that, for some $m$, $f(n) \le F_k^{\,m}(n + m)$
+  for all $n$.
+  \leanfile{Sagitta/Map/Jerarquia.lean}
+\end{definition}
+
+\begin{theorem}[Each layer is strictly contained in the next]
+  \label{thm:infinite-capa-estricta}
+  \lean{Sagitta.Map.Tiempo.capa_estricta}
+  \leanok
+  \uses{def:infinite-F-capa}
+  \source{\cite{LobWainer70}.}
+  \fidelity{Not checked against the printed source.}
+  For every $k \in \mathbb{N}$, $\mathrm{Capa}(k) \subsetneq \mathrm{Capa}(k+1)$.
+  \leanfile{Sagitta/Map/Jerarquia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The layers increase with $k$, and $F_{k+1}$ lies in $\mathrm{Capa}(k+1)$ but not in $\mathrm{Capa}(k)$, because the
+  diagonal $F_{k+1}(n) = F_k^{\,n}(n)$ exceeds every fixed iterate of $F_k$ at large $n$.
+\end{proof}
+
+\begin{theorem}[Every polynomial function lies in the second layer]
+  \label{thm:infinite-pol-sub-capa-dos}
+  \lean{Sagitta.Map.Tiempo.pol_sub_capa_dos}
+  \leanok
+  \uses{def:infinite-F-capa}
+  \source{\cite{LobWainer70}.}
+  \fidelity{Not checked against the printed source.}
+  The set of functions $f$ such that $f(n) \le c\,(n+1)^k$ for some $c, k$ and all $n$ is contained in
+  $\mathrm{Capa}(2)$.
+  \leanfile{Sagitta/Map/Jerarquia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For $f(n) \le c\,(n+1)^k$ take $m = c\,(N+1)^k + 1$, where $2^n$ exceeds $c\,(n+1)^k$ for $n \ge N$; then
+  $c\,(n+1)^k \le 2^{n+m} \le F_2(n+m) \le F_2^{\,m}(n+m)$.
+\end{proof}
+
+\begin{theorem}[The level $F_2$ is the second level of the fast-growing hierarchy of Mathlib]
+  \label{thm:infinite-F-fastgrowing-two}
+  \lean{Sagitta.Map.Tiempo.F_eq_fastGrowing_two}
+  \leanok
+  \uses{def:infinite-F-capa}
+  \source{\cite{LobWainer70}.}
+  \fidelity{Not checked against the printed source.}
+  $F_2 = \mathrm{fastGrowing}\ 2$, where $\mathrm{fastGrowing}$ is the fast-growing hierarchy that Mathlib defines on
+  ordinal notations below $\varepsilon_0$.
+  \leanfile{Sagitta/Map/Jerarquia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compute $F_2(n) = 2^n n$ from the first level, which doubles, and compare with the value $2^n n$ that Mathlib
+  proves for $\mathrm{fastGrowing}\ 2$.
+\end{proof}
