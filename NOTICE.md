@@ -14,7 +14,21 @@ F. Barahona (1982).
 It depends on **Mathlib** (Apache-2.0), https://github.com/leanprover-community/mathlib4, at
 revision `bbff2954fe5ee3b7a4b33cc26ef873a1c3277d91`, fetched as a package (not vendored).
 
-No code from formal-conjectures is included.
+The map (`Sagitta/Map`) contains code adapted from **formal-conjectures** (Apache-2.0),
+https://github.com/google-deepmind/formal-conjectures, commit
+`2207c54d0dbe960de591d280f997b195bf3f6e28`, Copyright 2025-2026 The Formal Conjectures Authors
+(`vendor/LICENSE-formal-conjectures`; the project has no NOTICE file at that commit):
+
+* `Sagitta/Map/Codificacion.lean`, adapted from
+  `FormalConjecturesForMathlib/Computability/BitstringEncoding.lean`;
+* the definitions of `P`, `NP` and `coNP` in `Sagitta/Map/Clases.lean`, adapted from
+  `FormalConjecturesForMathlib/Computability/Complexity.lean` and
+  `FormalConjectures/Millennium/PvsNP.lean`.
+
+These two files are **modified**, and each one says so in its header: identifiers in Spanish, no
+module system, only the encoding instances that are used, a bit string is encoded as itself, and
+open statements are propositions (`def … : Prop`) instead of theorems with `sorry`. No other file
+of the map contains third-party code; the sources that the comments cite are cited, not copied.
 
 Parts of the code and documentation were written with AI assistance (Claude, by Anthropic); see
 `README.md`.

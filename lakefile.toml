@@ -1,6 +1,6 @@
 name = "sagitta-flecha"
 version = "0.1.0"
-defaultTargets = ["SagittaCore", "SagittaTM"]
+defaultTargets = ["SagittaCore", "SagittaTM", "SagittaMap"]
 
 # The only dependency is Mathlib, pinned to the same revision that cslib-frontier
 # (commit 99f02811) uses through cslib 98f9a62. Fetch the prebuilt cache with
@@ -53,3 +53,12 @@ name = "SagittaTM"
 roots = ["Sagitta"]
 globs = ["Sagitta", "Sagitta.Arrow.TM.+", "Sagitta.Fidelity", "Sagitta.Fidelity.+"]
 leanOptions = {autoImplicit = false, relaxedAutoImplicit = false}
+
+# The map: the companion library (study notes and formalization exercises around the arrow: the cost
+# cube, the homogeneity of time, towers, bounded arithmetic, dichotomies, barriers). Its identifiers
+# and comments are in Spanish. It uses the Lean options it was developed with.
+[[lean_lib]]
+name = "SagittaMap"
+roots = ["Sagitta.Map"]
+globs = ["Sagitta.Map", "Sagitta.Map.+"]
+leanOptions = {pp.unicode.fun = true, relaxedAutoImplicit = false, weak.linter.mathlibStandardSet = true, maxSynthPendingDepth = 3, weak.linter.style.header = false, weak.linter.style.longLine = false, weak.linter.hashCommand = false}
