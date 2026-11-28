@@ -4,4 +4,1519 @@
 \chapter{Dynamics and conservation}
 \label{chap:dynamics}
 
-This chapter is not written yet.
+This chapter collects the statements about how a computation evolves in time. The first sections
+are about an abstract step relation on a type of configurations (a line against a tree of time) and
+about a cost model on binary choice trees. The next ones are about reversible dynamics: a
+permutation of a type, the information it keeps, a conserved charge in the sense of Koopman and
+Noether, the bits erased by a map that is not injective, and Curie's principle for equivariant
+maps. Then come the cost cube, an abstract model of automata that query a verifier, with its law,
+its non-deterministic variant and its variant with the transitions charged, and the statements about
+systems whose rule does not depend on the time, where a clock is paid in memory. The following
+sections connect the space of multi-tape Turing machines to the cube, and give statements about
+halting or cycling, a time crystal, pumping and clocks for finite automata, the subset construction
+and a tower of statements about SAT. Each section says in which model its statements live.
+
+\section{The shape of time: a line against a tree}
+\label{sec:dynamics-shape}
+
+In this section a configuration space is an arbitrary type $C$ and a step is a relation, not a
+machine. A \emph{step} is a map $R : C \to \mathcal{P}(C)$. The step of a function $f : C \to C$
+is $c \mapsto \{f(c)\}$. $\mathrm{Alcanza}\ R\ t\ c\ d$ holds when there is a path of exactly $t$
+steps from $c$ to $d$. The \emph{front} at time $t$ from $c$ is the set of $d$ with a path of $t$
+steps from $c$ to $d$. The \emph{lifting} of $R$ sends a set $S \subseteq C$ to the union of the
+sets $R(c)$ for $c \in S$. A \emph{run} from $c$ is a sequence $s : \mathbb{N} \to C$ with
+$s(0) = c$ and $s(n+1) \in R(s(n))$ for all $n$.
+
+\begin{definition}[Steps, fronts, lifting and runs of a step relation]
+  \label{def:dynamics-front}
+  \lean{Sagitta.Map.Tiempo.Paso, Sagitta.Map.Tiempo.determinista, Sagitta.Map.Tiempo.levantar, Sagitta.Map.Tiempo.Alcanza, Sagitta.Map.Tiempo.frente, Sagitta.Map.Tiempo.Corrida}
+  \leanok
+  For $R : C \to \mathcal{P}(C)$, $t \in \mathbb{N}$ and $c \in C$: the front is
+  $\mathrm{frente}\ R\ t\ c = \{d \mid \mathrm{Alcanza}\ R\ t\ c\ d\}$, the lifting is
+  $\mathrm{levantar}\ R\ S = \bigcup_{c \in S} R(c)$, and the set of runs from $c$ is
+  $\mathrm{Corrida}\ R\ c = \{s \mid s(0) = c \text{ and } \forall n,\ s(n+1) \in R(s(n))\}$.
+  \own{}
+  \leanfile{Sagitta/Map/FormaDelTiempo.lean}
+\end{definition}
+
+\begin{theorem}[The front is an iterate of the lifting, on a step relation]
+  \label{thm:dynamics-front-iterate}
+  \lean{Sagitta.Map.Tiempo.frente_eq_iterate}
+  \leanok
+  \uses{def:dynamics-front}
+  Let $R$ be a step on a type $C$, $t \in \mathbb{N}$ and $c \in C$. Then
+  $\mathrm{frente}\ R\ t\ c = (\mathrm{levantar}\ R)^{t}(\{c\})$.
+  \own{}
+  \leanfile{Sagitta/Map/FormaDelTiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $t$: for $t = 0$ both sides are $\{c\}$, and for $t+1$ a path of $t+1$ steps is a
+  path of $t$ steps followed by one step.
+\end{proof}
+
+\begin{theorem}[A deterministic step has a single run]
+  \label{thm:dynamics-single-run}
+  \lean{Sagitta.Map.Tiempo.corrida_determinista}
+  \leanok
+  \uses{def:dynamics-front}
+  Let $f : C \to C$ and $c \in C$. The set of runs from $c$ of the step of $f$ is
+  $\{\, n \mapsto f^{n}(c) \,\}$.
+  \own{}
+  \leanfile{Sagitta/Map/FormaDelTiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A run is equal to the orbit by induction on $n$, using $s(n+1) \in \{f(s(n))\}$; the orbit is a run.
+\end{proof}
+
+\begin{theorem}[K\"onig's lemma for a step relation with finite branching, on a discrete space]
+  \label{thm:dynamics-konig}
+  \lean{Sagitta.Map.Tiempo.konig}
+  \leanok
+  \uses{def:dynamics-front}
+  Let $C$ be a topological space with the discrete topology, and $R$ a step on $C$ such that
+  $R(c)$ is finite for every $c \in C$. Let $c \in C$ and assume that the front
+  $\mathrm{frente}\ R\ t\ c$ is nonempty for every $t \in \mathbb{N}$. Then the set of runs from $c$
+  is nonempty.
+  \own{}
+  \leanfile{Sagitta/Map/FormaDelTiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The fronts are finite, so the runs sit in a compact box of $\mathbb{N} \to C$. The sets of
+  sequences in the box that are correct up to length $t$ are closed, nonempty and decreasing, so
+  their intersection is nonempty by compactness; a sequence in it is a run.
+\end{proof}
+
+\begin{theorem}[Existence of an accepting run is a front meeting the target, for a total step]
+  \label{thm:dynamics-angelic}
+  \lean{Sagitta.Map.Tiempo.angelica_iff}
+  \leanok
+  \uses{def:dynamics-front}
+  Let $R$ be a step on $C$ such that $R(c)$ is nonempty for every $c$. Let $c \in C$ and
+  $A \subseteq C$. Then there is a run $s$ from $c$ and an $n$ with $s(n) \in A$ if and only if
+  there is a $t$ such that $\mathrm{frente}\ R\ t\ c \cap A$ is nonempty.
+  \own{}
+  \leanfile{Sagitta/Map/FormaDelTiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A run at time $n$ lies in the front $n$. Conversely a path of $t$ steps is extended to a run by
+  choosing any successor at every step after $t$.
+\end{proof}
+
+\begin{theorem}[A common time bound when every run reaches the target, with finite branching on a discrete space]
+  \label{thm:dynamics-demonic}
+  \lean{Sagitta.Map.Tiempo.demoniaca_acotada}
+  \leanok
+  \uses{def:dynamics-front}
+  Let $C$ be a topological space with the discrete topology, and $R$ a step on $C$ such that
+  $R(c)$ is finite for every $c$. Let $c \in C$ and $A \subseteq C$, and assume that every run $s$
+  from $c$ has an $n$ with $s(n) \in A$. Then there is a $T$ such that every run $s$ from $c$ has an
+  $n \le T$ with $s(n) \in A$.
+  \own{}
+  \leanfile{Sagitta/Map/FormaDelTiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The set of runs is compact, and the open sets ``$s(n) \in A$'' cover it. A finite subcover gives
+  a bound $T$, the largest index in it.
+\end{proof}
+
+\section{Consumption: time adds up, space is reused}
+\label{sec:dynamics-consumption}
+
+The statements of this section are about a cost model on binary choice trees, not about machines.
+A \emph{choice tree} is either a leaf or a node with two subtrees. For an operation
+$\mathrm{op} : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ the cost of a leaf is $1$ and the cost of a
+node with subtrees $l$ and $r$ is $1 + \mathrm{op}(\mathrm{cost}(l), \mathrm{cost}(r))$. The time of
+a tree is its cost for $\mathrm{op} = +$, and its space is its cost for $\mathrm{op} = \max$. The
+complete tree of $n$ choices has a leaf for $n = 0$ and two copies of the complete tree of $n - 1$
+below a node otherwise.
+
+\begin{definition}[Choice trees and their costs]
+  \label{def:dynamics-arbol}
+  \lean{Sagitta.Map.Consumo.Arbol, Sagitta.Map.Consumo.Arbol.costo, Sagitta.Map.Consumo.Arbol.tiempo, Sagitta.Map.Consumo.Arbol.espacio, Sagitta.Map.Consumo.Arbol.completo}
+  \leanok
+  The type of choice trees has the constructors ``leaf'' and ``node of two trees''. The cost of a
+  tree for $\mathrm{op}$ is defined by recursion as above; $\mathrm{tiempo}$ is the cost for
+  $\mathrm{op} = +$ and $\mathrm{espacio}$ the cost for $\mathrm{op} = \max$. The complete tree
+  $\mathrm{completo}(n)$ is defined by recursion on $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Consumo.lean}
+\end{definition}
+
+\begin{theorem}[Additive cost of the complete choice tree]
+  \label{thm:dynamics-cost-additive}
+  \lean{Sagitta.Map.Consumo.Arbol.costo_aditivo}
+  \leanok
+  \uses{def:dynamics-arbol}
+  Let $\mathrm{op} : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ with $2a \le \mathrm{op}(a,a)$ for
+  every $a \in \mathbb{N}$, and let $n \in \mathbb{N}$. Then
+  $2^{n+1} \le \mathrm{costo}\ \mathrm{op}\ (\mathrm{completo}\ n) + 1$.
+  \own{}
+  \leanfile{Sagitta/Map/Consumo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $n$: the cost of $\mathrm{completo}(n+1)$ is $1 + \mathrm{op}(a, a)$ for
+  $a = \mathrm{costo}\ \mathrm{op}\ (\mathrm{completo}\ n)$, and $\mathrm{op}(a,a) \ge 2a$.
+\end{proof}
+
+\begin{theorem}[Idempotent cost of the complete choice tree]
+  \label{thm:dynamics-cost-idempotent}
+  \lean{Sagitta.Map.Consumo.Arbol.costo_idempotente}
+  \leanok
+  \uses{def:dynamics-arbol}
+  Let $\mathrm{op} : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ with $\mathrm{op}(a,a) = a$ for every
+  $a \in \mathbb{N}$, and let $n \in \mathbb{N}$. Then
+  $\mathrm{costo}\ \mathrm{op}\ (\mathrm{completo}\ n) = n + 1$.
+  \own{}
+  \leanfile{Sagitta/Map/Consumo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $n$, using $\mathrm{op}(a,a) = a$ at the node.
+\end{proof}
+
+\begin{theorem}[Time is less than two to the space, on choice trees]
+  \label{thm:dynamics-time-space}
+  \lean{Sagitta.Map.Consumo.Arbol.tiempo_lt_dos_pow_espacio}
+  \leanok
+  \uses{def:dynamics-arbol}
+  For every choice tree $t$, $\mathrm{tiempo}(t) < 2^{\mathrm{espacio}(t)}$.
+  \own{}
+  \leanfile{Sagitta/Map/Consumo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $t$; at a node, both $2^{\mathrm{espacio}(l)}$ and $2^{\mathrm{espacio}(r)}$ are at
+  most $2^{\max}$, and the space of the node is $1 + \max$.
+\end{proof}
+
+A \emph{resource use} is a function $u : \mathbb{N} \to \mathbb{N}$, from the step of a run to the
+amount of the resource carried. It is \emph{consumed} when it is monotone. The set $\mathbb{N}$ is
+given the upper-set topology, whose open sets are the upper sets; $\mathrm{comoFlecha}(u)$ is $u$
+read as a map from $\mathbb{N}$ with this topology to itself.
+
+\begin{definition}[Consumed resource use]
+  \label{def:dynamics-consumido}
+  \lean{Sagitta.Map.Consumo.comoFlecha, Sagitta.Map.Consumo.Consumido}
+  \leanok
+  For $u : \mathbb{N} \to \mathbb{N}$, $\mathrm{Consumido}(u)$ is the statement that $u$ is
+  monotone, and $\mathrm{comoFlecha}(u)$ is $u$ as a map between two copies of $\mathbb{N}$ with the
+  upper-set topology.
+  \own{}
+  \leanfile{Sagitta/Map/Consumo.lean}
+\end{definition}
+
+\begin{theorem}[A resource use is consumed if and only if it is continuous for the upper-set topology]
+  \label{thm:dynamics-consumed-continuous}
+  \lean{Sagitta.Map.Consumo.consumido_iff_continuo}
+  \leanok
+  \uses{def:dynamics-consumido}
+  For every $u : \mathbb{N} \to \mathbb{N}$, $\mathrm{Consumido}(u)$ if and only if
+  $\mathrm{comoFlecha}(u)$ is continuous.
+  \own{}
+  \leanfile{Sagitta/Map/Consumo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Rewrite with the Mathlib lemma that a map between upper-set topologies is continuous if and only
+  if it is monotone.
+\end{proof}
+
+Backtracking over the $N$ variables of a search, with a detector that may declare a prefix dead,
+stops at some prefixes. For a detector $\mathrm{det} : \mathrm{List}\,\mathrm{Bool} \to \mathrm{Bool}$,
+$\mathrm{cortes}\ \mathrm{det}\ k\ p$ is the list of prefixes where the search from the prefix $p$
+with $k$ choices left stops: it is $[p]$ when $k = 0$ or $\mathrm{det}(p) = \mathrm{true}$, and the
+concatenation of the lists for $p \mathbin{+\!\!+} [\mathrm{false}]$ and
+$p \mathbin{+\!\!+} [\mathrm{true}]$ with $k - 1$ choices otherwise.
+
+\begin{definition}[Stopping prefixes of a pruned search]
+  \label{def:dynamics-cortes}
+  \lean{Sagitta.Map.Consumo.cortes}
+  \leanok
+  For $\mathrm{det} : \mathrm{List}\,\mathrm{Bool} \to \mathrm{Bool}$, $k \in \mathbb{N}$ and a list
+  $p$ of booleans, $\mathrm{cortes}\ \mathrm{det}\ k\ p$ is the list defined above.
+  \own{}
+  \leanfile{Sagitta/Map/ConsumoNP.lean}
+\end{definition}
+
+\begin{theorem}[Kraft equality for the stopping prefixes of a pruned search]
+  \label{thm:dynamics-kraft}
+  \lean{Sagitta.Map.Consumo.kraft}
+  \leanok
+  \uses{def:dynamics-cortes}
+  Let $\mathrm{det} : \mathrm{List}\,\mathrm{Bool} \to \mathrm{Bool}$, $k \in \mathbb{N}$ and $p$ a
+  list of booleans. Then
+  \[
+    \sum_{q \in \mathrm{cortes}\ \mathrm{det}\ k\ p} 2^{|p| + k - |q|} = 2^{k}
+  \]
+  with truncated subtraction on $\mathbb{N}$.
+  \own{}
+  \leanfile{Sagitta/Map/ConsumoNP.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $k$. If $\mathrm{det}(p) = \mathrm{true}$ or $k = 0$ there is one term; otherwise the
+  sum splits into the sums for the two children, each $2^{k-1}$ by the induction hypothesis.
+\end{proof}
+
+\section{A reversible step as a permutation: its group and its orbits}
+\label{sec:dynamics-group}
+
+The statements of this section and of the next four are about a permutation $f$ of an arbitrary
+type $\sigma$ of configurations, or about a map between finite types. There is no machine and no
+cost in them. The group of $f$ is the subgroup $\langle f \rangle$ of the permutations of $\sigma$
+generated by $f$, which acts on $\sigma$.
+
+\begin{theorem}[Steps forward and backward of a permutation lie in its group]
+  \label{thm:dynamics-group-steps}
+  \lean{Sagitta.Map.Informacion.Reversible.paso_en_grupo, Sagitta.Map.Informacion.Reversible.paso_atras}
+  \leanok
+  Let $f$ be a permutation of a type $\sigma$ and $n \in \mathbb{Z}$. Then $f^{n}$ belongs to the
+  subgroup generated by $f$, and $(f^{n})^{-1} = f^{-n}$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first part is the membership of integer powers in the generated subgroup; the second is the
+  Mathlib lemma $f^{-n} = (f^{n})^{-1}$.
+\end{proof}
+
+\begin{theorem}[Orbits of the group of a permutation are its cycles]
+  \label{thm:dynamics-orbits-cycles}
+  \lean{Sagitta.Map.Informacion.Reversible.mem_orbita_iff_sameCycle}
+  \leanok
+  Let $f$ be a permutation of a type $\sigma$ and $x, y \in \sigma$. Then $y$ lies in the orbit of
+  $x$ under the action of the subgroup generated by $f$ if and only if $x$ and $y$ are in the same
+  cycle of $f$, that is, $y = f^{k}(x)$ for some $k \in \mathbb{Z}$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An element of the subgroup is a power $f^{k}$, and a power of $f$ lies in the subgroup.
+\end{proof}
+
+\section{Information kept by reversible dynamics}
+\label{sec:dynamics-information}
+
+For a map $g : \alpha \to \beta$ between types, with equality on $\beta$ decidable, and a finite
+set $S \subseteq \alpha$, the \emph{bits erased} by $g$ on $S$ are
+$\log_2 |S| - \log_2 |g(S)|$, where $g(S)$ is the image of $S$, with $\log_2 0 = 0$ as in Mathlib.
+
+\begin{definition}[Bits erased by a map on a finite set]
+  \label{def:dynamics-bits-erased}
+  \lean{Sagitta.Map.Informacion.Reversible.bitsBorrados}
+  \leanok
+  For $g : \alpha \to \beta$ and a finite set $S$ of $\alpha$,
+  $\mathrm{bitsBorrados}(g, S) = \log_2 |S| - \log_2 |g(S)|$, a real number.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{definition}
+
+\begin{theorem}[A power of a permutation keeps sizes, bits and Shannon entropy, on a finite set or a finite type]
+  \label{thm:dynamics-perm-keeps-information}
+  \lean{Sagitta.Map.Informacion.Reversible.card_image_zpow, Sagitta.Map.Informacion.Reversible.bitsBorrados_perm, Sagitta.Map.Informacion.Reversible.entropia_empuje}
+  \leanok
+  \uses{def:dynamics-bits-erased}
+  Let $f$ be a permutation of a type $\sigma$ with decidable equality, $n \in \mathbb{Z}$ and
+  $S$ a finite subset of $\sigma$. Then $|f^{n}(S)| = |S|$ and
+  $\mathrm{bitsBorrados}(f^{n}, S) = 0$. Let $\sigma$ be a finite type, $f$ a permutation of it
+  and $\mu : \sigma \to \mathbb{R}$. Then
+  \[
+    \sum_{y} \eta\bigl(\mu(f^{-1}(y))\bigr) = \sum_{x} \eta\bigl(\mu(x)\bigr),
+  \]
+  where $\eta(p) = -p \log p$ is the function \texttt{Real.negMulLog}.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A permutation is injective, so its image has the size of the set; the bits are then
+  $\log_2 |S| - \log_2 |S|$. The sum is reindexed along the bijection $f^{-1}$.
+\end{proof}
+
+\section{Discrete Noether in the form of Koopman}
+\label{sec:dynamics-koopman}
+
+For $f : \sigma \to \sigma$ the \emph{Koopman operator} is the $\mathbb{C}$-linear map
+$\varphi \mapsto \varphi \circ f$ on the functions $\sigma \to \mathbb{C}$; it is linear even when
+$f$ is not. $\mathrm{mult}(\varphi)$ is multiplication by $\varphi$. For a real $\theta$ and
+$Q : \sigma \to \mathbb{R}$, the phase is $\mathrm{fase}(\theta, Q)(x) = \exp(i \theta Q(x))$. On a
+finite type, $\mathrm{norma2}(\varphi) = \sum_x |\varphi(x)|^{2}$, and $\mathrm{ind}(p)$ is the
+indicator function of a decidable predicate $p$.
+
+\begin{definition}[Koopman operator, multiplication, phase, squared norm and indicator]
+  \label{def:dynamics-koopman}
+  \lean{Sagitta.Map.Informacion.Reversible.koopman, Sagitta.Map.Informacion.Reversible.mult, Sagitta.Map.Informacion.Reversible.fase, Sagitta.Map.Informacion.Reversible.norma2, Sagitta.Map.Informacion.Reversible.ind}
+  \leanok
+  The definitions are those of the preceding paragraph.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{definition}
+
+\begin{theorem}[A charge is conserved if and only if every phase commutes with the Koopman operator]
+  \label{thm:dynamics-koopman-noether}
+  \lean{Sagitta.Map.Informacion.Reversible.koopman_noether}
+  \leanok
+  \uses{def:dynamics-koopman}
+  Let $f : \sigma \to \sigma$ be any function and $Q : \sigma \to \mathbb{R}$. Then $Q \circ f = Q$
+  if and only if, for every real $\theta$,
+  $K_f \circ \mathrm{mult}(\mathrm{fase}(\theta, Q)) = \mathrm{mult}(\mathrm{fase}(\theta, Q)) \circ K_f$,
+  where $K_f$ is the Koopman operator of $f$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A multiplication commutes with $K_f$ if and only if its function is invariant under $f$
+  (evaluate on the constant function $1$). If all the phases are invariant then
+  $\exp(i\theta Q(f(x))) = \exp(i\theta Q(x))$ for all $\theta$, and the choice
+  $\theta = \pi/(a-b)$ shows that $a = b$ whenever the two exponentials agree for all $\theta$.
+\end{proof}
+
+\begin{theorem}[The Koopman operator preserves the squared norm if and only if the map is bijective, on a finite type]
+  \label{thm:dynamics-koopman-isometry}
+  \lean{Sagitta.Map.Informacion.Reversible.koopman_isometria_iff}
+  \leanok
+  \uses{def:dynamics-koopman}
+  Let $\sigma$ be a finite type and $f : \sigma \to \sigma$. Then
+  $\mathrm{norma2}(K_f \varphi) = \mathrm{norma2}(\varphi)$ for every $\varphi : \sigma \to \mathbb{C}$
+  if and only if $f$ is bijective.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $f$ is bijective the sum is reindexed along $f$. Conversely, applying the hypothesis to the
+  indicator of $\{y\}$ shows that every fibre of $f$ has exactly one element.
+\end{proof}
+
+\begin{theorem}[The Koopman operator measures the erased bits, on a finite type]
+  \label{thm:dynamics-koopman-erasure}
+  \lean{Sagitta.Map.Informacion.Reversible.koopman_mide_borrado}
+  \leanok
+  \uses{def:dynamics-koopman, def:dynamics-bits-erased}
+  Let $\sigma$ be a finite type with decidable equality, $g : \sigma \to \sigma$ and $S$ a nonempty
+  finite subset of $\sigma$. Let $1_{g(S)}$ be the indicator of the image $g(S)$. Then
+  \[
+    2^{\mathrm{bitsBorrados}(g, S)} \cdot \mathrm{norma2}(1_{g(S)}) = |S|
+    \quad\text{and}\quad
+    |S| \le \mathrm{norma2}(K_g\, 1_{g(S)}).
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The squared norm of an indicator is the size of its set, so the first equality is the definition
+  of the erased bits exponentiated. For the inequality, $K_g 1_{g(S)}$ is the indicator of the set
+  of $x$ with $g(x) \in g(S)$, which contains $S$.
+\end{proof}
+
+\section{Erased bits: the price of deciding}
+\label{sec:dynamics-erasing}
+
+\begin{theorem}[A map erases no bit on a set if and only if it is injective on it]
+  \label{thm:dynamics-erased-zero}
+  \lean{Sagitta.Map.Informacion.Reversible.bitsBorrados_eq_cero_iff}
+  \leanok
+  \uses{def:dynamics-bits-erased}
+  Let $g : \alpha \to \beta$ with decidable equality on $\beta$, and $S$ a finite subset of
+  $\alpha$. Then $\mathrm{bitsBorrados}(g, S) = 0$ if and only if $g$ is injective on $S$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The image has the size of $S$ exactly when $g$ is injective on $S$; if it is smaller, the
+  logarithm of a smaller positive size is strictly smaller.
+\end{proof}
+
+\begin{theorem}[Erase or keep, between finite types]
+  \label{thm:dynamics-erase-or-keep}
+  \lean{Sagitta.Map.Informacion.Reversible.decidir_borra, Sagitta.Map.Informacion.Reversible.borrar_o_guardar, Sagitta.Map.Informacion.Reversible.guardar_cuesta_espacio}
+  \leanok
+  \uses{def:dynamics-bits-erased}
+  Let $\alpha$ and $\sigma'$ be finite types, with decidable equality on $\sigma'$, and
+  $e : \alpha \to \sigma'$. Then
+  $\log_2 |\alpha| \le \mathrm{bitsBorrados}(e, \alpha) + \log_2 |\sigma'|$, where $\alpha$ stands
+  for the set of all its elements. If $\mathrm{bitsBorrados}(e, \alpha) = 0$ then
+  $|\alpha| \le |\sigma'|$. For a finite type $\alpha$ and $d : \alpha \to \mathrm{Bool}$,
+  $\log_2 |\alpha| - 1 \le \mathrm{bitsBorrados}(d, \alpha)$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The image of $e$ has at most $|\sigma'|$ elements and the logarithm is monotone. The second part
+  follows from Theorem~\ref{thm:dynamics-erased-zero}, since an injective map between finite types
+  gives $|\alpha| \le |\sigma'|$. The third is the first with $\sigma' = \mathrm{Bool}$, where
+  $\log_2 2 = 1$.
+\end{proof}
+
+\section{Curie's principle for equivariant maps}
+\label{sec:dynamics-curie}
+
+The statements are about a group $G$ acting on a type $\sigma$ and a map $f : \sigma \to \sigma$
+that commutes with the action: $f(g \cdot x) = g \cdot f(x)$ for all $g$ and $x$. The
+\emph{stabilizer} of $x$ is the subgroup of the $g$ with $g \cdot x = x$.
+
+\begin{theorem}[Curie for an equivariant map: the stabilizer grows, and stays equal if the map is injective]
+  \label{thm:dynamics-curie}
+  \lean{Sagitta.Map.Informacion.Reversible.curie_le, Sagitta.Map.Informacion.Reversible.curie_inyectiva}
+  \leanok
+  Let $G$ be a group acting on a type $\sigma$, $f : \sigma \to \sigma$ with
+  $f(g \cdot x) = g \cdot f(x)$ for all $g \in G$ and $x \in \sigma$, and $x \in \sigma$. Then the
+  stabilizer of $x$ is contained in the stabilizer of $f(x)$. If moreover $f$ is injective, the two
+  stabilizers are equal.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $g \cdot x = x$ then $g \cdot f(x) = f(g \cdot x) = f(x)$. For the equality, if
+  $g \cdot f(x) = f(x)$ then $f(g \cdot x) = f(x)$ and injectivity gives $g \cdot x = x$.
+\end{proof}
+
+\begin{proposition}[An equivariant map that is not injective and gains symmetry]
+  \label{prop:dynamics-curie-strict}
+  \lean{Sagitta.Map.Informacion.Reversible.curie_estricta_sin_inyectividad}
+  \leanok
+  There is a map $f$ on $\mathrm{Option}(\mathrm{Bool})$ such that
+  $f(g \cdot x) = g \cdot f(x)$ for every permutation $g$ of $\mathrm{Bool}$ and every $x$, and
+  the stabilizer of $\mathrm{some}(\mathrm{true})$ in the group of permutations of $\mathrm{Bool}$
+  is different from the stabilizer of $f(\mathrm{some}(\mathrm{true}))$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  Take $f$ constant with value $\mathrm{none}$, which is equivariant. The swap of the two booleans
+  fixes $\mathrm{none}$ and does not fix $\mathrm{some}(\mathrm{true})$.
+\end{proof}
+
+\section{The cost cube and its law, in a model of automata with a verifier}
+\label{sec:dynamics-cube}
+
+The model of this section and of the next two is an abstract cost model, not Turing machines. An
+\emph{automaton} with state type $\sigma$, query type $Q$, answer type $R$ and output type $Y$ has
+an initial state, a query for each state, a transition from a state and an answer to a new state, and
+an output $\sigma \to \mathrm{Option}(Y)$. Given a verifier $O : Q \to R$, the run with budget $t$
+from a state $x$ is defined by recursion on $t$: it returns the output of $x$ if that is
+$\mathrm{some}\ y$; otherwise, if the budget is $0$ it returns $\mathrm{none}$, and if the budget is
+$t + 1$ it asks $O$ the query of $x$ and continues from the new state with budget $t$. No step
+counter is given to the automaton.
+
+The verifier of yes or no, $\mathrm{igual}(y) : Y \to \mathrm{Bool}$, answers $z \mapsto
+(z = y)$. A family $A : P \to C \to \mathrm{Automata}$ \emph{solves} in $t$ queries when for every
+$y \in Y$ there are $p \in P$ and $c \in C$ such that the automaton $A(p, c)$, run with budget $t$
+from its initial state and the verifier $\mathrm{igual}(y)$, returns $\mathrm{some}\ y$. The point
+$(x, e, y)$ of the cube for $m$ is \emph{reachable} when there are finite types $P$, $C$, $\sigma$
+and a family $A : P \to C \to \mathrm{Automata}\ \sigma\ (\mathrm{Fin}\ 2^m)\ \mathrm{Bool}\
+(\mathrm{Fin}\ 2^m)$ that solves, with the verifier $\mathrm{siNo}(m)$ (the verifier
+$\mathrm{igual}$ on $\mathrm{Fin}\ 2^m$), in some $t$ queries, and numbers $L, s, S$ with
+$|P| \le 2^L$, $|C| \le 2^s$, $|\sigma| \le 2^S$, $L + s \le x$, $S \le e$ and
+$\lceil \log_2 (t+1) \rceil \le y$.
+
+\begin{definition}[Automata with a verifier, runs, solving, and the reachable points of the cube]
+  \label{def:dynamics-cube}
+  \lean{Sagitta.Map.Tiempo.CuboCostos.Automata, Sagitta.Map.Tiempo.CuboCostos.Automata.corre, Sagitta.Map.Tiempo.CuboCostos.ResuelveA, Sagitta.Map.Tiempo.CuboCostos.AlcanzableCubo}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.igual, Sagitta.Map.Tiempo.PlanoCostos.siNo
+  The definitions are those of the preceding paragraphs. $\mathrm{ResuelveA}\ O\ A\ t$ is the
+  statement that for every $y$ there are $p, c$ with the automaton $A(p,c)$ returning
+  $\mathrm{some}\ y$ with the verifier $O(y)$ and budget $t$.
+  \own{}
+  \leanfile{Sagitta/Map/CuboCostos.lean}
+\end{definition}
+
+\begin{theorem}[The cube law, for automata with the yes-or-no verifier]
+  \label{thm:dynamics-cube-law}
+  \lean{Sagitta.Map.Tiempo.CuboCostos.ley_cubo, Sagitta.Map.Tiempo.CuboCostos.ley_cubo_log}
+  \leanok
+  \uses{def:dynamics-cube}
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.igual
+  Let $P$, $C$, $\sigma$, $Y$ be finite types with decidable equality on $Y$, and $L, s, S, t$
+  natural numbers with $|P| \le 2^L$, $|C| \le 2^s$ and $|\sigma| \le 2^S$. Let
+  $A : P \to C \to \mathrm{Automata}\ \sigma\ Y\ \mathrm{Bool}\ Y$ solve in $t$ queries with the
+  verifier $\mathrm{igual}$. Then
+  \[
+    |Y| \le 2^L \cdot 2^s \cdot \min(t+1,\ 2^{S-1})
+    \quad\text{and}\quad
+    \lceil \log_2 |Y| \rceil \le L + s + \min(\lceil \log_2 (t+1) \rceil,\ S - 1),
+  \]
+  with truncated subtraction on $\mathbb{N}$.
+  \own{}
+  \leanfile{Sagitta/Map/CuboCostos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Against the yes-or-no verifier an automaton hears only ``no'' until it hits, so its states follow
+  one trajectory that does not depend on the hidden solution. By the pigeonhole principle that
+  trajectory repeats, and each solution found needs a state that returns it; this bounds the number
+  of solutions that one automaton finds by $\min(t+1, 2^{S-1})$. The pairs $(p,c)$ cover $Y$, which
+  gives the first inequality; the second follows from it and $\min(t+1, 2^{S-1}) \le
+  2^{\min(\lceil \log_2 (t+1) \rceil, S-1)}$.
+\end{proof}
+
+\begin{theorem}[The region of the cube, exactly, with the yes-or-no verifier on $2^m$ candidates]
+  \label{thm:dynamics-cube-region}
+  \lean{Sagitta.Map.Tiempo.CuboCostos.cubo_es_region}
+  \leanok
+  \uses{def:dynamics-cube, thm:dynamics-cube-law}
+  For all natural numbers $m, x, e, y$, the point $(x, e, y)$ is reachable for $m$ if and only if
+  $m \le x + \min(y,\ e - 1)$.
+  \own{}
+  \leanfile{Sagitta/Map/CuboCostos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A reachable point satisfies the inequality by the cube law. Conversely, a sweep automaton
+  reaches the point with $k = \min(y, e-1, m)$, a citation of $m - k$ bits, $2^k - 1$ queries and
+  $2^{k+1} - 1$ states, and the region is closed upwards.
+\end{proof}
+
+\section{Guessing in the cube is quoting}
+\label{sec:dynamics-nd}
+
+A \emph{non-deterministic solver at the start} has, besides programs $P$ and citations $C$, a type
+$G$ of guesses, and automata $A(p, c, g)$; it solves in $t$ queries when for every $y$ there are
+$p, c, g$ such that $A(p,c,g)$ returns $\mathrm{some}\ y$ from its initial state with budget $t$ and
+the verifier $O(y)$. An \emph{automaton that guesses during the run} has, besides the fields of an
+automaton, a function $\mathrm{elige} : \sigma \to \mathrm{Bool}$ and a transition that takes also
+a boolean, used only in the states with $\mathrm{elige} = \mathrm{true}$. Fixing a list of booleans
+as its sequence of choices gives an ordinary automaton, $\mathrm{fijar}$. A family of such
+automata solves with $w$ choices in $t$ queries when for every $y$ there are $p, c$ and a function
+$f : \mathrm{Fin}\ w \to \mathrm{Bool}$ such that the automaton $A(p,c)$ with the choices
+$f(0), \dots, f(w-1)$ returns $\mathrm{some}\ y$ with budget $t$.
+
+\begin{definition}[Non-deterministic solvers in the cube]
+  \label{def:dynamics-nd}
+  \lean{Sagitta.Map.Tiempo.CuboNoDeterminista.ResuelveND, Sagitta.Map.Tiempo.CuboNoDeterminista.AutomataND, Sagitta.Map.Tiempo.CuboNoDeterminista.ResuelveCorrida}
+  \leanok
+  \uses{def:dynamics-cube}
+  The definitions are those of the preceding paragraph.
+  \own{}
+  \leanfile{Sagitta/Map/CuboNoDeterminista.lean}
+\end{definition}
+
+\begin{theorem}[Guessing at the start is quoting, for automata with a verifier]
+  \label{thm:dynamics-nd-quote}
+  \lean{Sagitta.Map.Tiempo.CuboNoDeterminista.nd_es_cita}
+  \leanok
+  \uses{def:dynamics-nd}
+  Let $O : Y \to Q \to R$, $A : P \to C \to G \to \mathrm{Automata}\ \sigma\ Q\ R\ Y$ and
+  $t \in \mathbb{N}$. Then $A$ solves non-deterministically in $t$ queries if and only if the
+  family $(p, (c, g)) \mapsto A(p, c, g)$, with citations in $C \times G$, solves in $t$ queries.
+  \own{}
+  \leanfile{Sagitta/Map/CuboNoDeterminista.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The two statements have the same witnesses, with $(c, g)$ in place of $c$ and $g$.
+\end{proof}
+
+\begin{theorem}[The cube law with guesses at the start]
+  \label{thm:dynamics-nd-law}
+  \lean{Sagitta.Map.Tiempo.CuboNoDeterminista.ley_cubo_nd}
+  \leanok
+  \uses{def:dynamics-nd, thm:dynamics-cube-law, thm:dynamics-nd-quote}
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.igual
+  Let $P, C, G, \sigma, Y$ be finite types with decidable equality on $Y$, and $L, s, w, S, t$
+  natural numbers with $|P| \le 2^L$, $|C| \le 2^s$, $|G| \le 2^w$ and $|\sigma| \le 2^S$. Let
+  $A : P \to C \to G \to \mathrm{Automata}\ \sigma\ Y\ \mathrm{Bool}\ Y$ solve non-deterministically
+  in $t$ queries with the verifier $\mathrm{igual}$. Then
+  $|Y| \le 2^L \cdot 2^s \cdot 2^w \cdot \min(t+1,\ 2^{S-1})$.
+  \own{}
+  \leanfile{Sagitta/Map/CuboNoDeterminista.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By Theorem~\ref{thm:dynamics-nd-quote} the family solves deterministically with citations in
+  $C \times G$, of at most $2^{s+w}$ elements; apply Theorem~\ref{thm:dynamics-cube-law}.
+\end{proof}
+
+\begin{proposition}[Guessing during the run gives less than guessing at the start, in a one-state example]
+  \label{prop:dynamics-run-less-than-start}
+  \lean{Sagitta.Map.Tiempo.CuboNoDeterminista.corrida_menos_que_principio}
+  \leanok
+  \uses{def:dynamics-nd}
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.igual
+  Let $P = C = \mathrm{Unit}$ and $G = \mathrm{Fin}\ 2$. The family
+  $g \mapsto \mathrm{constante}(g)$, where $\mathrm{constante}(g)$ is the automaton with one state
+  that returns $g$ without asking, solves non-deterministically in $0$ queries with the verifier
+  $\mathrm{igual}$ on $\mathrm{Fin}\ 2$. And for every
+  $A : \mathrm{Unit} \to \mathrm{Unit} \to \mathrm{AutomataND}\ \mathrm{Unit}\ (\mathrm{Fin}\ 2)\
+  \mathrm{Bool}\ (\mathrm{Fin}\ 2)$ and all $w, t \in \mathbb{N}$, $A$ does not solve with $w$
+  choices in $t$ queries with the verifier $\mathrm{igual}$.
+  \own{}
+  \leanfile{Sagitta/Map/CuboNoDeterminista.lean}
+\end{proposition}
+
+\begin{proof}
+  \leanok
+  The first part chooses the guess $y$. For the second part the law for guesses during the run,
+  with $L = s = S = 0$, gives $|Y| \le 1$, but $|Y| = 2$.
+\end{proof}
+
+\section{The cube with the transitions charged}
+\label{sec:dynamics-transitions}
+
+A \emph{cost per step} is a function $c : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ of the bits
+$a$ of description and the bits $S$ of state. The \emph{execution cost} of a run of $t$ queries is
+$t \cdot c(a, S)$. The base form is $c(a, S) = a + S$. The point $(x, e, Y)$ is
+\emph{reachable with $c$} for $m$ when it is reachable in the sense of
+Definition~\ref{def:dynamics-cube}, with the third condition replaced by
+$\lceil \log_2 (t \cdot c(L+s, S) + 1) \rceil \le Y$.
+
+\begin{definition}[Cost per step and execution cost; reachable points with the transitions charged]
+  \label{def:dynamics-transition-cost}
+  \lean{Sagitta.Map.Tiempo.CuboTransiciones.CostoPaso, Sagitta.Map.Tiempo.CuboTransiciones.costoBase, Sagitta.Map.Tiempo.CuboTransiciones.costoEjecucion, Sagitta.Map.Tiempo.CuboTransiciones.AlcanzableTrans}
+  \leanok
+  \uses{def:dynamics-cube}
+  The definitions are those of the preceding paragraph. The cost per step is declared, not
+  derived from a machine.
+  \own{}
+  \leanfile{Sagitta/Map/CuboTransiciones.lean}
+\end{definition}
+
+\begin{theorem}[The cube law with a cost per step that is at least one]
+  \label{thm:dynamics-transition-law}
+  \lean{Sagitta.Map.Tiempo.CuboTransiciones.ley_transiciones}
+  \leanok
+  \uses{def:dynamics-transition-cost, thm:dynamics-cube-law}
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.igual
+  Let $c$ be a cost per step. Let $P, C, \sigma, Y$ be finite types with decidable equality on $Y$,
+  and $L, s, S, t$ natural numbers with $|P| \le 2^L$, $|C| \le 2^s$ and $|\sigma| \le 2^S$. Let
+  $A : P \to C \to \mathrm{Automata}\ \sigma\ Y\ \mathrm{Bool}\ Y$ solve in $t$ queries with the
+  verifier $\mathrm{igual}$, and assume $1 \le c(L+s, S)$. Then
+  \[
+    |Y| \le 2^{L+s} \cdot \min\!\left(\left\lfloor \frac{T}{c(L+s, S)} \right\rfloor + 1,\ 2^{S-1}\right),
+    \qquad T = t \cdot c(L+s, S).
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/CuboTransiciones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The quotient $T / c(L+s, S)$ is $t$, so the statement is Theorem~\ref{thm:dynamics-cube-law}
+  with $2^L \cdot 2^s = 2^{L+s}$.
+\end{proof}
+
+\begin{theorem}[A point of the cube that is not reachable once the base cost per step is charged]
+  \label{thm:dynamics-cube-not-enough}
+  \lean{Sagitta.Map.Tiempo.CuboTransiciones.cubo_no_basta}
+  \leanok
+  \uses{def:dynamics-transition-cost}
+  Let $m, k \in \mathbb{N}$ with $1 \le k \le m$. Then the point $(m-k,\ k+1,\ k)$ is reachable in
+  the cube for $m$, and for every $e \in \mathbb{N}$ the point $(m-k,\ e,\ k)$ is not reachable
+  with the base cost per step.
+  \own{}
+  \leanfile{Sagitta/Map/CuboTransiciones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first part is the sweep automaton of the cube. For the second, a run that uses a
+  description of $m - k$ bits needs $2^k - 1$ queries, each charged $m + 1$ at least, and
+  $\lceil \log_2 ((2^k - 1)(m+1) + 1) \rceil > k$.
+\end{proof}
+
+\section{Conservation of time homogeneity: a clock is paid in memory}
+\label{sec:dynamics-clock}
+
+An automaton of the cube (Definition~\ref{def:dynamics-cube}) does not know the step it is at. An
+\emph{automaton with a clock} adds to the data of an automaton a type $\kappa$ of clock values, an
+initial clock value $\mathrm{reloj0}$, a map $\mathrm{tic} : \kappa \to \sigma \to \kappa$, and lets
+the query, the transition and the output depend also on the clock value. Its run with budget $t$
+from a clock value $k$ and a state $x$ is defined as the run of an automaton, with the clock
+advanced by $\mathrm{tic}$ at each query. $\mathrm{ResuelveR}\ O\ A\ t$ is the statement that for
+every $y$ there are $p, c$ such that $A(p,c)$, run from its initial clock value and initial state
+with the verifier $O(y)$ and budget $t$, returns $\mathrm{some}\ y$.
+
+The automaton $\mathrm{olvidar}(a, k_0)$ is the automaton without clock obtained by fixing the
+clock value $k_0$ in the query, the transition and the output of $a$. The automaton
+$\mathrm{homogeneizar}(a)$ has state type $\sigma \times \kappa$, initial state
+$(\mathrm{inicio}, \mathrm{reloj0})$, query $(x, k) \mapsto \mathrm{consulta}(k, x)$, transition
+$((x, k), r) \mapsto (\delta(k, x, r),\ \mathrm{tic}(k, x))$ and output
+$(x, k) \mapsto \mathrm{salida}(k, x)$.
+
+\begin{definition}[Automata with a clock, and their homogeneous versions]
+  \label{def:dynamics-clock}
+  \lean{Sagitta.Map.Informacion.Homogeneidad.AutomataConReloj, Sagitta.Map.Informacion.Homogeneidad.AutomataConReloj.corre, Sagitta.Map.Informacion.Homogeneidad.olvidar, Sagitta.Map.Informacion.Homogeneidad.homogeneizar, Sagitta.Map.Informacion.Homogeneidad.ResuelveR}
+  \leanok
+  \uses{def:dynamics-cube}
+  The definitions are those of the two preceding paragraphs.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Homogeneidad.lean}
+\end{definition}
+
+\begin{theorem}[Forgetting a clock that is not read, and moving a clock into the state]
+  \label{thm:dynamics-clock-state}
+  \lean{Sagitta.Map.Informacion.Homogeneidad.olvidar_corre, Sagitta.Map.Informacion.Homogeneidad.homogeneizar_corre}
+  \leanok
+  \uses{def:dynamics-clock}
+  Let $a$ be an automaton with a clock and $O : Q \to R$. (1) Let $k_0 \in \kappa$ with
+  $\mathrm{consulta}(k) = \mathrm{consulta}(k_0)$, $\delta(k) = \delta(k_0)$ and
+  $\mathrm{salida}(k) = \mathrm{salida}(k_0)$ for every $k \in \kappa$. Then for all $t$, $k$ and $x$
+  the run of $a$ with budget $t$ from $k$ and $x$ is the run of $\mathrm{olvidar}(a, k_0)$ with
+  budget $t$ from $x$. (2) For all $t$, $k$ and $x$, the run of $\mathrm{homogeneizar}(a)$ with
+  budget $t$ from $(x, k)$ is the run of $a$ with budget $t$ from $k$ and $x$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Homogeneidad.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Both are proved by induction on $t$, comparing the output and the next state of the two sides at
+  each step.
+\end{proof}
+
+\begin{theorem}[The cube law with a clock]
+  \label{thm:dynamics-cube-clock}
+  \lean{Sagitta.Map.Informacion.Homogeneidad.ley_cubo_reloj}
+  \leanok
+  \uses{def:dynamics-clock, thm:dynamics-cube-law}
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.igual
+  Let $P, C, \kappa, \sigma, Y$ be finite types with decidable equality on $Y$, and
+  $L, s, S, c, t$ natural numbers with $|P| \le 2^L$, $|C| \le 2^s$, $|\sigma| \le 2^S$ and
+  $|\kappa| \le 2^c$. Let $A : P \to C \to \mathrm{AutomataConReloj}\ \kappa\ \sigma\ Y\ \mathrm{Bool}\ Y$
+  satisfy $\mathrm{ResuelveR}\ \mathrm{igual}\ A\ t$. Then
+  $|Y| \le 2^L \cdot 2^s \cdot \min(t+1,\ 2^{S+c-1})$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Homogeneidad.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The homogeneous versions $\mathrm{homogeneizar}(A(p,c))$ have at most $2^{S+c}$ states and solve
+  in the same number of queries, so Theorem~\ref{thm:dynamics-cube-law} applies.
+\end{proof}
+
+\begin{theorem}[A clock of $c$ bits is paid in memory, in the bound on the time of an automaton]
+  \label{thm:dynamics-clock-memory}
+  \lean{Sagitta.Map.Informacion.TorreCHT.reloj_en_memoria}
+  \leanok
+  \uses{def:dynamics-clock}
+  Let $a$ be an automaton with a clock, with $\kappa$ and $\sigma$ finite types, and
+  $O : Q \to R$. Let $S, c \in \mathbb{N}$ with $|\sigma| \le 2^S$ and $|\kappa| \le 2^c$, and
+  assume that for some $t$ the run of $a$ with budget $t$ from $\mathrm{reloj0}$ and
+  $\mathrm{inicio}$ is $\mathrm{some}\ y$. Then there is an $m < 2^{S+c}$ such that the run with
+  budget $m$ from the same clock value and state is $\mathrm{some}\ y$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The homogeneous version has at most $2^{S+c}$ states, and an automaton without clock that
+  returns, returns in fewer queries than its number of states (Theorem~\ref{thm:dynamics-tower-time});
+  the runs of the two automata agree by Theorem~\ref{thm:dynamics-clock-state}.
+\end{proof}
+
+\section{The Noether charge of homogeneity}
+\label{sec:dynamics-charge}
+
+For an automaton $a$ (Definition~\ref{def:dynamics-cube}) and a verifier $O$, one step of the run
+without the output is $\mathrm{paso}(a, O)(x) = \delta(x, O(\mathrm{consulta}(x)))$.
+
+\begin{theorem}[Two runs that reach the same state continue in the same way, for an automaton without clock]
+  \label{thm:dynamics-noether-charge}
+  \lean{Sagitta.Map.Informacion.Homogeneidad.carga_noether}
+  \leanok
+  \uses{def:dynamics-cube}
+  Let $a : \mathrm{Automata}\ \sigma\ Q\ R\ Y$, $O : Q \to R$, $x, x' \in \sigma$ and
+  $i, j \in \mathbb{N}$. Assume that $\mathrm{salida}$ is $\mathrm{none}$ at the states
+  $\mathrm{paso}^{k}(x)$ for $k < i$ and at the states $\mathrm{paso}^{k}(x')$ for $k < j$, and that
+  $\mathrm{paso}^{i}(x) = \mathrm{paso}^{j}(x')$. Then for every $t \in \mathbb{N}$, the run of
+  $a$ with budget $i + t$ from $x$ equals the run with budget $j + t$ from $x'$, and
+  $\mathrm{paso}^{i+t}(x) = \mathrm{paso}^{j+t}(x')$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Homogeneidad.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Split the run at the first $i$ states, and at the first $j$ states, on which the output is
+  $\mathrm{none}$; after the split both runs start in the same state with budget $t$.
+\end{proof}
+
+\section{Not knowing the time}
+\label{sec:dynamics-time}
+
+\begin{theorem}[A run that returns to a state does not know the time, for an automaton without clock]
+  \label{thm:dynamics-no-time}
+  \lean{Sagitta.Map.Informacion.Homogeneidad.no_sabe_la_hora}
+  \leanok
+  \uses{thm:dynamics-noether-charge}
+  Let $a : \mathrm{Automata}\ \sigma\ Q\ R\ Y$, $O : Q \to R$, $x \in \sigma$ and $i \le j$ natural
+  numbers. Assume that $\mathrm{salida}$ is $\mathrm{none}$ at the states $\mathrm{paso}^{k}(x)$
+  for $k < j$, and that $\mathrm{paso}^{i}(x) = \mathrm{paso}^{j}(x)$. Then for every $t$ the run of
+  $a$ with budget $i + t$ from $x$ equals the run with budget $j + t$ from $x$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Homogeneidad.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is Theorem~\ref{thm:dynamics-noether-charge} with $x' = x$, the hypothesis for $k < i$ coming
+  from $i \le j$.
+\end{proof}
+
+\section{The space of multi-tape machines and the cube: the bridge}
+\label{sec:dynamics-bridge}
+
+The statements of this section are about deterministic multi-tape Turing machines with $k$ work
+tapes, as in Definition~\ref{def:cslib-tm}, run on an input $w$ whose length is $n$. A machine
+\emph{runs in space $S$} on $w$ as in Definition~\ref{def:cslib-time-space}; then, at every step,
+the head positions and the non-blank cells of the work tapes lie in the window $[-S, S]$ of each
+tape. The set $\mathrm{Estados}$ of \emph{window states} is $\mathrm{Fin}\ (n+2)$ (the position of
+the input head) times the finite type of the stores (state and work tapes) restricted to that
+window. For a machine $\mathrm{tm}$ and a function $\mathrm{lectura}$ from window states to a type
+$Y$, the automaton $\mathrm{automata}(\mathrm{tm}, n, S, \mathrm{lectura})$ has the window states as
+states, starts in the initial configuration, queries the position of the input head, hears the
+symbol of the input at that cell ($\mathrm{simboloEn}(w)$, which is $\mathrm{none}$ at the cell $0$),
+advances the store by one step of the machine, and returns $\mathrm{lectura}$ of the state when the
+machine state is the halting one. $\mathrm{enVentana}$ reads a configuration as a window state, and
+$\mathrm{bitsEspacio}(n, S) = \lceil \log_2 (n+2) \rceil + \lceil \log_2 \mathrm{base} \rceil +
+\mathrm{exp} \cdot k \cdot S$, with $\mathrm{base}$ and $\mathrm{exp}$ the constants of the storage
+bound of Definition~\ref{def:cslib-configbound}.
+
+\begin{definition}[Window states, the automaton of a machine, and the bits of memory]
+  \label{def:dynamics-bridge}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.Estados, Sagitta.Map.Informacion.EspacioCubo.simboloEn, Sagitta.Map.Informacion.EspacioCubo.automata, Sagitta.Map.Informacion.EspacioCubo.enVentana, Sagitta.Map.Informacion.EspacioCubo.bitsEspacio}
+  \leanok
+  \uses{def:dynamics-cube, def:cslib-tm, def:cslib-time-space, def:cslib-configbound}
+  The definitions are those of the preceding paragraph.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{definition}
+
+\begin{theorem}[The automaton of a machine returns what the machine leaves when it halts]
+  \label{thm:dynamics-bridge-run}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.corre_automata}
+  \leanok
+  \uses{def:dynamics-bridge}
+  Let $\mathrm{tm}$ be a machine with $k$ work tapes, $w$ an input of length $n$, and
+  $\mathrm{lectura}$ a function from window states to $Y$. Assume that $\mathrm{tm}$ runs in space
+  $S$ on $w$, that it halts at step $u$, and that $u \le t$. Then the automaton
+  $\mathrm{automata}(\mathrm{tm}, n, S, \mathrm{lectura})$, run with the verifier
+  $\mathrm{simboloEn}(w)$, budget $t$ and its initial state, returns
+  $\mathrm{some}$ of $\mathrm{lectura}$ applied to the window state of the configuration of
+  $\mathrm{tm}$ at step $u$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By induction on the remaining budget: while the machine has not halted the output of the
+  automaton is $\mathrm{none}$ and one step of the automaton is one step of the machine, since the
+  store fits in the window.
+\end{proof}
+
+\begin{theorem}[The cube law for multi-tape machines with space $S$ that read an encoded input]
+  \label{thm:dynamics-cube-machines}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.ley_cubo_mt}
+  \leanok
+  \uses{def:dynamics-bridge, thm:dynamics-bridge-run}
+  Let $\mathrm{Symbol}$, $\mathrm{State}$, $P$, $C$, $Y$ be finite types, $k, L, s, b, n, S, t$
+  natural numbers with $|P| \le 2^L$, $|C| \le 2^s$ and $|\mathrm{Symbol}| + 1 \le 2^b$. Let
+  $M : P \to C \to$ (machines with $k$ work tapes), $\mathrm{lectura}$ a function from
+  $P$, $C$ and the window states to $Y$, and $\mathrm{enc} : Y \to \mathrm{List}\ \mathrm{Symbol}$
+  with every $\mathrm{enc}(y)$ of length $n$. Assume that for every $y$ there are $p, c$ and
+  $u \le t$ such that $M(p,c)$ runs in space $S$ on $\mathrm{enc}(y)$, halts at step $u$, and
+  $\mathrm{lectura}(p, c)$ of the window state of the configuration at step $u$ is $y$. Then
+  \[
+    |Y| \le 2^L \cdot 2^s \cdot \min\bigl(2^{b t},\ 2^{\mathrm{bitsEspacio}(n, S)}\bigr).
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The automata of the machines solve, with the input as a verifier whose answers have $b$ bits, in
+  $t$ queries (Theorem~\ref{thm:dynamics-bridge-run}) and have at most $2^{\mathrm{bitsEspacio}}$
+  states; apply the cube law for a verifier with answers of $b$ bits, which is stated for the
+  automata of this section in the same way as Theorem~\ref{thm:dynamics-cube-law}.
+\end{proof}
+
+\begin{theorem}[A machine that returns to a core before halting does not know the time]
+  \label{thm:dynamics-no-time-machine}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.no_sabe_la_hora_mt}
+  \leanok
+  \uses{def:dynamics-bridge, thm:dynamics-no-time}
+  Let $\mathrm{tm}$ be a machine with $k$ work tapes, $w$ an input of length $n$ and
+  $\mathrm{lectura}$ a function from window states to $Y$. Assume that $\mathrm{tm}$ runs in space
+  $S$ on $w$, that $i \le j$, that the machine has not halted at any step $m < j$, and that the core
+  of its configuration at step $i$ equals the core at step $j$ (the core is the configuration
+  without the output tape). Then for every $t$, the automaton
+  $\mathrm{automata}(\mathrm{tm}, n, S, \mathrm{lectura})$ with the verifier $\mathrm{simboloEn}(w)$
+  returns, from its initial state, the same value with budget $i + t$ and with budget $j + t$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The step of the automaton follows the machine, so the states of the automaton at steps $i$ and
+  $j$ are equal, and Theorem~\ref{thm:dynamics-no-time} applies.
+\end{proof}
+
+\begin{theorem}[Halt or cycle for a machine with space $S$]
+  \label{thm:dynamics-halt-or-cycle-machine}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.parar_o_ciclar_mt}
+  \leanok
+  \uses{def:dynamics-bridge, thm:dynamics-halt-or-cycle}
+  Let $\mathrm{tm}$ be a machine with $k$ work tapes over finite types $\mathrm{Symbol}$ and
+  $\mathrm{State}$, $w$ an input and $S \in \mathbb{N}$, with $\mathrm{tm}$ running in space $S$ on
+  $w$. Put $N = (|w| + 2) \cdot \mathrm{storageBound}(\mathrm{Symbol}, \mathrm{State}, k, kS)$.
+  Then either there is $m \le N$ such that the configuration at step $m$ is halted, or the machine
+  never halts and there are $i, p$ with $0 < p$, $i + p \le N + 1$, and the core at step $m + p$
+  equals the core at step $m$ for every $m \ge i$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Apply the halt-or-cycle statement for finite systems to the system of window states that follows
+  the machine, which has at most $N$ states.
+\end{proof}
+
+\begin{theorem}[Space $S$ gives time at most $2^{\mathrm{bitsEspacio}}$ and at most the storage bound of the library]
+  \label{thm:dynamics-halt-soon-machine}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.para_pronto_mt_cslib}
+  \leanok
+  \uses{def:dynamics-bridge}
+  Let $\mathrm{tm}$ be a machine with $k$ work tapes over finite types, $w$ an input and
+  $S \in \mathbb{N}$, with $\mathrm{tm}$ running in space $S$ on $w$. If $\mathrm{tm}$ halts at
+  step $u$ then $u \le 2^{\mathrm{bitsEspacio}(|w|, S)}$ and
+  $u \le (|w| + 2) \cdot \mathrm{storageBound}(\mathrm{Symbol}, \mathrm{State}, k, S)$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The second bound is the one of the library for halting inside bounded space. For the first, a
+  machine that halts has a halting trace of the system of window states, which has at most
+  $2^{\mathrm{bitsEspacio}}$ states, so it halts within that many steps.
+\end{proof}
+
+\section{Halting or cycling, and memory bounds depth}
+\label{sec:dynamics-halt-cycle}
+
+A \emph{system} with state type $\sigma$ is a map $\delta : \sigma \to \mathrm{Option}(\sigma)$;
+$\mathrm{none}$ is halting. The trace $\mathrm{traza}(\delta, s)$ is the sequence of
+$(\mathrm{c} \mapsto \mathrm{c.bind}\,\delta)^{n}(\mathrm{some}\ s)$, so it is $\mathrm{none}$ from
+the first halt on.
+
+\begin{theorem}[An orbit in a finite type is eventually periodic]
+  \label{thm:dynamics-eventually-periodic}
+  \lean{Sagitta.Map.Continuo.Memoria.finalmente_periodica}
+  \leanok
+  Let $\beta$ be a finite type, $f : \beta \to \beta$ and $x \in \beta$. Then there are $i, p$ with
+  $0 < p$, $i + p \le |\beta|$, and $f^{n+p}(x) = f^{n}(x)$ for every $n \ge i$.
+  \own{}
+  \leanfile{Sagitta/Map/Continuo/MemoriaPeriodica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By the pigeonhole principle two of the first $|\beta|$ iterates coincide, and from there on the
+  orbit repeats.
+\end{proof}
+
+\begin{theorem}[Halt or cycle for a finite system]
+  \label{thm:dynamics-halt-or-cycle}
+  \lean{Sagitta.Map.Informacion.MemoriaProfundidad.parar_o_ciclar}
+  \leanok
+  \uses{thm:dynamics-eventually-periodic}
+  Let $\sigma$ be a finite type, $\delta : \sigma \to \mathrm{Option}(\sigma)$ and $s \in \sigma$.
+  Then either there is $n \le |\sigma|$ with $\mathrm{traza}(\delta, s)(n) = \mathrm{none}$, or the
+  trace is never $\mathrm{none}$ and there are $i, p$ with $0 < p$, $i + p \le |\sigma| + 1$, and
+  $\mathrm{traza}(\delta, s)(n + p) = \mathrm{traza}(\delta, s)(n)$ for every $n \ge i$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/MemoriaProfundidad.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If the trace halts it halts within $|\sigma|$ steps. Otherwise the iteration of $\mathrm{paso}$ on
+  the type $\mathrm{Option}(\sigma)$, of $|\sigma| + 1$ elements, is eventually periodic by
+  Theorem~\ref{thm:dynamics-eventually-periodic}.
+\end{proof}
+
+The \emph{depth} $\mathrm{prof}(x)$ of a natural number $x$ is the difference $\mathrm{Kt}(x) -
+\mathrm{K}(x)$ of the time-bounded and the plain Kolmogorov complexities defined in the library.
+For a code $p$ of partial recursive functions, $\mathrm{Produce}(p, x)$ says that $p$ on input $0$
+returns $x$, and $\mathrm{largo}(p)$ is the length in bits of the code. The hypothesis
+$\mathrm{Simula}(\delta, s_0, p)$ says that for every $n$ with $\mathrm{traza}(\delta, s_0)(n) =
+\mathrm{none}$, the bounded evaluation of $p$ on $0$ with budget $n$ returns a value.
+
+\begin{definition}[Hypothesis: the code takes no longer than the system]
+  \label{def:dynamics-simula}
+  \lean{Sagitta.Map.Informacion.MemoriaProfundidad.Simula}
+  \leanok
+  % uses-lean: Sagitta.Map.Informacion.Profundidad.prof, Sagitta.Map.Tiempo.KolmogorovTiempo.Produce, Sagitta.Map.Tiempo.KolmogorovTiempo.largo
+  For $\delta : \sigma \to \mathrm{Option}(\sigma)$, $s_0 \in \sigma$ and a code $p$,
+  $\mathrm{Simula}(\delta, s_0, p)$ is the statement that for every $n$, if
+  $\mathrm{traza}(\delta, s_0)(n) = \mathrm{none}$ then the evaluation of $p$ on $0$ with budget $n$
+  halts. This definition does not assert that any particular triple satisfies it.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/MemoriaProfundidad.lean}
+\end{definition}
+
+\begin{theorem}[Memory bounds depth, for a halting finite system and a code that takes no longer than it]
+  \label{thm:dynamics-memory-depth}
+  \lean{Sagitta.Map.Informacion.MemoriaProfundidad.memoria_acota_profundidad}
+  \leanok
+  \uses{def:dynamics-simula, thm:dynamics-halt-or-cycle}
+  % uses-lean: Sagitta.Map.Informacion.Profundidad.prof, Sagitta.Map.Tiempo.KolmogorovTiempo.Produce, Sagitta.Map.Tiempo.KolmogorovTiempo.largo
+  Let $\sigma$ be a finite type, $\delta : \sigma \to \mathrm{Option}(\sigma)$, $s_0 \in \sigma$ and
+  $s \in \mathbb{N}$ with $|\sigma| \le 2^s$. Assume that $\mathrm{traza}(\delta, s_0)$ is
+  $\mathrm{none}$ at some step. Let $p$ be a code and $x \in \mathbb{N}$ with
+  $\mathrm{Produce}(p, x)$. Assume $\mathrm{Simula}(\delta, s_0, p)$. Then
+  $\mathrm{prof}(x) + 3 \le \mathrm{largo}(p) + s$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/MemoriaProfundidad.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The trace halts within $2^s$ steps, so by the hypothesis the evaluation of $p$ halts within $2^s$
+  steps; a program that produces $x$ within that budget bounds the depth of $x$ by its length and
+  the logarithm of the budget.
+\end{proof}
+
+\begin{theorem}[Memory bounds depth, for a halting multi-tape machine with space $S$]
+  \label{thm:dynamics-memory-depth-machine}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.memoria_acota_profundidad_mt}
+  \leanok
+  \uses{def:dynamics-bridge, thm:dynamics-memory-depth}
+  % uses-lean: Sagitta.Map.Informacion.Profundidad.prof, Sagitta.Map.Tiempo.KolmogorovTiempo.Produce, Sagitta.Map.Tiempo.KolmogorovTiempo.largo
+  Let $\mathrm{tm}$ be a machine with $k$ work tapes over finite types, $w$ an input and
+  $S \in \mathbb{N}$, with $\mathrm{tm}$ running in space $S$ on $w$ and halting at some step. Let
+  $p$ be a code and $x \in \mathbb{N}$ with $\mathrm{Produce}(p, x)$, and assume that for every step
+  $m$ at which the configuration of $\mathrm{tm}$ is halted, the evaluation of $p$ on $0$ with
+  budget $m$ halts. Then
+  $\mathrm{prof}(x) + 3 \le \mathrm{largo}(p) + \mathrm{bitsEspacio}(|w|, S)$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Apply Theorem~\ref{thm:dynamics-memory-depth} to the system of window states that follows the
+  machine, which has at most $2^{\mathrm{bitsEspacio}}$ states.
+\end{proof}
+
+\section{The computational time crystal}
+\label{sec:dynamics-crystal}
+
+The statements of this section are about a function $f : \sigma \to \sigma$ and the sequence
+$t \mapsto f^{t}(x)$, with no machine and no cost. The statement about three copies of a bit is
+about a small automaton on $\mathrm{Fin}\ 3 \to \mathrm{Bool}$ with an adversary.
+
+\begin{theorem}[A trajectory in a finite type crystallizes into a cycle of minimal period]
+  \label{thm:dynamics-crystallize}
+  \lean{Sagitta.Map.Informacion.Cristal.cristaliza}
+  \leanok
+  \uses{thm:dynamics-eventually-periodic}
+  Let $\sigma$ be a finite type, $f : \sigma \to \sigma$ and $x \in \sigma$. Then there are
+  $\mu, p \in \mathbb{N}$ with $0 < p$, $\mu + p \le |\sigma|$, such that $f^{\mu}(x)$ is a periodic
+  point of $f$, the minimal period of $f$ at $f^{\mu}(x)$ is $p$, and
+  $f^{t+p}(x) = f^{t}(x)$ for every $t \ge \mu$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Cristal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take $\mu$ and a period $q$ from Theorem~\ref{thm:dynamics-eventually-periodic}. Then $f^{\mu}(x)$
+  is a periodic point of period $q$; its minimal period $p$ is positive and at most $q$, and the
+  trajectory from $\mu$ repeats with period $p$.
+\end{proof}
+
+\begin{theorem}[When the cycle is longer than one, the state is not invariant under a shift by one step]
+  \label{thm:dynamics-symmetry-break}
+  \lean{Sagitta.Map.Informacion.Cristal.ruptura}
+  \leanok
+  Let $f : \sigma \to \sigma$, $x \in \sigma$ and $\mu \in \mathbb{N}$ with
+  $1 < $ the minimal period of $f$ at $f^{\mu}(x)$. Then for every $t \ge \mu$,
+  $f^{t+1}(x) \ne f^{t}(x)$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Cristal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $f^{t+1}(x) = f^{t}(x)$ then $f^{t}(x)$ is a fixed point, so its minimal period is $1$; but
+  $f^{t}(x)$ lies in the cycle of $f^{\mu}(x)$ and has the same minimal period, which is larger
+  than $1$.
+\end{proof}
+
+Three copies of a bit are a function $z : \mathrm{Fin}\ 3 \to \mathrm{Bool}$. Its majority is the
+bit that at least two copies have. The step $\mathrm{pasoNM}$ puts all three copies to the negation
+of the majority. The weight of a mask $m : \mathrm{Fin}\ 3 \to \mathrm{Bool}$ is the number of
+positions where $m$ is true. For an adversary $\mathrm{adv} : \mathbb{N} \to (\mathrm{Fin}\ 3 \to
+\mathrm{Bool})$ and a start $z_0$, the run $\mathrm{corrida}$ is $z_0$ at time $0$, and the
+state at time $t+1$ is the step applied to the state at time $t$, with the copies marked by
+$\mathrm{adv}(t)$ flipped.
+
+\begin{definition}[Three copies of a bit with an adversary]
+  \label{def:dynamics-three-copies}
+  \lean{Sagitta.Map.Informacion.Cristal.Tres, Sagitta.Map.Informacion.Cristal.mayoria, Sagitta.Map.Informacion.Cristal.pasoNM, Sagitta.Map.Informacion.Cristal.peso, Sagitta.Map.Informacion.Cristal.corrida}
+  \leanok
+  The definitions are those of the preceding paragraph.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Cristal.lean}
+\end{definition}
+
+\begin{theorem}[The oscillation of the majority survives an adversary that corrupts one copy per step]
+  \label{thm:dynamics-robust-phase}
+  \lean{Sagitta.Map.Informacion.Cristal.fase_robusta}
+  \leanok
+  \uses{def:dynamics-three-copies}
+  Let $\mathrm{adv} : \mathbb{N} \to (\mathrm{Fin}\ 3 \to \mathrm{Bool})$ with
+  $\mathrm{peso}(\mathrm{adv}(t)) \le 1$ for every $t$, let $z_0$ be three copies of a bit and
+  $t \in \mathbb{N}$. Then the majority of $\mathrm{corrida}(\mathrm{adv}, z_0, t)$ is the exclusive
+  or of the majority of $z_0$ and the truth value of $t \bmod 2 = 1$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Cristal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $t$: a mask of weight at most $1$ does not change the majority of three equal
+  copies, so the majority is negated at each step.
+\end{proof}
+
+\section{Breaking time homogeneity: pumping, primes with a clock, Floquet}
+\label{sec:dynamics-ruptures}
+
+The statements are about deterministic finite automata of Mathlib, over an alphabet $\Gamma$ and a
+finite state type $\sigma$, and about automata with a clock. A \emph{finite automaton with a clock}
+over $\Gamma$ and $\sigma$ has a transition $\mathbb{N} \to \sigma \to \Gamma \to \sigma$, a start
+state, and an acceptance predicate $\mathbb{N} \to \sigma \to \mathrm{Prop}$ that receive the step.
+It accepts a word $w$ when the acceptance predicate at step $|w|$ holds of the state reached by
+reading $w$ from step $0$. Its clock is \emph{periodic} with period $P$ when the transition and the
+acceptance predicate depend on the step only through the step modulo $P$.
+
+\begin{definition}[Finite automata with a clock; the one-state automaton that accepts at prime steps]
+  \label{def:dynamics-dfa-clock}
+  \lean{Sagitta.Map.Informacion.Rupturas.DFAReloj, Sagitta.Map.Informacion.Rupturas.DFAReloj.accepts, Sagitta.Map.Informacion.Rupturas.DFAReloj.Periodico, Sagitta.Map.Informacion.Rupturas.primos}
+  \leanok
+  The first three definitions are those of the preceding paragraph. The automaton $\mathrm{primos}$
+  has one state, the alphabet $\mathrm{Unit}$, the constant transition, and accepts at step $t$ when
+  $t$ is a prime number.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Rupturas.lean}
+\end{definition}
+
+\begin{theorem}[Pumping for a finite automaton, with the same state after every repetition]
+  \label{thm:dynamics-pumping}
+  \lean{Sagitta.Map.Informacion.Rupturas.bombeo_con_cht}
+  \leanok
+  Let $M$ be a deterministic finite automaton over $\Gamma$ with a finite state type $\sigma$, $q$
+  a state and $w$ a word with $|\sigma| \le |w|$. Then there are words $x, y, z$ with
+  $w = x \mathbin{+\!\!+} y \mathbin{+\!\!+} z$, $y \ne []$, $|x| + |y| \le |\sigma|$, and
+  for every $m \in \mathbb{N}$ the state reached from $q$ by $x\, y^{m}\, z$ is the state reached
+  from $q$ by $w$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Rupturas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the pumping lemma for finite automata of the library, applied to $M$, $q$ and $w$.
+\end{proof}
+
+\begin{theorem}[The language of words of prime length over one letter is not regular]
+  \label{thm:dynamics-primes-not-regular}
+  \lean{Sagitta.Map.Informacion.Rupturas.primos_no_regular}
+  \leanok
+  \uses{def:dynamics-dfa-clock}
+  The language accepted by $\mathrm{primos}$, the set of words over $\mathrm{Unit}$ whose length is
+  a prime number, is not regular.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Rupturas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A finite automaton reading one letter accepts eventually periodically in the length. If the
+  primes were eventually periodic with period $p > 0$ from $\mu$, a prime $q \ge \mu + 2$ would
+  make every $q + kp$ prime, but $q + qp = q(1+p)$ is not.
+\end{proof}
+
+\begin{theorem}[Floquet: a periodic clock restores eventual periodicity on one letter]
+  \label{thm:dynamics-floquet}
+  \lean{Sagitta.Map.Informacion.Rupturas.floquet}
+  \leanok
+  \uses{def:dynamics-dfa-clock}
+  Let $M$ be a finite automaton with a clock over $\Gamma$ with a finite state type $\sigma$,
+  $P > 0$ with $M$ periodic of period $P$, and $a \in \Gamma$. Then there are $\mu, p$ with
+  $0 < p$, $\mu + p \le P \cdot |\sigma|$, and for every $n \ge \mu$, the word $a^{n+p}$ is
+  accepted by $M$ if and only if $a^{n}$ is.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Rupturas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The automaton on $\sigma \times \mathrm{Fin}\ P$ that carries the clock in its state follows the
+  runs of $M$ on $a^n$; apply Theorem~\ref{thm:dynamics-eventually-periodic} to its step.
+\end{proof}
+
+\section{The subset construction, seen from time homogeneity}
+\label{sec:dynamics-subsets}
+
+The statements of this section are about nondeterministic finite automata of Mathlib. For an
+automaton $M$ with state type $\sigma$ and alphabet $R$, the subset construction has as states the
+sets of states of $M$, starting in the start set of $M$, with the transition of the deterministic
+automaton $\mathrm{toDFA}$ (step of a set on a letter). Given a query $q : \mathrm{Set}\ \sigma \to
+Q$, an output $\mathrm{sal} : \mathrm{Set}\ \sigma \to \mathrm{Option}(Y)$ and a verifier
+$O : Q \to R$, this gives an automaton $\mathrm{subconjuntos}(M, q, \mathrm{sal})$ of the cube
+(Definition~\ref{def:dynamics-cube}) that reads the answers of the verifier as letters.
+$\mathrm{oidas}(M, q, O, k, S)$ is the list of the answers it hears in $k$ steps from the set $S$.
+
+\begin{definition}[The subset construction as an automaton of the cube]
+  \label{def:dynamics-subsets}
+  \lean{Sagitta.Map.Informacion.SubconjuntosCHT.subconjuntos, Sagitta.Map.Informacion.SubconjuntosCHT.oidas}
+  \leanok
+  \uses{def:dynamics-cube}
+  The definitions are those of the preceding paragraph.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/SubconjuntosCHT.lean}
+\end{definition}
+
+\begin{theorem}[The subset construction is a system with a Noether charge: the live set is all that matters from the past]
+  \label{thm:dynamics-subsets-charge}
+  \lean{Sagitta.Map.Informacion.SubconjuntosCHT.subconjuntos_carga, Sagitta.Map.Informacion.SubconjuntosCHT.noether_lenguaje}
+  \leanok
+  \uses{def:dynamics-subsets, thm:dynamics-noether-charge}
+  Let $M$ be a nondeterministic finite automaton, $q$, $\mathrm{sal}$ and $O$ as above, sets
+  $S, S'$ of states, and $i, j \in \mathbb{N}$. Assume that $\mathrm{sal}$ is $\mathrm{none}$ at
+  the first $i$ states of the run from $S$ and at the first $j$ states of the run from $S'$, and
+  that the set reached from $S$ by the $i$ answers heard from $S$ equals the set reached from $S'$
+  by the $j$ answers heard from $S'$. Then for every $t$, the run of $\mathrm{subconjuntos}(M, q,
+  \mathrm{sal})$ with budget $i + t$ from $S$ equals the run with budget $j + t$ from $S'$.
+  Separately, for words $u, v$ with $M.\mathrm{eval}(u) = M.\mathrm{eval}(v)$ and every word $w$,
+  $u\,w$ is accepted by $M$ if and only if $v\,w$ is.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/SubconjuntosCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first part is Theorem~\ref{thm:dynamics-noether-charge} for $\mathrm{subconjuntos}$, since
+  after $k$ steps the state is the set that $M$ reaches by the answers heard. The second part
+  rewrites acceptance by $M$ as acceptance by the deterministic automaton of the subset
+  construction, whose state after $u$ is $M.\mathrm{eval}(u)$.
+\end{proof}
+
+\begin{theorem}[The cube law for automata that are subset constructions]
+  \label{thm:dynamics-subsets-law}
+  \lean{Sagitta.Map.Informacion.SubconjuntosCHT.ley_subconjuntos}
+  \leanok
+  \uses{def:dynamics-subsets, thm:dynamics-cube-clock}
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.igual
+  Let $P, C, \sigma, Y$ be finite types with decidable equality on $Y$, and $L, s, t$ natural
+  numbers with $|P| \le 2^L$ and $|C| \le 2^s$. Let $M : P \to C \to$ (nondeterministic finite
+  automata over $\mathrm{Bool}$ with states $\sigma$), $q : P \to C \to \mathrm{Set}\ \sigma \to Y$
+  and $\mathrm{sal} : P \to C \to \mathrm{Set}\ \sigma \to \mathrm{Option}(Y)$. Assume that the
+  family $(p, c) \mapsto \mathrm{subconjuntos}(M(p,c), q(p,c), \mathrm{sal}(p,c))$ solves in $t$
+  queries with the verifier $\mathrm{igual}$. Then
+  $|Y| \le 2^L \cdot 2^s \cdot \min(t+1,\ 2^{|\sigma| - 1})$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/SubconjuntosCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Apply the cube law with a clock (Theorem~\ref{thm:dynamics-cube-clock}) with the trivial clock
+  $\kappa = \mathrm{Unit}$, $c = 0$ and $S = |\sigma|$, since $|\mathrm{Set}\ \sigma| = 2^{|\sigma|}$.
+\end{proof}
+
+The language $\mathrm{kesimo}(k)$ over $\mathrm{Bool}$ is the set of words $x$ with $k \le |x|$ whose
+$k$-th letter from the end is $\mathrm{true}$. The automaton $\mathrm{nfaKesimo}(k)$ has states
+$\mathrm{Fin}\ (k+1)$, start set $\{0\}$ and accepting set $\{k\}$; from state $0$ it stays in $0$
+on any letter and moves to $1$ on $\mathrm{true}$, and from a state $i > 0$ it moves to $i + 1$.
+
+\begin{definition}[The $k$-th letter from the end]
+  \label{def:dynamics-kesimo}
+  \lean{Sagitta.Map.Informacion.SubconjuntosCHT.kesimo, Sagitta.Map.Informacion.SubconjuntosCHT.nfaKesimo}
+  \leanok
+  The definitions are those of the preceding paragraph.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/SubconjuntosCHT.lean}
+\end{definition}
+
+\begin{theorem}[The subset construction collapses a nondeterministic automaton, and it costs memory in an example]
+  \label{thm:dynamics-subsets-collapse}
+  \lean{Sagitta.Map.Informacion.SubconjuntosCHT.colapsa_como_lenguaje, Sagitta.Map.Informacion.SubconjuntosCHT.colapsa_y_separa}
+  \leanok
+  \uses{def:dynamics-kesimo}
+  For every nondeterministic finite automaton $M$ over any alphabet, the deterministic automaton
+  $M.\mathrm{toDFA}$ accepts the same language as $M$. For every $k > 0$: $\mathrm{nfaKesimo}(k)$
+  accepts $\mathrm{kesimo}(k)$, it has $k + 1$ states, its deterministic automaton $\mathrm{toDFA}$
+  accepts $\mathrm{kesimo}(k)$ and has $2^{k+1}$ states, and every deterministic finite automaton
+  over $\mathrm{Bool}$ with a finite state type $\tau$ that accepts $\mathrm{kesimo}(k)$ satisfies
+  $2^k \le |\tau|$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/SubconjuntosCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first part is the correctness of the subset construction in Mathlib. For the lower bound, the
+  $2^k$ words of length $k$ reach different states of a deterministic automaton: if two differ at
+  position $i$, appending $i$ letters $\mathrm{false}$ separates them.
+\end{proof}
+
+\section{The tower: SAT in P and a homogeneous system with polynomial budget}
+\label{sec:dynamics-tower}
+
+\begin{theorem}[An automaton without clock that returns, returns in fewer than $2^S$ queries]
+  \label{thm:dynamics-tower-time}
+  \lean{Sagitta.Map.Informacion.TorreCHT.cht_tiempo}
+  \leanok
+  \uses{def:dynamics-cube, thm:dynamics-halt-or-cycle, thm:dynamics-noether-charge}
+  Let $a$ be an automaton with a finite state type $\sigma$, $O : Q \to R$, $S \in \mathbb{N}$
+  with $|\sigma| \le 2^S$, $x \in \sigma$ and $y \in Y$. If for some $t$ the run of $a$ with budget
+  $t$ from $x$ is $\mathrm{some}\ y$, then there is $m < 2^S$ such that the run with budget $m$ from
+  $x$ is $\mathrm{some}\ y$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  View the automaton with the fixed verifier as a system on $\sigma$. By halt-or-cycle the trace
+  halts before $2^S$ steps or cycles; if it repeated a state before returning it would never
+  return, by the Noether charge of homogeneity.
+\end{proof}
+
+\begin{definition}[The tower statement for $\SAT$]
+  \label{def:dynamics-tower-sat}
+  \lean{Sagitta.Map.Informacion.TorreCHT.TorreSAT}
+  \leanok
+  \uses{def:dynamics-bridge, def:threesat}
+  $\mathrm{TorreSAT}$ is the statement: there are polynomially bounded functions $t, s :
+  \mathbb{N} \to \mathbb{N}$, a number $k$, a finite type $\mathrm{State}$, a machine $\mathrm{tm}$
+  with $k$ work tapes over the alphabet $\mathrm{Bool}$ and states $\mathrm{State}$, and a function
+  $g$ from CNF formulas over $\mathbb{N}$ to $\mathrm{Bool}$, such that $\varphi \in \SAT$ if and
+  only if $g(\varphi) = \mathrm{true}$, and for every formula $\varphi$, with $n = |\enc(\varphi)|$:
+  $\mathrm{tm}$ runs in space $s(n)$ on $\enc(\varphi)$; the automaton
+  $\mathrm{automata}(\mathrm{tm}, n, s(n), \mathrm{lectura})$, with $\mathrm{lectura}$ the constant function with value $()$, run with the verifier
+  $\mathrm{simboloEn}(\enc(\varphi))$, budget $t(n)$ and its initial state returns
+  $\mathrm{some}\ ()$; and $\mathrm{tm}$ computes the encoding of $g(\varphi)$ on input
+  $\enc(\varphi)$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{definition}
+
+\begin{theorem}[$\SAT$ is in $\cP$ if and only if the tower statement holds]
+  \label{thm:dynamics-tower-iff}
+  \lean{Sagitta.Map.Informacion.TorreCHT.sat_enP_iff_torre}
+  \leanok
+  \uses{def:dynamics-tower-sat, def:P, thm:dynamics-bridge-run}
+  $\SAT \in \cP$ (for the encoding $\mathrm{encCNF}$) if and only if $\mathrm{TorreSAT}$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A set is in $\cP$ if and only if some machine decides it within polynomial time and space. For the
+  forward direction, the automaton of that machine returns by Theorem~\ref{thm:dynamics-bridge-run}.
+  For the converse, if the machine had not halted within $t(n)$ steps the automaton would return
+  $\mathrm{none}$ within that budget, contradicting the hypothesis.
+\end{proof}
+
+\begin{theorem}[Memory of the tower]
+  \label{thm:dynamics-tower-memory}
+  \lean{Sagitta.Map.Informacion.TorreCHT.memoria_torre}
+  \leanok
+  \uses{def:dynamics-bridge}
+  Let $\mathrm{State}$ be a finite type, $k, n, S \in \mathbb{N}$. Then the number of window states
+  over the alphabet $\mathrm{Bool}$ is at most $2^{\mathrm{bitsEspacio}(n, S)}$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the count of window states of the bridge, in bits.
+\end{proof}
+
+A \emph{family of homogeneous systems for $\SAT$} with memory $S$, clock $c$ and queries $T$, where
+$S, c, T : \mathbb{N} \to \mathbb{N}$, gives for every $n$ an automaton with a clock, over finite
+types with $|\sigma| \le 2^{S(n)}$ and $|\kappa| \le 2^{c(n)}$, whose queries are positions in the
+input and whose answers are $\mathrm{Option}(\mathrm{Bool})$, such that for every formula $\varphi$
+with $|\enc(\varphi)| = n$ the run with budget $T(n)$ from its initial clock value and state, with
+the verifier $\mathrm{simboloEn}(\enc(\varphi))$, returns $\mathrm{some}\ b$ with
+$b = \mathrm{true}$ if and only if $\varphi \in \SAT$. The automaton may depend on $n$ in an
+arbitrary way.
+
+\begin{definition}[Families of systems for $\SAT$, one for each input length]
+  \label{def:dynamics-family-sat}
+  \lean{Sagitta.Map.Informacion.TorreCHT.FamiliaCHT}
+  \leanok
+  \uses{def:dynamics-clock, def:threesat}
+  The definition is that of the preceding paragraph.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{definition}
+
+\begin{theorem}[Without uniformity there is a family for $\SAT$ with $n + \lceil \log_2 (n+1) \rceil$ bits, no clock and $n$ queries]
+  \label{thm:dynamics-family-nonuniform}
+  \lean{Sagitta.Map.Informacion.TorreCHT.familia_no_uniforme}
+  \leanok
+  \uses{def:dynamics-family-sat}
+  $\mathrm{FamiliaCHT}$ holds for memory $S(n) = n + \lceil \log_2 (n+1) \rceil$, clock $c(n) = 0$
+  and queries $T(n) = n$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For each $n$ take the automaton that copies the $n$ bits of the input into its memory, one query
+  each, and then outputs by a table of the formulas whose encoding is that word and that are in
+  $\SAT$, with the trivial clock.
+\end{proof}
