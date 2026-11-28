@@ -4,4 +4,662 @@
 \chapter{The arrow and the laws, seen from the map}
 \label{chap:arrow}
 
-This chapter is not written yet.
+Part~I states the chain of the arrow with the declarations of \texttt{Sagitta.Arrow}. This chapter
+goes through the same ground with the declarations of \texttt{Sagitta.Map}, which were written
+before and are stated in other models: the machines of Mathlib, the machines of cslib, trees of
+queries to a verifier, automata with a bounded number of states, and plain arithmetic on natural
+numbers. Where Part~I already has the entry for a statement, a section says where it is and gives
+only the entries of the map. When a statement of the map says the same thing as an entry of
+Part~I, the text says so; no entry claims that two such statements are proved equivalent unless a
+theorem of the repository says it. Every entry says in which model its statement lives.
+
+\section{The decision hypothesis}
+\label{sec:arrow-hd}
+
+The decision hypothesis $\HD$ (some search problem of $\cFNP$ is not in $\cFP$) is the named
+hypothesis of Part~I (Definition~\ref{def:hd}), together with its equivalence with the arrow
+(Theorem~\ref{thm:hd-iff-arrow}) and with its form for Turing machines (Definition~\ref{def:hd-tm}
+and Theorem~\ref{thm:hd-iff-arrow-tm}). The map has no declaration with that name.
+
+\section{The statement $\cP \neq \cNP$ in the library of the map}
+\label{sec:arrow-p-ne-np}
+
+The map states $\cP = \cNP$ in two ways: on the machines \texttt{TM2} of Mathlib (file
+\texttt{Clases.lean}) and on single-tape machines transcribed from the official description of the
+problem (file \texttt{Cook.lean}). The statements are definitions of type \texttt{Prop}; none of
+them is asserted.
+
+\begin{definition}[$\cP = \cNP$ and $\cP \ne \cNP$, on the machines of Mathlib]
+  \label{def:arrow-p-ne-np}
+  \lean{Sagitta.Map.PIgualNP, Sagitta.Map.PDistintoNP}
+  \leanok
+  A \emph{problem} is a function from lists of bits to \texttt{Bool}. $\cP$ is the set of problems
+  that a machine \texttt{TM2} of Mathlib computes in polynomial time, with the canonical encodings of
+  lists of bits. $\cNP$ is the set of problems $L$ for which there are a polynomial $p$ and a
+  verifier $V : (\text{list of bits}) \times (\text{list of bits}) \to \mathrm{Bool}$, computable in
+  polynomial time, such that $L(x) = \mathrm{true}$ if and only if some $y$ with $|y| \le p(|x|)$ has
+  $V(x, y) = \mathrm{true}$. \texttt{PIgualNP} is the proposition $\cP = \cNP$ and
+  \texttt{PDistintoNP} is the proposition $\cP \neq \cNP$.
+  \own{}
+  \leanfile{Sagitta/Map/Clases.lean}
+\end{definition}
+
+\begin{definition}[$\cP = \cNP$, on single-tape machines with the alphabet as a parameter]
+  \label{def:arrow-cook-p-eq-np}
+  \lean{Sagitta.Map.Cook.PIgualNP}
+  \leanok
+  The proposition: for every finite type $S$ with decidable equality and at least two elements,
+  $\cP_S = \cNP_S$, where $\cP_S$ is the set of languages over $S$ accepted by a single-tape machine
+  that runs in time at most $|w|^k + k$ on every word $w$ for some $k$, and $\cNP_S$ is the set of
+  languages $L$ for which there are a finite nonempty alphabet $S_1$ with decidable equality, an
+  exponent $k$ and a relation $R \subseteq S^* \times S_1^*$ decidable in polynomial time such that
+  $w \in L$ if and only if $R(w, y)$ for some $y$ with $|y| \le |w|^k$. The case of an alphabet with
+  one symbol is not included.
+  \own{}
+  \leanfile{Sagitta/Map/Cook.lean}
+\end{definition}
+
+\section{The first form of the second law, in its equivalent forms}
+\label{sec:arrow-forms}
+
+Law 2.1 of Part~I is $\cP \neq \cNP$ in the form of Definition~\ref{def:arrow}. The map has six
+statements that are equivalent, in Lean, to the statement that $\cP = \cNP$ or to a statement about
+one problem; each is a theorem about the model it names. The equivalences with Definition~\ref{def:arrow}
+are not theorems of the map.
+
+\begin{theorem}[$\cNP \ne \mathsf{co}\cNP$ as a question on bounded formulas, on the machines of Mathlib]
+  \label{thm:arrow-np-conp-formulas}
+  \lean{Sagitta.Map.SigmaFagin.npDistintoCoNP_iff_formulas}
+  \leanok
+  Let \texttt{NPDistintoCoNP} be the proposition $\cNP \neq \mathsf{co}\cNP$ for the sets of problems
+  of Definition~\ref{def:arrow-p-ne-np}. Then \texttt{NPDistintoCoNP} holds if and only if there is a
+  problem $P$ such that some $\Pi^b_1$ formula $\varphi$ with one free variable defines $P$ and no
+  $\Sigma^b_1$ formula $\psi$ with one free variable defines $P$. Here a formula $\varphi$ defines $P$
+  when, for every word $w$, $P(w) = \mathrm{true}$ if and only if $\varphi$ holds in $\mathbb{N}$ at the
+  number that codes $w$; the formulas are the bounded formulas of the language of Cobham, with
+  $\Sigma^b_1$ and $\Pi^b_1$ as defined inductively in the file \texttt{Acotada.lean}.
+  \own{}
+  \leanfile{Sagitta/Map/SigmaFagin/Palabras.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the general equivalence of \texttt{SigmaNP.lean} (which assumes that the problems defined by
+  $\Sigma^b_1$ formulas are exactly those of $\cNP$) applied to the proof of that assumption given in
+  the same file.
+\end{proof}
+
+\begin{definition}[Search in $\cP$, and logarithmic machine-time complexity]
+  \label{def:arrow-kt}
+  \lean{Sagitta.Map.Tiempo.LevinMaquinas.BusquedaEnP, Sagitta.Map.Tiempo.LevinMaquinas.KtMTLog}
+  \leanok
+  Let $\enc : \alpha \hookrightarrow \{0,1\}^*$ be an encoding, $V : \alpha \times \{0,1\}^* \to
+  \mathrm{Bool}$ a verifier and $A \subseteq \alpha$. \texttt{BusquedaEnP} says that some function
+  $f : \alpha \to \{0,1\}^*$ is computable in polynomial time by a machine of cslib-frontier (from
+  $\enc$ to the identity encoding of bit strings) and $V(a, f(a)) = \mathrm{true}$ for every $a \in A$.
+  A machine $i$ \emph{solves} $a$ in $t$ steps when running it for $t$ steps with the universal
+  machine of cslib gives an output $y$ with $V(a, y) = \mathrm{true}$; $\mathrm{kt}_{\mathrm{MT}}(a)$
+  is the least $i + \lceil \log_2 t \rceil$ over the machines $i$ that solve $a$ in $t$ steps, and $0$ if
+  there is none. \texttt{KtMTLog} says that there is $c$ such that every $a \in A$ is solved by some
+  machine and $\mathrm{kt}_{\mathrm{MT}}(a) \le c \cdot \lfloor \log_2 (|\enc(a)| + 2) \rfloor$. The
+  machine $i$ is the one that the decoder of cslib gives for the $i$-th word.
+  \own{}
+  \leanfile{Sagitta/Map/LevinMaquinas.lean}
+\end{definition}
+
+\begin{theorem}[Search for $\SAT$ is in $\cP$ if and only if machine-time complexity is logarithmic, on the machines of cslib]
+  \label{thm:arrow-sat-search-kt}
+  \lean{Sagitta.Map.Informacion.BuscarPolinomial.sat_enP_iff_kt}
+  \leanok
+  \uses{def:arrow-kt, def:threesat}
+  With the encoding \texttt{encCNF}, the verifier \texttt{SAT.verifier} of cslib and $A = \SAT$:
+  \texttt{BusquedaEnP} holds if and only if \texttt{KtMTLog} holds.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/BuscarPolinomial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the general equivalence for a verifier computable in polynomial time, applied to the
+  verifier of cslib, which is computable in polynomial time. One direction produces a function from
+  the machine that realizes the search; the other runs the fixed universal search of Levin up to a
+  round that is logarithmic in the length of the input.
+\end{proof}
+
+\begin{theorem}[$\SAT \in \cP$ if and only if machine-time complexity of the satisfiable formulas is logarithmic]
+  \label{thm:arrow-sat-p-kt}
+  \lean{Sagitta.Map.Informacion.TorreCHT.sat_enP_iff_kt}
+  \leanok
+  \uses{def:arrow-kt, def:P, thm:arrow-sat-search-kt}
+  $\SAT \in \cP$ for the encoding \texttt{encCNF} if and only if \texttt{KtMTLog} holds for
+  \texttt{encCNF}, \texttt{SAT.verifier} and $\SAT$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compose the equivalence of $\SAT \in \cP$ with search in $\cP$ (also in the file) with
+  Theorem~\ref{thm:arrow-sat-search-kt}.
+\end{proof}
+
+\begin{theorem}[$\cP = \cNP$ if and only if the ground-state problem of the Ising model is in $\cP$, on the machines of cslib-frontier]
+  \label{thm:arrow-ising-in-p}
+  \lean{Sagitta.Map.Informacion.Hamiltoniano.P_eq_NP_iff_ISING_mem_P}
+  \leanok
+  \uses{def:P, def:NP, thm:ising-npcomplete}
+  The following are equivalent: for every type $\alpha$ and every encoding $\enc : \alpha
+  \hookrightarrow \{0,1\}^*$, $\cP_{\enc} = \cNP_{\enc}$; and $\ISING \in \cP$ for the encoding
+  \texttt{encIsing}. Here an instance of $\ISING$ is a list of couplings and a threshold $t \in
+  \mathbb{Z}$, and it is a yes-instance when some finite set $S$ of vertices gives a configuration of
+  energy at most $t$. Part~I has a theorem of the same form for its own definition of $\ISING$
+  (Theorem~\ref{thm:ising-npcomplete}); the two are separate declarations and no theorem of the
+  repository identifies them.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Hamiltoniano.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $\cP = \cNP$ for every encoding, then $\ISING \in \cNP$ gives $\ISING \in \cP$. Conversely,
+  $\ISING$ is $\cNP$-complete, and an $\cNP$-complete problem in $\cP$ gives $\cP = \cNP$ for every
+  encoding.
+\end{proof}
+
+\begin{theorem}[$\SAT \in \cP$ if and only if the cube tower has a polynomial budget, on the machines of cslib]
+  \label{thm:arrow-sat-torre}
+  \lean{Sagitta.Map.Informacion.TorreCHT.sat_enP_iff_torre}
+  \leanok
+  \uses{def:P, def:cslib-tm}
+  $\SAT \in \cP$ for the encoding \texttt{encCNF} if and only if \texttt{TorreSAT} holds. \texttt{TorreSAT}
+  says: there are polynomially bounded functions $t, s : \mathbb{N} \to \mathbb{N}$, a number of tapes
+  $k$, a finite type of states, a machine with $k$ work tapes over the alphabet \texttt{Bool} and
+  that state type, and a function $g$ from formulas in conjunctive normal form to \texttt{Bool}, such
+  that $\varphi \in \SAT$ if and only if $g(\varphi) = \mathrm{true}$, and for every formula $\varphi$,
+  with $n$ the length of \texttt{encCNF}$(\varphi)$: the machine runs in space $s(n)$ on the input
+  \texttt{encCNF}$(\varphi)$; the automaton of the cube that \texttt{EspacioCubo.automata} builds from the
+  machine, with windows of size $s(n)$, run on the symbols of the input for $t(n)$ steps from its
+  initial state, ends with the output \texttt{some ()}; and the machine computes the encoding of
+  $g(\varphi)$ on that input.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/TorreCHT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Both directions use the characterization of $\cP$ by decidability in polynomial time and space.
+  From a machine for $\SAT$ in polynomial time and space, the run of the automaton comes from the
+  lemma \texttt{corre\_automata}, which relates the automaton to a halting run of the machine inside
+  the window; from the data of \texttt{TorreSAT} one reads back the machine and its time and space
+  bounds.
+\end{proof}
+
+\begin{theorem}[Every problem of $\cNP$ has a fast index if and only if every problem verifiable in polynomial time is solvable in polynomial time, on the machines of Mathlib]
+  \label{thm:arrow-fast-index}
+  \lean{Sagitta.Map.Tiempo.IndiceRapido.indice_iff_NP_sub_P}
+  \leanok
+  \uses{def:arrow-p-ne-np}
+  Let \texttt{TodoNPTieneIndice} be the proposition: for every $L \in \cNP$ there are a polynomial
+  $p$, a verifier $V$ computable in polynomial time, with $L(x) = \mathrm{true}$ if and only if some $y$
+  with $|y| \le p(|x|)$ has $V(x, y) = \mathrm{true}$, and a detector $\mathrm{det}$ such that
+  \texttt{EsIndiceRapido} $V\ p\ \mathrm{det}$ holds. \texttt{EsIndiceRapido} says that $\mathrm{det}$
+  is computable in polynomial time by a machine of cslib-frontier and that, for all $x$ and $q$ with
+  $|q| \le p(|x|)$, $\mathrm{det}(x, q) = \mathrm{true}$ if and only if no word $r$ of length
+  $p(|x|) - |q|$ is such that $V(x, z) = \mathrm{true}$ for some prefix $z$ of $q \mathbin{+\!\!+} r$ (the prefix $q$ is dead in the tree of certificates of $x$). Then
+  \texttt{TodoNPTieneIndice} holds if and only if \texttt{VerificarImplicaResolver} holds, that is,
+  every problem of $\cNP$ is in $\cP$.
+  \own{}
+  \leanfile{Sagitta/Map/IndiceRapido.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A fast index gives a decision procedure in $\cP$ by the search with delay $0$; conversely, if
+  $\cNP \subseteq \cP$ the extension problem of a verifier, which is in $\cNP$, is in $\cP$, and its
+  negation is the index.
+\end{proof}
+
+\section{The Kelvin--Planck and Clausius forms}
+\label{sec:arrow-kelvin}
+
+Kelvin's form of the arrow (no efficient process whose only effect is to convert every
+``yes'' into its witness) is Theorem~\ref{thm:kelvin} for a model and the last equivalence of
+Theorem~\ref{thm:arrow-iff-tm} for Turing machines. The map has no declaration for it, and none for a
+form of Clausius.
+
+\section{The zeroth law}
+\label{sec:arrow-zero}
+
+Transitivity of reductions is Theorem~\ref{thm:lawZero}, and Corollary~\ref{cor:lawZero-tm} for
+polynomial-time reductions between encoded problems. The map has one declaration that belongs to the
+chain of reductions of the detectors of the tree of certificates: an inequality between natural
+numbers.
+
+\begin{theorem}[Effective delay of a transported detector, as arithmetic on natural numbers]
+  \label{thm:arrow-effective-delay}
+  \lean{Sagitta.Map.Tiempo.transporte_efectiva}
+  \leanok
+  Let $\mathrm{demoraEfectiva}(d, t) = d + \lfloor \log_2 t \rfloor$. For natural numbers $d_1, d_2,
+  t_2, t_\tau$ with $d_1 \le d_2$ and $t_\tau \neq 0$,
+  \[
+    \mathrm{demoraEfectiva}(d_1, t_2 + t_\tau) \le \mathrm{demoraEfectiva}(d_2, t_2) + \lfloor \log_2 t_\tau \rfloor + 1.
+  \]
+  The statement mentions no detector and no reduction.
+  \own{}
+  \leanfile{Sagitta/Map/DemoraReducciones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Unfold the definition. Then $t_2 + t_\tau \le 2 \max(t_2, t_\tau)$, so $\lfloor \log_2 (t_2 + t_\tau) \rfloor
+  \le \lfloor \log_2 \max(t_2, t_\tau) \rfloor + 1 \le \lfloor \log_2 t_2 \rfloor + \lfloor \log_2 t_\tau
+  \rfloor + 1$, by cases on which of the two is larger; the rest is linear arithmetic.
+\end{proof}
+
+\section{The first law: what is hard is moved, not created or destroyed}
+\label{sec:arrow-first}
+
+Part~I states the first law for query trees (Theorem~\ref{thm:conservation}) and the cube law for
+automata (Theorem~\ref{thm:cube-law}). The map states them for four other models, each stated
+below: a filling phase followed by a query phase, trees that query a verifier, a universal search
+with a closed budget, and automata with a bounded number of states; and it has two further
+statements, one on accounting and one on Kolmogorov complexity.
+
+\begin{theorem}[Work is conserved, for a filling phase followed by a query phase on a finite set of options]
+  \label{thm:arrow-work-conserved}
+  \lean{Sagitta.Map.Tiempo.ConservacionTrabajo.trabajo_se_conserva}
+  \leanok
+  \uses{thm:conservation, lem:adversary}
+  Let $\alpha$ be a finite type of options and $\tau$ a type of tables. A \emph{filling} is a tree
+  that, at each node, asks an option and continues according to the Boolean answer, and at the leaves
+  gives a table in $\tau$. A \emph{query tree} over $\alpha$ is as in Definition~\ref{def:querytree}.
+  Let $L$ be a filling and $Q : \tau \to$ (query trees over $\alpha$). If the query tree obtained by
+  running $L$ and then $Q(\text{table})$ decides existence, in the sense of
+  Definition~\ref{def:querytree}, then
+  \[
+    |\alpha| \le \mathrm{cost}(L, 0) + \mathrm{cost}\bigl(Q(\mathrm{table}(L, 0)), 0\bigr),
+  \]
+  where $0$ is the all-zero oracle, $\mathrm{cost}(L, 0)$ is the number of questions of the filling on
+  it and $\mathrm{table}(L, 0)$ is the table it produces. Theorem~\ref{thm:conservation} of Part~I
+  states the same inequality for a filling given as a function that depends only on the answers it
+  asked; the two are separate declarations.
+  \own{}
+  \leanfile{Sagitta/Map/ConservacionTrabajo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{lem:adversary}
+  The composed tree decides existence, and its cost on the all-zero oracle is the sum of the costs
+  of the two phases; the adversary argument gives $|\alpha|$ as a lower bound for it.
+\end{proof}
+
+\begin{theorem}[Three memories, for adaptive trees that query a verifier]
+  \label{thm:arrow-three-memories}
+  \lean{Sagitta.Map.Tiempo.LeyTresMemorias.ley}
+  \leanok
+  Let $P, C, Q, R, Y$ be types, with $P$, $C$, $R$ and $Y$ finite and $Y$ with decidable equality,
+  and let $L, s, b, t \in \mathbb{N}$ with $|P| \le 2^L$, $|C| \le 2^s$, $|R| \le 2^b$. Let $O : Y
+  \to Q \to R$ (the verifier of the hidden solution $y$ answers a query $q$ with $O(y)(q)$) and let
+  $A$ assign to each $p \in P$ and $c \in C$ an adaptive tree that either returns a candidate in $Y$
+  or queries some $q \in Q$ and continues according to the answer in $R$. If for every $y \in Y$
+  there are $p$ and $c$ such that the tree $A(p, c)$, run with the verifier $O(y)$, returns $y$ after
+  at most $t$ queries, then
+  \[
+    |Y| \le 2^L \cdot 2^s \cdot 2^{bt}.
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/LeyTresMemorias.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A tree that makes at most $t$ queries with answers in a set of at most $2^b$ elements finds at
+  most $(2^b)^t$ solutions, since each solution it finds is determined by the sequence of answers it
+  receives (induction on the tree). Every $y$ is found by some pair $(p, c)$, so the bound follows by
+  a pigeonhole count over $P \times C$.
+\end{proof}
+
+\begin{theorem}[The cube law with yes/no verifiers, for automata with a bounded number of states]
+  \label{thm:arrow-cube}
+  \lean{Sagitta.Map.Tiempo.CuboCostos.ley_cubo}
+  \leanok
+  \uses{thm:cube-law}
+  Let $P, C, \sigma, Y$ be finite types, $Y$ with decidable equality, and $L, s, S, t \in
+  \mathbb{N}$ with $|P| \le 2^L$, $|C| \le 2^s$, $|\sigma| \le 2^S$. An automaton with state set
+  $\sigma$ has an initial state, a query (an element of $Y$) for each state, a transition on each
+  Boolean answer, and a partial output in $Y$; it has no step counter. Let $A$ assign to each $p$ and
+  $c$ such an automaton. If for every $y \in Y$ there are $p$ and $c$ such that $A(p, c)$, run from
+  its initial state with the verifier ``is $z$ equal to $y$?'' and a budget of $t$ queries, returns
+  $y$, then
+  \[
+    |Y| \le 2^L \cdot 2^s \cdot \min\bigl(t + 1,\ 2^{S-1}\bigr),
+  \]
+  with $S - 1$ truncated at $0$. Theorem~\ref{thm:cube-law} of Part~I states the same bound for the
+  automata of Part~I; the two are separate declarations.
+  \own{}
+  \leanfile{Sagitta/Map/CuboCostos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An automaton finds at most $\min(t + 1, 2^{S-1})$ solutions: the answers it hears while it does not
+  find one are all ``no'', so its states form one trajectory that does not depend on the hidden
+  solution, and each solution found is a distinct output of a state. The pigeonhole count over
+  $P \times C$ finishes.
+\end{proof}
+
+\begin{theorem}[The price is paid, for a family of tree solvers with sizes $2^m$]
+  \label{thm:arrow-price-paid}
+  \lean{Sagitta.Map.Tiempo.DosCuentas.precio_se_paga}
+  \leanok
+  \uses{thm:arrow-three-memories}
+  Let $Y_m, P_m, C_m$ be finite types for $m \in \mathbb{N}$, each $Y_m$ with decidable equality, and
+  $L, s, t : \mathbb{N} \to \mathbb{N}$, with $|Y_m| = 2^m$, $|P_m| \le 2^{L(m)}$ and $|C_m| \le
+  2^{s(m)}$. Let $A_m$ assign to each $p \in P_m$ and $c \in C_m$ an adaptive tree with queries in
+  $Y_m$, answers in \texttt{Bool} and candidates in $Y_m$. If for every $m$ and every $y \in Y_m$ there
+  are $p$ and $c$ such that $A_m(p, c)$, run with the verifier ``is $z$ equal to $y$?'', returns $y$
+  after at most $t(m)$ queries, then for every $m$
+  \[
+    m \le L(m) + \bigl(s(m) + \lceil \log_2 (t(m) + 1) \rceil\bigr).
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/DosCuentas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:arrow-three-memories}
+  The logarithmic form of the three-memories bound for yes/no verifiers (a bound of the shape
+  $2^m \le 2^{L} \cdot 2^{s} \cdot (t + 1)$ at each size $m$), rewritten with $|Y_m| = 2^m$.
+\end{proof}
+
+\begin{theorem}[Universal search against a closed budget, on the evaluator of Mathlib]
+  \label{thm:arrow-closed-universe}
+  \lean{Sagitta.Map.Tiempo.UniversoCerrado.ley}
+  \leanok
+  A \emph{universe} is a verifier $V : \mathbb{N} \to \mathbb{N} \to \mathrm{Bool}$ and an input
+  $x \in \mathbb{N}$. A \emph{closed process} is a program number $i$ and a budget $k$; it
+  \emph{solves} the universe when running program $i$ with budget $k$ on $x$ with the bounded evaluator
+  of Mathlib returns $y$ with $V(x, y) = \mathrm{true}$; its cost is $2^i \cdot k$, and the closed cost of the universe
+  is the least cost of a process that solves it. Assume that some process solves the universe $U$.
+  Then the universal search of Levin (in rounds $T$, where program $i \le T$ runs with budget
+  $2^{T - i}$ and an answer is kept only if $V$ accepts it) returns, for some round $T$, an answer $y$
+  with $V(x, y) = \mathrm{true}$; and the cost of the search up to the first round that returns an
+  answer is less than $8$ times the closed cost of the universe.
+  \own{}
+  \leanfile{Sagitta/Map/UniversoCerrado.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take a process that attains the closed cost. The search finds an answer by the theorem of Levin
+  for a program that solves $x$ (\texttt{levin}), and the cost bound for one program, $8 \cdot 2^i
+  \cdot k$, is the cost of that process.
+\end{proof}
+
+\begin{theorem}[Somebody paid, in an accounting of a table and its queries]
+  \label{thm:arrow-somebody-paid}
+  \lean{Sagitta.Map.Tiempo.LeyInformacion.alguien_pago}
+  \leanok
+  Let $\mathrm{total}(T, M, r) = T + M \cdot r$ be the declared cost of a table of cost $T$ paid once
+  and $M$ queries of cost $r$ each. For all natural numbers $T, M, r$, $T \le \mathrm{total}(T, M, r)$.
+  The statement is arithmetic; there is no model of computation in which a table is written and read.
+  \own{}
+  \leanfile{Sagitta/Map/LeyInformacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  $T \le T + M r$.
+\end{proof}
+
+\begin{theorem}[Applying a program does not create Kolmogorov complexity, on the partial recursive codes of Mathlib]
+  \label{thm:arrow-no-creation}
+  \lean{Sagitta.Map.Informacion.NoCreacion.no_creacion}
+  \leanok
+  Let $K(x)$ be the least length, in bits of its tree, of a code $c$ of Mathlib's partial recursive
+  functions that produces $x$ from the input $0$, and $|p|$ the length of the code $p$ in the same
+  measure. If the code $p$ evaluated at $x$ gives $f(x)$, then
+  \[
+    K(f(x)) \le K(x) + |p| + 3.
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/NoCreacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take a shortest code $q$ that produces $x$ and compose $p$ after $q$; the composed code produces
+  $f(x)$, and the composition node adds $3$ to the sum of the lengths.
+\end{proof}
+
+\section{Law 2.2}
+\label{sec:arrow-law22}
+
+Law 2.2 and its consequence, law 2.1, are Definition~\ref{def:law22} and
+Theorem~\ref{thm:law22-arrow}. The map has no declaration for them.
+
+\section{The first localization: the dynamics does not carry the arrow}
+\label{sec:arrow-loc1}
+
+Part~I states the localization for reversible dynamics, automata and Turing machines
+(Theorem~\ref{thm:localization-one} and the entries it uses, among them Theorems~\ref{thm:noether},
+\ref{thm:koopman-isometry}, \ref{thm:homogenize}, \ref{thm:cube-law} and~\ref{thm:cht}). The map has the
+following statements for the same ideas in other models; the cube law of the map is
+Theorem~\ref{thm:arrow-cube} and the non-creation of Kolmogorov complexity is
+Theorem~\ref{thm:arrow-no-creation}.
+
+\begin{theorem}[Discrete Noether: a quantity is conserved if and only if it is constant on the orbits, for a permutation of a type]
+  \label{thm:arrow-noether-orbits}
+  \lean{Sagitta.Map.Informacion.Reversible.conserva_iff_constante_orbitas}
+  \leanok
+  \uses{thm:noether}
+  Let $f$ be a permutation of a type $\sigma$ and $Q : \sigma \to \beta$. Then $Q \circ f = Q$ if and
+  only if for all $x, y \in \sigma$ such that $y$ lies in the orbit of $x$ under the subgroup of
+  permutations generated by $f$, $Q(y) = Q(x)$. Theorem~\ref{thm:noether} of Part~I states a
+  statement of this kind for the dynamics of Part~I; the two are separate declarations.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $Q \circ f = Q$, then $Q$ is constant along every integer power of $f$ (induction on the
+  integer), and $y$ is in the orbit of $x$ exactly when $y = f^k(x)$ for some integer $k$. Conversely,
+  $f(x)$ is in the orbit of $x$.
+\end{proof}
+
+\begin{theorem}[Erase or keep, for a function on a finite type]
+  \label{thm:arrow-erase-or-keep}
+  \lean{Sagitta.Map.Informacion.Reversible.borrar_o_guardar, Sagitta.Map.Informacion.Reversible.bitsBorrados}
+  \leanok
+  For $g : \alpha \to \beta$ and a finite set $S \subseteq \alpha$, the \emph{bits erased} by $g$ on
+  $S$ are $\log_2 |S| - \log_2 |g(S)|$ (real logarithms). Let $\alpha$ and $\sigma'$ be finite types,
+  $\sigma'$ with decidable equality, and $e : \alpha \to \sigma'$. Then
+  \[
+    \log_2 |\alpha| \le (\text{bits erased by } e \text{ on } \alpha) + \log_2 |\sigma'|.
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Reversible.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The image of $e$ has at most $|\sigma'|$ elements, and the logarithm is monotone.
+\end{proof}
+
+\section{The second localization: with the complete final configuration, going back is polynomial}
+\label{sec:arrow-loc2}
+
+This is the full boundary of Part~I: Definition~\ref{def:complete} and
+Theorem~\ref{thm:full-boundary}. The map has no declaration for it.
+
+\section{Interpolation}
+\label{sec:arrow-interp}
+
+Part~I states the interpolation for a verifier (Theorem~\ref{thm:interpolation}): with $m$ of the $n$
+bits of a witness kept, going back costs at most $2^{n-m}$ calls, and the bound is tight in a black
+box (Theorem~\ref{thm:boundary-lower-bound}). The map has two statements in the same model of
+query trees, but not the statement about verifiers.
+
+\begin{theorem}[Deciding among $2^c$ branches costs $2^c$ questions, for query trees over bit vectors]
+  \label{thm:arrow-branches}
+  \lean{Sagitta.Map.Tiempo.decidir_ramas}
+  \leanok
+  \uses{lem:adversary, thm:boundary-lower-bound}
+  Let $c \in \mathbb{N}$ and let $t$ be a query tree over the options in the vectors of $c$ bits, with
+  Boolean answers, that decides existence in the sense of Definition~\ref{def:querytree}. Then
+  $2^c \le \mathrm{cost}(t, 0)$, where $0$ is the all-zero oracle. Theorem~\ref{thm:boundary-lower-bound}
+  of Part~I states the same bound for the query trees of Part~I; the two are separate declarations.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{lem:adversary}
+  The cost is at least the number of options, by the adversary argument, and the vectors of $c$ bits
+  are $2^c$.
+\end{proof}
+
+\begin{theorem}[$2^{c(n)}$ is polynomially bounded if and only if $c(n)$ is logarithmic]
+  \label{thm:arrow-log-choices}
+  \lean{Sagitta.Map.Tiempo.dos_pow_pol_iff}
+  \leanok
+  Let $\mathrm{Pol}$ be the set of functions $f : \mathbb{N} \to \mathbb{N}$ for which there are $a,
+  k$ with $f(n) \le a (n + 1)^k$ for all $n$. For $c : \mathbb{N} \to \mathbb{N}$, the function $n
+  \mapsto 2^{c(n)}$ is in $\mathrm{Pol}$ if and only if there are $a, b \in \mathbb{N}$ with $c(n) \le
+  a \lfloor \log_2 (n + 1) \rfloor + b$ for all $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Decidir.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take logarithms in each direction: a polynomial bound on $2^{c(n)}$ gives a logarithmic bound on
+  $c(n)$, and conversely $2^{a \log_2 (n+1) + b} \le 2^b (n+1)^a$.
+\end{proof}
+
+\section{The conservation in every gray box implies the arrow}
+\label{sec:arrow-gray-box}
+
+A \emph{proof system} for the unsatisfiable formulas, in the sense of Cook and Reckhow, is a function
+computable in polynomial time from bit strings onto the set of unsatisfiable formulas in conjunctive
+normal form; it is \emph{polynomially bounded} when every unsatisfiable formula has a proof whose
+length is polynomial in its length. The definitions are those of cslib-frontier.
+
+\begin{definition}[Hypothesis: conservation in every gray box]
+  \label{def:arrow-gray-box}
+  \lean{Sagitta.Map.Borde.LimiteBlanco.LeyEnTodaCajaGris, Sagitta.Map.Borde.LimiteBlanco.ConservaCR}
+  \leanok
+  A proof system \emph{conserves} when it is not polynomially bounded. The hypothesis
+  \texttt{LeyEnTodaCajaGris} says that every proof system for the unsatisfiable formulas in
+  conjunctive normal form (with the encoding \texttt{encCNF}) conserves. A hypothesis: a definition
+  of type \texttt{Prop}; it is open, and nothing here asserts it.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/LimiteBlanco.lean}
+\end{definition}
+
+\begin{theorem}[Conservation in every gray box implies $\cP \neq \cNP$, for every encoding]
+  \label{thm:arrow-gray-box-implies}
+  \lean{Sagitta.Map.Borde.LimiteBlanco.ley_implica_P_ne_NP}
+  \leanok
+  \uses{def:arrow-gray-box, def:P, def:NP}
+  Assume \texttt{LeyEnTodaCajaGris}. Then it is not the case that for every type $\gamma$ and every
+  encoding $\mathrm{enc} : \gamma \hookrightarrow \{0,1\}^*$, $\cP_{\mathrm{enc}} = \cNP_{\mathrm{enc}}$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/LimiteBlanco.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{def:arrow-gray-box}
+  The hypothesis is equivalent to $\cNP \neq \mathsf{co}\cNP$ for every encoding at once (the
+  theorem of Cook and Reckhow of cslib-frontier: $\cNP = \mathsf{co}\cNP$ if and only if some proof
+  system for the unsatisfiable formulas is polynomially bounded). And $\cP = \cNP$ for every
+  encoding gives $\cNP = \mathsf{co}\cNP$, because the complement of a set in $\cP$ is in $\cP$.
+\end{proof}
+
+\section{Consequences}
+\label{sec:arrow-consequences}
+
+The consequences of the arrow and of the decision hypothesis for $\SAT$, $\TSAT$, $\ISING$ and
+intermediate problems, for Turing machines, are in Part~I: Theorems~\ref{thm:sat-notmem-p},
+\ref{thm:sat-notmem-p-hd}, \ref{thm:intermediate}, \ref{thm:intermediate-hd},
+\ref{thm:ising-notmem-p}. The equivalence of $\cP = \cNP$ with $\ISING \in \cP$ in the map is
+Theorem~\ref{thm:arrow-ising-in-p}. The map has two further statements: one on intermediate
+languages and one on Boolean constraint satisfaction.
+
+\begin{theorem}[An intermediate language exists if and only if $\cP \neq \cNP$, for the encoding of bit strings]
+  \label{thm:arrow-intermediate}
+  \lean{Sagitta.Map.Borde.FractalSAT.intermedio_iff_P_ne_NP}
+  \leanok
+  \uses{thm:ladner, def:P, def:NP, def:reduction}
+  Call a set $L$ of bit strings \emph{intermediate} when $L \in \cNP$, $L \notin \cP$ and $L$ is not
+  $\cNP$-complete, all for the identity encoding of bit strings (\texttt{encBits}) and with the
+  definitions of cslib-frontier. Then some intermediate $L$ exists if and only if $\cP \neq \cNP$ for
+  that encoding.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FractalSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{thm:ladner}
+  An intermediate $L$ is in $\cNP$ and not in $\cP$, so $\cP \neq \cNP$. The converse is the theorem
+  of Ladner of cslib-frontier, in the form of Theorem~\ref{thm:ladner}.
+\end{proof}
+
+A \emph{Boolean relation} of arity $r$ is a predicate on $\{0,1\}^r$, and a \emph{constraint
+language} $\Gamma$ is a set of Boolean relations of arbitrary arities. A \emph{polymorphism} of
+$\Gamma$ is an operation $f : \{0,1\}^k \to \{0,1\}$ that preserves every relation of $\Gamma$: taking
+$k$ tuples of the relation and applying $f$ in each coordinate gives a tuple of the relation. The
+\emph{six operations} are the constant $0$, the constant $1$, conjunction, disjunction, the majority
+of three and the minority $x \oplus y \oplus z$; \texttt{TieneUnaDeLasSeis}$(\Gamma)$ says that one
+of them is a polymorphism of $\Gamma$. An operation is \emph{essentially unary} when it is a
+projection or a negated projection.
+
+\begin{definition}[Hypothesis: the assumptions of the Boolean dichotomy]
+  \label{def:arrow-dichotomy-assumptions}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.Supuestos}
+  \leanok
+  Let \texttt{EnP} and \texttt{NPc} be predicates on constraint languages (opaque: there is no model
+  of machines for them in the file). \texttt{Supuestos EnP NPc} is the conjunction of:
+  \begin{enumerate}
+    \item for every finite $\Gamma$ with \texttt{TieneUnaDeLasSeis}$(\Gamma)$, \texttt{EnP}$(\Gamma)$;
+    \item for every $\Gamma$ without one of the six operations, every polymorphism of $\Gamma$, of any
+      arity, is essentially unary;
+    \item \texttt{NPc} holds of the language of the eight clauses of three literals, and of the
+      language that has only the relation ``not all equal'' of arity $3$;
+    \item for finite $\Gamma$ and $\Delta$ with \texttt{NPc}$(\Delta)$, if every relation $R$ of
+      $\Delta$ has a primitive positive definition over $\Gamma$ (a conjunction of finitely many
+      constraints of $\Gamma$ over finitely many variables, the others existentially quantified) with
+      an injective choice of the free variables that defines $R$, then \texttt{NPc}$(\Gamma)$;
+    \item for every $\Gamma$, \texttt{NPc}$(\Gamma)$ implies not \texttt{EnP}$(\Gamma)$.
+  \end{enumerate}
+  A hypothesis: a structure of type \texttt{Prop}; the file proves none of the five parts in full.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{definition}
+
+\begin{theorem}[The Boolean dichotomy, under the assumptions, for finite constraint languages]
+  \label{thm:arrow-dichotomy}
+  \lean{Sagitta.Map.Borde.DicotomiaBooleana.dicotomia}
+  \leanok
+  \uses{def:arrow-dichotomy-assumptions}
+  Assume \texttt{Supuestos EnP NPc}. For every finite constraint language $\Gamma$, either
+  \texttt{EnP}$(\Gamma)$ and not \texttt{NPc}$(\Gamma)$, or \texttt{NPc}$(\Gamma)$ and not
+  \texttt{EnP}$(\Gamma)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/DicotomiaBooleana.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  \uses{def:arrow-dichotomy-assumptions}
+  By cases on \texttt{TieneUnaDeLasSeis}$(\Gamma)$. If it holds, part~1 gives \texttt{EnP}$(\Gamma)$
+  and part~5 excludes \texttt{NPc}$(\Gamma)$. If not, parts~2 to~4 give \texttt{NPc}$(\Gamma)$ (the
+  language is defined from the eight clauses, or from the relation ``not all equal'' when negation is
+  a polymorphism), and part~5 excludes \texttt{EnP}$(\Gamma)$.
+\end{proof}
