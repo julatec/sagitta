@@ -4,4 +4,1410 @@
 \chapter{Information and Kolmogorov complexity}
 \label{chap:information}
 
-This chapter is not written yet.
+This chapter collects the results of the map about description length, the charge for running
+time, and the conservation laws that relate them. It starts with two measures of the information in
+a word, the shortest program that prints it and the same with a charge for the running time, in
+two models (the partial recursive codes of Mathlib and the machines of cslib), and with the law
+that a computation does not create description length. It continues with logical depth, with
+counting laws for a solver, a hint and a verifier in a model of query trees over finite sets, with
+a closed universe in which the verifier and the justification of a ``no'' are paid for, and with
+conservation of work in a black-box model. It ends with Blum speed-up, the cut of costs, and two
+small facts about indices and determinants. In the models of codes the cost is the step budget of
+\texttt{evaln}, which is not the running time of a machine; in the black-box models there is no
+machine, and the statements say which model they are in.
+
+\section{Kolmogorov complexity and its time-charged version}
+\label{sec:information-kolmogorov}
+
+In this section a program is a partial recursive code of Mathlib. The length $|p|$ of a code is the
+length of the list of bits that spells out its tree in preorder, three bits for each node. A code
+$p$ \emph{produces} $x$ when $p$ on input $0$ halts with value $x$. The cost $\mathrm{cost}(p, n)$ is
+the least budget $k$ for which \texttt{evaln} halts on $p$ and $n$; it is a measure of Blum, not a
+number of machine steps. Also, \texttt{correrMT}$(i, w, t)$ is the output, if any, of the cslib
+machine numbered $i$ on the word $w$ after $t$ steps of the universal function of cslib.
+
+\begin{definition}[Kolmogorov complexity and Levin's $\mathrm{Kt}$, on codes of Mathlib]
+  \label{def:information-k-kt}
+  \lean{Sagitta.Map.Tiempo.KolmogorovTiempo.K, Sagitta.Map.Tiempo.KolmogorovTiempo.Kt}
+  \leanok
+  For $x \in \mathbb{N}$, $\KC(x)$ is the least length $|p|$ of a code $p$ that produces $x$, and
+  $\mathrm{Kt}(x)$ is the least value of $|p| + \lfloor \log_2 \mathrm{cost}(p, 0) \rfloor$ over the
+  codes $p$ that produce $x$.
+  \source{\cite{Kolmogorov65, Levin73}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/KolmogorovTiempo.lean}
+\end{definition}
+
+\begin{theorem}[$\KC \le \mathrm{Kt}$, on codes of Mathlib]
+  \label{thm:information-k-le-kt}
+  \lean{Sagitta.Map.Tiempo.KolmogorovTiempo.K_le_Kt}
+  \leanok
+  \uses{def:information-k-kt}
+  For every $x \in \mathbb{N}$, $\KC(x) \le \mathrm{Kt}(x)$.
+  \source{\cite{Kolmogorov65, Levin73}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/KolmogorovTiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Both measures are minima of $|p| + g(\mathrm{cost}(p,0))$ over the programs that produce $x$, with
+  $g = 0$ and $g = \lfloor \log_2 \cdot \rfloor$; a minimizing program for the second one gives a
+  value at least $|p| \ge \KC(x)$.
+\end{proof}
+
+\begin{definition}[Kolmogorov complexity and $\mathrm{Kt}$, on machines of cslib]
+  \label{def:information-machine-k}
+  \lean{Sagitta.Map.Informacion.NoCreacion.ImprimeMT, Sagitta.Map.Informacion.NoCreacion.Kmt, Sagitta.Map.Informacion.NoCreacion.Ktmt}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.LevinMaquinas.correrMT
+  The machine numbered $i$ \emph{prints} the word $x \in \{0,1\}^*$ with clock $t$ when
+  $\texttt{correrMT}(i, [\,], t) = \mathrm{some}\ x$. Then $\mathrm{Kmt}(x)$ is the least $i$ for
+  which some $t$ makes machine $i$ print $x$ with clock $t$, and $\mathrm{Ktmt}(x)$ is the least
+  value of $i + \lceil \log_2 t \rceil$ over the pairs $(i, t)$ such that machine $i$ prints $x$
+  with clock $t$.
+  \source{\cite{Kolmogorov65, Levin73}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/NoCreacion.lean}
+\end{definition}
+
+\begin{theorem}[The minimal machine and the minimal pair print the word]
+  \label{thm:information-kmt-spec}
+  \lean{Sagitta.Map.Informacion.NoCreacion.Kmt_spec, Sagitta.Map.Informacion.NoCreacion.Ktmt_spec}
+  \leanok
+  \uses{def:information-machine-k}
+  For every word $x \in \{0,1\}^*$ there is $t$ such that the machine numbered $\mathrm{Kmt}(x)$
+  prints $x$ with clock $t$. For every word $x$ there are $i$ and $t$ such that machine $i$ prints
+  $x$ with clock $t$ and $i + \lceil \log_2 t \rceil = \mathrm{Ktmt}(x)$.
+  \source{\cite{Kolmogorov65, Levin73}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/NoCreacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Some machine prints every word, namely the constant machine of cslib, so the sets over which the
+  two measures take a minimum are not empty; the minimum of a nonempty set of natural numbers is
+  attained.
+\end{proof}
+
+\section{No creation of information}
+\label{sec:information-no-creation}
+
+A computation does not create description length: the program for $f(x)$ is the program for $x$
+followed by the program for $f$. The statements about codes are in the model of Mathlib codes of
+the previous section; the last one is about cslib machines and assumes a hypothesis on composition.
+
+\begin{theorem}[No creation of information, on codes of Mathlib]
+  \label{thm:information-no-creation}
+  \lean{Sagitta.Map.Informacion.NoCreacion.no_creacion}
+  \leanok
+  \uses{def:information-k-kt}
+  Let $p$ be a code, $f : \mathbb{N} \to \mathbb{N}$ and $x \in \mathbb{N}$, and assume that $p$
+  on input $x$ halts with value $f(x)$. Then $\KC(f(x)) \le \KC(x) + |p| + 3$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/NoCreacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compose $p$ with a shortest program for $x$. The composition produces $f(x)$, and its length is
+  the sum of the two lengths plus the three bits of the composition node.
+\end{proof}
+
+\begin{theorem}[No creation of information, with the time charge, on codes of Mathlib]
+  \label{thm:information-no-creation-kt}
+  \lean{Sagitta.Map.Informacion.NoCreacion.no_creacion_Kt}
+  \leanok
+  \uses{def:information-k-kt}
+  Let $p$ be a code, $f : \mathbb{N} \to \mathbb{N}$ and $x \in \mathbb{N}$, and assume that $p$
+  on input $x$ halts with value $f(x)$. Then
+  \[
+    \mathrm{Kt}(f(x)) \le \mathrm{Kt}(x) + \bigl(|p| + \lfloor \log_2 \mathrm{cost}(p, x) \rfloor\bigr) + 3 .
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/NoCreacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compose $p$ with a program that realizes $\mathrm{Kt}(x)$. The \texttt{evaln} budget of the
+  composition is at most the maximum of the two budgets, and the logarithm of a maximum is at most
+  the sum of the logarithms.
+\end{proof}
+
+\begin{theorem}[No creation of information, with no time charge, for a total function]
+  \label{thm:information-no-crece}
+  \lean{Sagitta.Map.Tiempo.ProfundidadLogica.K_no_crece}
+  \leanok
+  \uses{def:information-k-kt}
+  Let $q$ be a code and $f : \mathbb{N} \to \mathbb{N}$ such that $q$ computes $f$, that is,
+  $q$ on input $n$ halts with value $f(n)$ for every $n$. Then for every $x \in \mathbb{N}$,
+  $\KC(f(x)) \le \KC(x) + |q| + 3$, where $3$ is the constant \texttt{costoComponer}.
+  \own{}
+  \leanfile{Sagitta/Map/ProfundidadLogica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The statement for one input applies the shortest program for $x$ composed with $q$; the
+  constant $3$ is the length of the label of the composition node.
+\end{proof}
+
+\begin{definition}[Hypothesis: a composer of machine indices]
+  \label{def:information-compositor}
+  \lean{Sagitta.Map.Informacion.NoCreacion.Compositor}
+  \leanok
+  For $g : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ and $c \in \mathbb{N}$, the proposition
+  $\mathrm{Compositor}(g, c)$ says: for all $i, j, t, s$ and words $x, y$, if
+  $\texttt{correrMT}(i, [\,], t) = \mathrm{some}\ x$ and $\texttt{correrMT}(j, x, s) =
+  \mathrm{some}\ y$, then $\texttt{correrMT}(g(i,j), [\,], t + s + c) = \mathrm{some}\ y$. The
+  entry only says that the definition exists; no entry asserts it.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/NoCreacion.lean}
+\end{definition}
+
+\begin{theorem}[No creation of information, on cslib machines, given a composer]
+  \label{thm:information-no-creation-mt}
+  \lean{Sagitta.Map.Informacion.NoCreacion.no_creacion_mt}
+  \leanok
+  \uses{def:information-compositor, def:information-machine-k}
+  Let $g : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ and $c \in \mathbb{N}$, and assume
+  $\mathrm{Compositor}(g, c)$. Let $f$ be a function on words, $j, s \in \mathbb{N}$ and $x$ a word,
+  and assume $\texttt{correrMT}(j, x, s) = \mathrm{some}\ f(x)$. Then
+  $\mathrm{Kmt}(f(x)) \le g(\mathrm{Kmt}(x), j)$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/NoCreacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Machine $\mathrm{Kmt}(x)$ prints $x$ with some clock; the composer gives a machine $g(\mathrm{Kmt}(x), j)$
+  that prints $f(x)$, and $\mathrm{Kmt}$ is at most the index of any machine that prints.
+\end{proof}
+
+\section{Logical depth and computational depth}
+\label{sec:information-depth}
+
+Both depths below are in the model of Mathlib codes, with $\KC$, $\mathrm{Kt}$, length and cost
+as in Section~\ref{sec:information-kolmogorov}. Reading the input of a code already costs
+\texttt{evaln} budget, so none of these results is a statement about machine time.
+
+\begin{definition}[Computational depth, on codes of Mathlib]
+  \label{def:information-prof}
+  \lean{Sagitta.Map.Informacion.Profundidad.prof}
+  \leanok
+  \uses{def:information-k-kt}
+  For $x \in \mathbb{N}$, $\mathrm{prof}(x) = \mathrm{Kt}(x) - \KC(x)$, with the subtraction of
+  natural numbers.
+  \source{\cite{Bennett88, Antunes06}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/Profundidad.lean}
+\end{definition}
+
+\begin{definition}[Logical depth with significance $s$, on codes of Mathlib]
+  \label{def:information-logical-depth}
+  \lean{Sagitta.Map.Tiempo.ProfundidadLogica.profundidadLogica}
+  \leanok
+  \uses{def:information-k-kt}
+  For $s, x \in \mathbb{N}$, the logical depth $\mathrm{depth}_s(x)$ is the least value of
+  $\mathrm{cost}(p, 0)$ over the codes $p$ that produce $x$ and satisfy $|p| \le \KC(x) + s$.
+  \source{\cite{Bennett88}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/ProfundidadLogica.lean}
+\end{definition}
+
+\begin{theorem}[Logical depth does not increase with the significance, on codes of Mathlib]
+  \label{thm:information-depth-antitone}
+  \lean{Sagitta.Map.Tiempo.ProfundidadLogica.profundidadLogica_antitona}
+  \leanok
+  \uses{def:information-logical-depth}
+  For every $x \in \mathbb{N}$, the function $s \mapsto \mathrm{depth}_s(x)$ is antitone: if
+  $s \le s'$ then $\mathrm{depth}_{s'}(x) \le \mathrm{depth}_s(x)$.
+  \source{\cite{Bennett88}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/ProfundidadLogica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A program admitted for the significance $s$ is also admitted for $s'$, so the minimum over the
+  larger set is not larger.
+\end{proof}
+
+\begin{theorem}[Slow growth of logical depth, weak form, on codes of Mathlib]
+  \label{thm:information-slow-growth-weak}
+  \lean{Sagitta.Map.Tiempo.ProfundidadLogica.crecimiento_lento}
+  \leanok
+  \uses{def:information-logical-depth}
+  Let $q$ be a code, $x, y \in \mathbb{N}$ and $s \in \mathbb{N}$, and assume that $q$ on input $x$
+  halts with value $y$. Then
+  \[
+    \mathrm{depth}_{\KC(x) + s + |q| + 3 - \KC(y)}(y) \le \max\bigl(\mathrm{depth}_s(x),\ \mathrm{cost}(q, x)\bigr),
+  \]
+  with the subtraction of natural numbers.
+  \source{\cite{Bennett88}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/ProfundidadLogica.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compose $q$ with a program that attains $\mathrm{depth}_s(x)$. By no creation the composition is
+  admitted at the significance of the statement, and the \texttt{evaln} budget of a composition is
+  at most the maximum of the two budgets.
+\end{proof}
+
+\begin{theorem}[Slow growth of computational depth, with a computable inverse, on codes of Mathlib]
+  \label{thm:information-slow-growth-inverse}
+  \lean{Sagitta.Map.Informacion.Profundidad.crecimiento_lento}
+  \leanok
+  \uses{def:information-prof, thm:information-no-creation, thm:information-no-creation-kt}
+  Let $p, r$ be codes, $f : \mathbb{N} \to \mathbb{N}$ and $x \in \mathbb{N}$, and assume that $p$
+  on input $x$ halts with value $f(x)$ and $r$ on input $f(x)$ halts with value $x$. Then
+  \[
+    \mathrm{prof}(f(x)) \le \mathrm{prof}(x) + \lfloor \log_2 \mathrm{cost}(p, x) \rfloor + (|p| + |r| + 6).
+  \]
+  \source{\cite{Antunes06}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/Profundidad.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Add the bound of no creation with the time charge for $\mathrm{Kt}(f(x))$ and the bound of no
+  creation for $\KC(x)$ in terms of $\KC(f(x))$ through $r$, and use $\mathrm{prof} + \KC =
+  \mathrm{Kt}$.
+\end{proof}
+
+\begin{definition}[Hypothesis: a code takes no longer than a finite deterministic system]
+  \label{def:information-simula}
+  \lean{Sagitta.Map.Informacion.MemoriaProfundidad.Simula}
+  \leanok
+  For a type $\sigma$, a map $\delta : \sigma \to \mathrm{Option}\ \sigma$, a state $s_0$ and a code
+  $p$, the proposition $\mathrm{Simula}(\delta, s_0, p)$ says: for every $n$ such that the trace of
+  $\delta$ from $s_0$ is \texttt{none} (halted) at step $n$, the \texttt{evaln} of $p$ on input $0$
+  with budget $n$ halts. The trace is $n \mapsto (c \mapsto c.\mathrm{bind}\ \delta)^n(\mathrm{some}\
+  s_0)$. The entry only says that the definition exists; no entry asserts it.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/MemoriaProfundidad.lean}
+\end{definition}
+
+\begin{theorem}[Memory bounds depth, given that the code is no slower than the system]
+  \label{thm:information-memory-depth}
+  \lean{Sagitta.Map.Informacion.MemoriaProfundidad.memoria_acota_profundidad}
+  \leanok
+  \uses{def:information-simula, def:information-prof}
+  Let $\sigma$ be a finite type, $\delta : \sigma \to \mathrm{Option}\ \sigma$, $s_0 \in \sigma$ and
+  $s \in \mathbb{N}$ with $|\sigma| \le 2^s$. Assume that the trace of $\delta$ from $s_0$ reaches
+  \texttt{none} at some step. Let $p$ be a code and $x \in \mathbb{N}$ such that $p$ produces $x$,
+  and assume $\mathrm{Simula}(\delta, s_0, p)$. Then $\mathrm{prof}(x) + 3 \le |p| + s$.
+  \source{\cite{Bennett88, Antunes06}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/MemoriaProfundidad.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A halting trace on at most $2^s$ states halts within $2^s$ steps, so $p$ runs within
+  \texttt{evaln} budget $2^s$; then the bound $\mathrm{Kt}(x) \le |p| + \lfloor \log_2 2^s \rfloor$
+  together with $\KC(x) \ge 3$ gives the claim.
+\end{proof}
+
+\section{The law of three memories, in a black-box model}
+\label{sec:information-three-memories}
+
+The model of this section has no machine. There is one hidden solution $y$ in a finite type $Y$ for
+each instance. A verifier is a black box $O\,y : Q \to R$ that answers a query $q$ with $O\,y\,q$. A
+solver is a query tree, and a family of query trees indexed by a program $p$ and a hint $c$ is a
+solver with a description and a hint.
+
+\begin{definition}[Query trees to a black-box verifier, and solving in $t$ queries]
+  \label{def:information-query-tree}
+  \lean{Sagitta.Map.Tiempo.LeyTresMemorias.ArbolV, Sagitta.Map.Tiempo.LeyTresMemorias.ArbolV.corre, Sagitta.Map.Tiempo.LeyTresMemorias.ArbolV.pasos, Sagitta.Map.Tiempo.LeyTresMemorias.igual, Sagitta.Map.Tiempo.LeyTresMemorias.Resuelve}
+  \leanok
+  A tree over types $Q, R, Y$ is either a leaf holding a candidate $y \in Y$, or a query $q \in Q$
+  together with a subtree for each answer $r \in R$. Against a verifier $O : Q \to R$, the tree
+  returns the candidate of the leaf that it reaches, and its time is the number of queries on that
+  path. The yes-or-no verifier of the instance $y$ is $\mathrm{igual}(y) = (z \mapsto [z = y])$,
+  for $Y$ with decidable equality. For $O : Y \to Q \to R$, trees $A : P \to C \to \text{tree}$ and
+  $t \in \mathbb{N}$, the proposition $\mathrm{Resuelve}(O, A, t)$ says: for every $y \in Y$ there
+  are $p \in P$ and $c \in C$ such that the tree $A\,p\,c$ against $O\,y$ returns $y$ in at most $t$
+  queries.
+  \own{}
+  \leanfile{Sagitta/Map/LeyTresMemorias.lean}
+\end{definition}
+
+\begin{theorem}[The law of three memories, for a black-box verifier with answers of $b$ bits]
+  \label{thm:information-three-memories}
+  \lean{Sagitta.Map.Tiempo.LeyTresMemorias.ley, Sagitta.Map.Tiempo.LeyTresMemorias.ley_log}
+  \leanok
+  \uses{def:information-query-tree}
+  Let $P, C, R, Y$ be finite types with decidable equality on $Y$, let $Q$ be a type, and let
+  $L, s, b, t \in \mathbb{N}$ with $|P| \le 2^L$, $|C| \le 2^s$ and $|R| \le 2^b$. Let
+  $O : Y \to Q \to R$ and $A : P \to C \to \text{tree}(Q, R, Y)$ with $\mathrm{Resuelve}(O, A, t)$.
+  Then $|Y| \le 2^L \cdot 2^s \cdot 2^{b t}$, and also
+  $\lceil \log_2 |Y| \rceil \le L + s + b t$.
+  \own{}
+  \leanfile{Sagitta/Map/LeyTresMemorias.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A tree that makes at most $t$ queries against answers from a set of size at most $2^b$ finds at
+  most $(2^b)^t$ solutions, because a solution that it finds is determined by the sequence of
+  answers it receives; the $|P||C|$ trees together cover $Y$. The second form takes logarithms.
+\end{proof}
+
+\begin{theorem}[Replacing the programs by one searching program multiplies the time by the number of programs, in a black-box model]
+  \label{thm:information-levin-box}
+  \lean{Sagitta.Map.Tiempo.LeyTresMemorias.levin_caja_ley}
+  \leanok
+  \uses{def:information-query-tree}
+  Let $P, C, Y$ be finite types with decidable equality on $Y$, let $d \in Y$ and
+  $L, s, t \in \mathbb{N}$ with $|P| \le 2^L$ and $|C| \le 2^s$. Let
+  $A : P \to C \to \text{tree}(Y, \mathrm{Bool}, Y)$ with $\mathrm{Resuelve}(\mathrm{igual}, A, t)$.
+  Then $|P|(t + 1) \le 2^L (t + 1)$ and
+  $|Y| \le 2^0 \cdot 2^s \cdot (|P|(t + 1) + 1)$.
+  \own{}
+  \leanfile{Sagitta/Map/LeyTresMemorias.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first inequality multiplies $|P| \le 2^L$ by $t + 1$. For the second, a universal tree that
+  tries the programs one after another, each cut at $t$ queries, solves in $|P|(t+1)$ queries with a
+  single program; the law for a yes-or-no verifier with one program applies to it.
+\end{proof}
+
+\section{The plane of costs}
+\label{sec:information-cost-plane}
+
+The first two statements are in the black-box model of the previous section, with the yes-or-no
+verifier on $2^m$ candidates, $\mathrm{siNo}(m) : \mathrm{Fin}(2^m) \to \mathrm{Fin}(2^m) \to
+\mathrm{Bool}$, which is $\mathrm{igual}$ on $\mathrm{Fin}(2^m)$. A point $(x, y) \in \mathbb{N}
+\times \mathbb{N}$ is \emph{reached} when there are finite types $P$ and $C$, a family of trees
+$A : P \to C \to \text{tree}$, and numbers $L, s, t$ with $|P| \le 2^L$, $|C| \le 2^s$,
+$\mathrm{Resuelve}(\mathrm{siNo}(m), A, t)$, $L + s \le x$ and $\lceil \log_2 (t + 1) \rceil \le y$.
+The \emph{region} is the set of reached points, and the \emph{frontier} is the set of points of the
+region such that every point of the region that is at most it in both coordinates is equal to it.
+
+\begin{theorem}[The region of the yes-or-no verifier is a half-plane, in a black-box model]
+  \label{thm:information-half-plane}
+  \lean{Sagitta.Map.Tiempo.PlanoCostos.region_es_semiplano}
+  \leanok
+  \uses{def:information-query-tree, thm:information-three-memories}
+  For all $m, x, y \in \mathbb{N}$, the point $(x, y)$ is reached with the yes-or-no verifier on
+  $2^m$ candidates if and only if $m \le x + y$.
+  \own{}
+  \leanfile{Sagitta/Map/PlanoCostos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If the point is reached, the law of three memories in bits gives $m \le L + s + \lceil \log_2
+  (t+1) \rceil \le x + y$. Conversely, an exact mixture of a hint of $m - k$ bits and a search of
+  $2^k - 1$ queries reaches the point $(m - k, k)$ with $k = \min(y, m)$, and the region is closed
+  upward.
+\end{proof}
+
+\begin{theorem}[The frontier of the yes-or-no verifier is the line $x + y = m$, in a black-box model]
+  \label{thm:information-frontier-line}
+  \lean{Sagitta.Map.Tiempo.PlanoCostos.frontera_es_recta}
+  \leanok
+  \uses{thm:information-half-plane}
+  For every $m \in \mathbb{N}$ and every point $p = (p_1, p_2)$, $p$ is in the frontier of the
+  region of the yes-or-no verifier on $2^m$ candidates if and only if $p_1 + p_2 = m$.
+  \own{}
+  \leanfile{Sagitta/Map/PlanoCostos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By the half-plane description, a point with $p_1 + p_2 > m$ has a neighbour one step down in the
+  region, and a point with $p_1 + p_2 = m$ is in the region with no point of the region below it
+  other than itself.
+\end{proof}
+
+\begin{theorem}[A function of Blum speed-up, in the plane of costs]
+  \label{thm:information-blum-plane}
+  \lean{Sagitta.Map.Tiempo.PlanoCostos.blum_en_el_plano}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.o, Sagitta.Map.Tiempo.EsO
+  \uses{thm:information-blum-sin-optimo, thm:information-blum-exists}
+  There is $f : \mathbb{N} \to \mathbb{N}$ with $f(n) \le 1$ for all $n$, computable, such that
+  \begin{enumerate}
+    \item for every code $i$ that computes $f$ and every $M \in \mathbb{N}$ there is a code $j$
+      that computes $f$ with $\mathrm{cost}(j, \cdot) \in o(\mathrm{cost}(i, \cdot))$ and
+      $M < \mathrm{encode}(j)$;
+    \item there is no code $i$ that computes $f$ and satisfies, for every code $j$ that computes
+      $f$, $\mathrm{cost}(i, \cdot) = O(\mathrm{cost}(j, \cdot))$;
+    \item there is no $M$ such that for every code $j$ that computes $f$ there is a code $i$ that
+      computes $f$ with $\mathrm{encode}(i) \le M$ and $\mathrm{cost}(i, \cdot) =
+      O(\mathrm{cost}(j, \cdot))$.
+  \end{enumerate}
+  Here $\mathrm{encode}$ is the natural number that Mathlib assigns to a code, and the cost is the
+  cost of Blum.
+  \own{}
+  \leanfile{Sagitta/Map/PlanoCostos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take the function of Blum speed-up with the linear speed-up rate. From any program, a ladder of
+  programs of $f$ descends, each with cost negligible against the previous one, and the codes along
+  the ladder are pairwise different, hence not bounded; the second part is the absence of an
+  optimal program, and the third repeats the argument for the programs with code at most $M$.
+\end{proof}
+
+\section{The closed universe}
+\label{sec:information-closed-universe}
+
+In the closed universe nothing enters for free. The machine is the evaluator of Mathlib codes with
+a budget: $\mathrm{correr}(i, k, x)$ runs the code numbered $i$ on $x$ with \texttt{evaln} budget
+$k$. The costs below are budgets of \texttt{evaln}, not machine steps, and the verifier is evaluated
+at no charge in the first model and at a charge in the second one.
+
+\begin{definition}[Closed universe, closed process, closed cost and $\mathrm{kt}$]
+  \label{def:information-closed-universe}
+  \lean{Sagitta.Map.Tiempo.UniversoCerrado.Universo, Sagitta.Map.Tiempo.UniversoCerrado.Proceso, Sagitta.Map.Tiempo.UniversoCerrado.Correcto, Sagitta.Map.Tiempo.UniversoCerrado.Resoluble, Sagitta.Map.Tiempo.UniversoCerrado.costoCerrado, Sagitta.Map.Tiempo.UniversoCerrado.kt}
+  \leanok
+  % uses-lean: Sagitta.Map.Levin.correr
+  A universe $U$ is a verifier $V : \mathbb{N} \to \mathbb{N} \to \mathrm{Bool}$ and an input
+  $x \in \mathbb{N}$. A process $p$ is a pair $(i, k)$ of a program number and a budget. The process
+  is correct for $U$ when there is $y$ with $\mathrm{correr}(i, k, x) = \mathrm{some}\ y$ and
+  $V(x, y) = \mathrm{true}$, and $U$ is solvable when some process is correct. The closed cost of
+  $U$ is the infimum of $2^i k$ over the correct processes $(i, k)$ (it is $0$ when there is none),
+  and $\mathrm{kt}(U)$ is the infimum of $i + \lceil \log_2 k \rceil$ over the correct processes.
+  \own{}
+  \leanfile{Sagitta/Map/UniversoCerrado.lean}
+\end{definition}
+
+\begin{theorem}[Levin's search costs less than eight times the closed cost, with a free verifier]
+  \label{thm:information-closed-law}
+  \lean{Sagitta.Map.Tiempo.UniversoCerrado.ley}
+  \leanok
+  % uses-lean: Sagitta.Map.Levin.buscar, Sagitta.Map.Tiempo.CorteRacional.costoLevin
+  \uses{def:information-closed-universe}
+  Let $U$ be a solvable closed universe. Then there are $T$ and $y$ such that the universal search
+  of Levin on $(U.V, U.x)$ up to round $T$ returns $y$ and $U.V(U.x, y) = \mathrm{true}$, and the
+  cost of the search on $(U.V, U.x)$ is less than $8$ times the closed cost of $U$. In the search,
+  round $t$ runs the programs $0, \dots, t$ with budget $2^{t - i}$ for program $i$ and keeps the
+  first output that the verifier accepts; the cost is the total budget handed out up to the first
+  round that returns an answer.
+  \own{}
+  \leanfile{Sagitta/Map/UniversoCerrado.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take a correct process that attains the closed cost. Its budget exceeds the input, so it is at
+  least $1$, and the bound of Levin for one program, namely that the search costs less than
+  $8 \cdot 2^i k$, applies to it.
+\end{proof}
+
+\begin{theorem}[The closed cost is attained, is below that of every correct process, and exceeds the input]
+  \label{thm:information-closed-lower}
+  \lean{Sagitta.Map.Tiempo.UniversoCerrado.cota_inferior}
+  \leanok
+  \uses{def:information-closed-universe}
+  Let $U$ be a solvable closed universe. Then there is a correct process $p = (i, k)$ with closed
+  cost of $U$ equal to $2^i k$; for every correct process $(i, k)$ the closed cost of $U$ is at
+  most $2^i k$; and $U.x$ is less than the closed cost of $U$.
+  \own{}
+  \leanfile{Sagitta/Map/UniversoCerrado.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The set of costs of correct processes is a nonempty set of natural numbers, so its infimum is
+  attained. A process that returns a value has a budget larger than its input, and the factor
+  $2^i$ is at least $1$.
+\end{proof}
+
+\begin{theorem}[$\mathrm{kt}$ of a closed universe is attained]
+  \label{thm:information-kt-attained}
+  \lean{Sagitta.Map.Tiempo.UniversoCerrado.kt_alcanzado}
+  \leanok
+  \uses{def:information-closed-universe}
+  Let $U$ be a solvable closed universe. Then there is a correct process $(i, k)$ with
+  $\mathrm{kt}(U) = i + \lceil \log_2 k \rceil$.
+  \own{}
+  \leanfile{Sagitta/Map/UniversoCerrado.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The infimum of a nonempty set of natural numbers is a member of the set.
+\end{proof}
+
+\begin{definition}[Closed universe with a paid verifier]
+  \label{def:information-paid-universe}
+  \lean{Sagitta.Map.Tiempo.VerificadorPagado.UniversoPagado, Sagitta.Map.Tiempo.VerificadorPagado.ProcesoPagado, Sagitta.Map.Tiempo.VerificadorPagado.CorrectoPagado, Sagitta.Map.Tiempo.VerificadorPagado.ResolublePagado, Sagitta.Map.Tiempo.VerificadorPagado.costoCerradoPagado, Sagitta.Map.Tiempo.VerificadorPagado.buscarPagado, Sagitta.Map.Tiempo.VerificadorPagado.costoLevinPagado}
+  \leanok
+  A paid universe $U$ is a code $v$ and an input $x$; a paid process is a triple $(i, k, K)$. It
+  is correct when there is $y$ with $\mathrm{correr}(i, k, x) = \mathrm{some}\ y$ and the
+  \texttt{evaln} of $v$ on $\mathrm{pair}(x, y)$ with budget $K$ is $\mathrm{some}\ 0$; the universe
+  is solvable when some paid process is correct. The paid cost of a process is $2^i (k + K)$, and
+  the paid closed cost of $U$ is the infimum of the paid costs of the correct processes. The paid
+  search in round $t$ runs program $i$ with budget $2^{t-i}$ and keeps its output $y$ only when the
+  \texttt{evaln} of $v$ on $\mathrm{pair}(x, y)$ with the same budget gives $\mathrm{some}\ 0$;
+  $\mathrm{buscarPagado}(v, x, T)$ is the first answer kept in rounds $0, \dots, T$, and
+  $\mathrm{costoLevinPagado}(v, x)$ is twice the budget handed out up to the first round that
+  returns an answer.
+  \own{}
+  \leanfile{Sagitta/Map/VerificadorPagado.lean}
+\end{definition}
+
+\begin{theorem}[Levin's search that pays for verification costs less than sixteen times the paid closed cost]
+  \label{thm:information-paid-law}
+  \lean{Sagitta.Map.Tiempo.VerificadorPagado.ley_pagada}
+  \leanok
+  \uses{def:information-paid-universe}
+  Let $U = (v, x)$ be a solvable paid universe. Then there are $T$ and $y$ with
+  $\mathrm{buscarPagado}(v, x, T) = \mathrm{some}\ y$ and $0$ is among the values of $v$ on
+  $\mathrm{pair}(x, y)$, and $\mathrm{costoLevinPagado}(v, x) < 16 \cdot$ the paid closed cost of $U$.
+  \own{}
+  \leanfile{Sagitta/Map/VerificadorPagado.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  As for the free verifier: take a correct paid process that attains the paid closed cost and apply
+  the bound for one process, which now has the factor $16$ because each program receives a budget to
+  run and the same budget to verify.
+\end{proof}
+
+\begin{theorem}[The minimum survives exactly when verifying is cheaper than every solver, with a paid verifier]
+  \label{thm:information-paid-survives}
+  \lean{Sagitta.Map.Tiempo.VerificadorPagado.sobrevive_iff}
+  \leanok
+  \uses{def:information-paid-universe}
+  Let $v$ be a code and $f : \mathbb{N} \to \mathbb{N}$ such that $v$ verifies $f$, that is, $v$ is
+  total and $0$ is a value of $v$ on $\mathrm{pair}(x, y)$ if and only if $y = f(x)$. Let $g :
+  \mathbb{N} \to \mathbb{N}$, and let $j_0$ be a code that computes $f$. Write $t_V(x) =
+  \mathrm{cost}(v, \mathrm{pair}(x, f(x)))$. Then the following are equivalent: for every code $j$
+  that computes $f$, $x \mapsto$ (paid closed cost of $(v, x)$) is $O(x \mapsto \mathrm{cost}(j, x)
+  + g(x))$; and for every code $j$ that computes $f$, $t_V$ is $O(x \mapsto \mathrm{cost}(j, x) +
+  g(x))$.
+  \own{}
+  \leanfile{Sagitta/Map/VerificadorPagado.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The paid closed cost is at least $t_V$, and for a code $j$ that computes $f$ it is at most
+  $2^j (\mathrm{cost}(j, x) + t_V(x))$; each direction composes one of these bounds with the
+  hypothesis.
+\end{proof}
+
+\section{Paying once or at each instance}
+\label{sec:information-two-accounts}
+
+The first two statements are in the black-box model of Section~\ref{sec:information-three-memories}
+with the yes-or-no verifier, for a family of sizes $m \in \mathbb{N}$: for each $m$ a finite type
+$Y_m$ of hidden solutions with $|Y_m| = 2^m$, finite types $P_m$ and $C_m$ of programs and hints, and
+a family of trees $A_m : P_m \to C_m \to \text{tree}(Y_m, \mathrm{Bool}, Y_m)$, with bounds
+$|P_m| \le 2^{L_m}$ and $|C_m| \le 2^{s_m}$ and
+$\mathrm{Resuelve}(\mathrm{igual}, A_m, t_m)$ for every $m$.
+
+\begin{theorem}[The price is paid: description, hint and time add up to the size, in a black-box model]
+  \label{thm:information-price-paid}
+  \lean{Sagitta.Map.Tiempo.DosCuentas.precio_se_paga}
+  \leanok
+  \uses{def:information-query-tree, thm:information-three-memories}
+  Under the hypotheses above, with $L, s, t : \mathbb{N} \to \mathbb{N}$, for every $m \in
+  \mathbb{N}$, $m \le L_m + (s_m + \lceil \log_2 (t_m + 1) \rceil)$.
+  \own{}
+  \leanfile{Sagitta/Map/DosCuentas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The law of three memories for the yes-or-no verifier in bits, at size $m$, with
+  $\lceil \log_2 2^m \rceil = m$.
+\end{proof}
+
+\begin{theorem}[Paying once does not suffice, in a black-box model]
+  \label{thm:information-once-not-enough}
+  \lean{Sagitta.Map.Tiempo.DosCuentas.una_vez_no_alcanza}
+  \leanok
+  \uses{thm:information-price-paid}
+  Under the same hypotheses, let $L_0 \in \mathbb{N}$ with $L_m \le L_0$ for every $m$. Then for
+  every $m$, $m - L_0 \le s_m + \lceil \log_2 (t_m + 1) \rceil$ (subtraction of natural numbers),
+  and if $L_0 < m$ then $1 \le s_m + \lceil \log_2 (t_m + 1) \rceil$.
+  \own{}
+  \leanfile{Sagitta/Map/DosCuentas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Theorem~\ref{thm:information-price-paid} together with $L_m \le L_0$, by linear arithmetic.
+\end{proof}
+
+\begin{definition}[Machine $\mathrm{kt}$ is logarithmic on a set, on cslib machines]
+  \label{def:information-ktmt-log}
+  \lean{Sagitta.Map.Tiempo.LevinMaquinas.ResuelveMT, Sagitta.Map.Tiempo.LevinMaquinas.ResolubleMT, Sagitta.Map.Tiempo.LevinMaquinas.ktMT, Sagitta.Map.Tiempo.LevinMaquinas.KtMTLog}
+  \leanok
+  % uses-lean: Cslib.Complexity.SAT
+  \uses{def:information-machine-k}
+  Let $\alpha$ be a type with an embedding $\mathrm{enc} : \alpha \hookrightarrow \{0,1\}^*$ and
+  $V : \alpha \times \{0,1\}^* \to \mathrm{Bool}$. The machine numbered $i$ \emph{solves} $a$ with
+  clock $t$ when $\texttt{correrMT}(i, \mathrm{enc}(a), t) = \mathrm{some}\ y$ and
+  $V(a, y) = \mathrm{true}$ for some $y$; $a$ is \emph{solvable} when some $i$ and $t$ do so. The
+  number $\mathrm{ktMT}(a)$ is the infimum of $i + \lceil \log_2 t \rceil$ over the pairs $(i, t)$
+  such that machine $i$ solves $a$ with clock $t$ ($0$ if there is none). For $A \subseteq \alpha$,
+  $\mathrm{KtMTLog}(A)$ says: there is $c$ such that every $a \in A$ is solvable and
+  $\mathrm{ktMT}(a) \le c \cdot \lfloor \log_2 (|\mathrm{enc}(a)| + 2) \rfloor$.
+  \own{}
+  \leanfile{Sagitta/Map/LevinMaquinas.lean}
+\end{definition}
+
+\begin{definition}[A family of satisfiable formulas of the second case]
+  \label{def:information-case-two}
+  \lean{Sagitta.Map.Tiempo.DosCasos.CasoDos}
+  \leanok
+  \uses{def:information-ktmt-log}
+  For a set $A$ of CNF formulas over the natural numbers, $\mathrm{CasoDos}(A)$ says: $A$ is a
+  subset of $\SAT$, the set of satisfiable formulas, and it is not the case that
+  $\mathrm{KtMTLog}(A)$ holds for the encoding of formulas and the verifier of $\SAT$ of cslib.
+  \own{}
+  \leanfile{Sagitta/Map/DosCasos.lean}
+\end{definition}
+
+\begin{theorem}[A family of the second case exists if and only if machine $\mathrm{kt}$ of $\SAT$ is not logarithmic, on cslib machines]
+  \label{thm:information-case-two-iff}
+  \lean{Sagitta.Map.Tiempo.DosCasos.caso_dos_iff_no_kt_log}
+  \leanok
+  \uses{def:information-case-two}
+  There is a set $A$ with $\mathrm{CasoDos}(A)$ if and only if $\mathrm{KtMTLog}$ does not hold for
+  $\SAT$, with the encoding of formulas and the verifier of $\SAT$ of cslib.
+  \own{}
+  \leanfile{Sagitta/Map/DosCasos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $A \subseteq \SAT$ and $\mathrm{KtMTLog}$ held for $\SAT$, it would hold for the subset $A$.
+  Conversely take $A = \SAT$.
+\end{proof}
+
+\section{The creator and the solver}
+\label{sec:information-creator}
+
+A creator draws $r$ random bits, computes a hidden solution from them, and declares a number for
+the work of the computation. The number is declared; no theorem measures it against a model of
+computation. The solver sees the instance only through the yes-or-no verifier.
+
+\begin{definition}[Creator, and solving the family of a creator, in a black-box model]
+  \label{def:information-creator}
+  \lean{Sagitta.Map.Tiempo.HuevoGallina.Creador, Sagitta.Map.Tiempo.HuevoGallina.Creador.imagen, Sagitta.Map.Tiempo.HuevoGallina.ResuelveFamilia, Sagitta.Map.Tiempo.HuevoGallina.constante}
+  \leanok
+  \uses{def:information-query-tree}
+  A creator $K$ over $Y$ is a number $r$ of random bits, a map $g : \mathrm{Fin}(2^r) \to Y$ from the
+  seed to the hidden solution, and a number $\mathrm{trabajo}$. Its image is the set of values of
+  $g$. For $g : \mathrm{Fin}(2^r) \to Y$, a family $A : C \to \text{tree}(Y, \mathrm{Bool}, Y)$ and
+  $t \in \mathbb{N}$, $\mathrm{ResuelveFamilia}(g, A, t)$ says: for every seed $\sigma$ there is a
+  hint $c$ such that $A\,c$ against $\mathrm{igual}(g(\sigma))$ returns $g(\sigma)$ in at most $t$
+  queries. The constant creator $\mathrm{constante}(r, W)$ is the creator over the one-point type
+  with $r$ random bits, the constant map, and $\mathrm{trabajo} = W$.
+  \own{}
+  \leanfile{Sagitta/Map/HuevoGallina.lean}
+\end{definition}
+
+\begin{theorem}[Information, not work, is what the solver pays: a constant creator, in a black-box model]
+  \label{thm:information-not-work}
+  \lean{Sagitta.Map.Tiempo.HuevoGallina.informacion_no_trabajo}
+  \leanok
+  \uses{def:information-creator}
+  For all $r, W \in \mathbb{N}$: the creator $\mathrm{constante}(r, W)$ has $r$ random bits and
+  work $W$, its image has exactly one element, and $\mathrm{ResuelveFamilia}$ holds for its map, the
+  family that is the leaf of the unique point at every hint, and $t = 0$.
+  \own{}
+  \leanfile{Sagitta/Map/HuevoGallina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Unfold the definitions: the image of a constant map from a nonempty type is a singleton, and a
+  leaf makes no query.
+\end{proof}
+
+\begin{theorem}[Asymmetry between creating and solving, in a black-box model]
+  \label{thm:information-asymmetry}
+  \lean{Sagitta.Map.Tiempo.HuevoGallina.asimetria}
+  \leanok
+  \uses{def:information-creator}
+  For every $r \in \mathbb{N}$ there is a creator $K$ over $\mathrm{Fin}(2^r)$ with $K.r = r$ and
+  $K.\mathrm{trabajo} = 1$ such that
+  \begin{enumerate}
+    \item for every family $A : \mathrm{Unit} \to \text{tree}$ and every $t$, if
+      $\mathrm{ResuelveFamilia}(K.g, A, t)$ then $2^r \le t + 1$;
+    \item for all $s, t \in \mathbb{N}$, every finite type $C$ with $|C| \le 2^s$ and every
+      $A : C \to \text{tree}$, if $\mathrm{ResuelveFamilia}(K.g, A, t)$ then $2^r \le 2^s (t+1)$;
+    \item $\mathrm{ResuelveFamilia}(K.g, \sigma \mapsto \mathrm{leaf}(K.g(\sigma)), 0)$ holds.
+  \end{enumerate}
+  Here the trees are over $\mathrm{Fin}(2^r)$ with answers in $\mathrm{Bool}$ and candidates in
+  $\mathrm{Fin}(2^r)$.
+  \own{}
+  \leanfile{Sagitta/Map/HuevoGallina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take the identity creator on $\mathrm{Fin}(2^r)$. Parts~1 and~2 are the bound for the image of an
+  injective map, since a hint reaches at most $t + 1$ solutions; part~3 is the seed as the hint.
+\end{proof}
+
+\section{Information is paid once}
+\label{sec:information-amortization}
+
+\begin{definition}[Total cost of a table shared by $M$ queries]
+  \label{def:information-total}
+  \lean{Sagitta.Map.Tiempo.LeyInformacion.total}
+  \leanok
+  For $T, M, r \in \mathbb{N}$, $\mathrm{total}(T, M, r) = T + M r$: a table of declared cost $T$,
+  paid once, and $M$ queries of declared cost $r$ each. The costs are declared numbers, not
+  measured in a model of computation.
+  \own{}
+  \leanfile{Sagitta/Map/LeyInformacion.lean}
+\end{definition}
+
+\begin{theorem}[Someone paid for the table]
+  \label{thm:information-someone-paid}
+  \lean{Sagitta.Map.Tiempo.LeyInformacion.alguien_pago}
+  \leanok
+  \uses{def:information-total}
+  For all $T, M, r \in \mathbb{N}$, $T \le \mathrm{total}(T, M, r)$.
+  \own{}
+  \leanfile{Sagitta/Map/LeyInformacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The total is $T$ plus a natural number.
+\end{proof}
+
+\begin{theorem}[Sharing the table is cheaper than paying for it at each query]
+  \label{thm:information-amortized}
+  \lean{Sagitta.Map.Tiempo.LeyInformacion.total_amortizado}
+  \leanok
+  \uses{def:information-total}
+  For all $T, M, r \in \mathbb{N}$ with $1 \le M$, $\mathrm{total}(T, M, r) \le M (T + r)$.
+  \own{}
+  \leanfile{Sagitta/Map/LeyInformacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Expand $M (T + r) = M T + M r$ and use $T \le M T$.
+\end{proof}
+
+\section{$\SAT$ in the closed universe}
+\label{sec:information-sat-closed}
+
+Formulas are lists of clauses, which is the type of CNF formulas over the natural numbers of
+cslib-frontier. The verifier $\mathrm{vSAT}(x, y)$ decodes $x$ as a formula $F$ and $y$ as a list of
+Booleans, read as an assignment that is false outside the list, and returns the value of $F$ under
+it; it returns false if either does not decode. The closed universe of a formula $F$ is
+$\mathrm{uSAT}(F) = (\mathrm{vSAT}, \mathrm{encode}(F))$ in the sense of
+Section~\ref{sec:information-closed-universe}, and $\mathrm{ktSAT}(F) = \mathrm{kt}(\mathrm{uSAT}(F))$.
+
+\begin{definition}[$\SAT$ is easy in the closed universe, and $\mathrm{kt}$ is logarithmic]
+  \label{def:information-sat-easy}
+  \lean{Sagitta.Map.Tiempo.KtSAT.vSAT, Sagitta.Map.Tiempo.KtSAT.Satisfacible, Sagitta.Map.Tiempo.KtSAT.uSAT, Sagitta.Map.Tiempo.KtSAT.ktSAT, Sagitta.Map.Tiempo.KtSAT.FacilCerrado, Sagitta.Map.Tiempo.KtSAT.KtLogaritmico}
+  \leanok
+  \uses{def:information-closed-universe}
+  $\mathrm{FacilCerrado}$ is the proposition: there are $C, d \in \mathbb{N}$ such that for every
+  satisfiable formula $F$, the closed cost of $\mathrm{uSAT}(F)$ is at most
+  $C (\mathrm{encode}(F) + 2)^d$. $\mathrm{KtLogaritmico}$ is the proposition: there is
+  $c \in \mathbb{N}$ such that for every satisfiable formula $F$,
+  $\mathrm{ktSAT}(F) \le c \lfloor \log_2 (\mathrm{encode}(F) + 2) \rfloor$. The entry only says that
+  the definitions exist; no entry asserts either proposition.
+  \own{}
+  \leanfile{Sagitta/Map/KtSAT.lean}
+\end{definition}
+
+\begin{theorem}[$\SAT$ is easy in the closed universe if and only if $\mathrm{kt}$ is logarithmic]
+  \label{thm:information-sat-easy-iff-kt}
+  \lean{Sagitta.Map.Tiempo.KtSAT.facil_iff_kt}
+  \leanok
+  \uses{def:information-sat-easy}
+  $\mathrm{FacilCerrado}$ holds if and only if $\mathrm{KtLogaritmico}$ holds.
+  \own{}
+  \leanfile{Sagitta/Map/KtSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From a polynomial bound $C n^d$ on the closed cost, the process that attains $\mathrm{kt}$ is
+  below it in bits, with a constant $c$ made from $C$ and $d$; from $c$, the closed cost is at most
+  $2^{\mathrm{kt}}$, a polynomial of degree $c$.
+\end{proof}
+
+\begin{theorem}[$\mathrm{kt}$ of a satisfiable formula is the logarithm of the closed cost, up to a constant]
+  \label{thm:information-sat-law}
+  \lean{Sagitta.Map.Tiempo.KtSAT.ley_sat}
+  \leanok
+  \uses{def:information-sat-easy, thm:information-closed-law}
+  Let $F$ be a satisfiable formula. Write $c_1 = \lfloor \log_2 (\text{closed cost of }
+  \mathrm{uSAT}(F)) \rfloor$ and $c_2 = \lfloor \log_2 (\mathrm{costoLevin}(\mathrm{vSAT},
+  \mathrm{encode}(F))) \rfloor$. Then $c_1 \le \mathrm{ktSAT}(F)$, $\mathrm{ktSAT}(F) \le c_1 + 1$,
+  $\mathrm{ktSAT}(F) \le c_2$ and $c_2 < \mathrm{ktSAT}(F) + 3$.
+  \own{}
+  \leanfile{Sagitta/Map/KtSAT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A satisfiable formula has a solvable closed universe. The four inequalities are the four
+  conversions to bits that hold in every solvable closed universe, between $\mathrm{kt}$, the closed
+  cost and the cost of Levin's search.
+\end{proof}
+
+\begin{definition}[A model of a proof system]
+  \label{def:information-proof-system}
+  \lean{Sagitta.Map.Tiempo.KtPruebaFija.SistemaPruebas, Sagitta.Map.Tiempo.KtPruebaFija.vPrueba, Sagitta.Map.Tiempo.KtPruebaFija.uPrueba, Sagitta.Map.Tiempo.KtPruebaFija.indiceFijo}
+  \leanok
+  \uses{def:information-closed-universe}
+  A proof system $S$ is a function $\mathrm{verifica} : \mathbb{N} \to \mathbb{N} \to \mathrm{Bool}$
+  and a function $\mathrm{largo} : \mathbb{N} \to \mathbb{N}$, with the reading that
+  $\mathrm{verifica}(T, \pi) = \mathrm{true}$ means that $\pi$ proves $T$. The verifier
+  $\mathrm{vPrueba}(S)(x, \pi)$ is true when $\mathrm{verifica}(T', \pi)$ is true and
+  $\mathrm{largo}(\pi) \le n'$, where $(T', n') = \mathrm{unpair}(x)$. The universe
+  $\mathrm{uPrueba}(S, T, n)$ is $(\mathrm{vPrueba}(S), \mathrm{pair}(T, n))$. For $y_0 \in
+  \mathbb{N}$, $\mathrm{indiceFijo}(y_0)$ is the number of the code of Mathlib that, on every input,
+  returns $y_0$ by its tree.
+  \own{}
+  \leanfile{Sagitta/Map/KtPruebaFija.lean}
+\end{definition}
+
+\begin{theorem}[A fixed theorem: its proof is paid once, in the closed universe]
+  \label{thm:information-fixed-theorem}
+  \lean{Sagitta.Map.Tiempo.KtPruebaFija.teorema_fijo}
+  \leanok
+  \uses{def:information-proof-system, thm:information-kt-attained}
+  Let $S$ be a proof system and $T, \pi \in \mathbb{N}$ with $S.\mathrm{verifica}(T, \pi) =
+  \mathrm{true}$, and let $n \in \mathbb{N}$ with $S.\mathrm{largo}(\pi) \le n$. Then the universe
+  $\mathrm{uPrueba}(S, T, n)$ is solvable, $\lfloor \log_2 \mathrm{pair}(T, n) \rfloor \le
+  \mathrm{kt}(\mathrm{uPrueba}(S, T, n))$, and $\mathrm{kt}(\mathrm{uPrueba}(S, T, n)) \le
+  \mathrm{indiceFijo}(\pi) + \lceil \log_2 (\mathrm{pair}(T, n) + 1) \rceil$ and
+  $\mathrm{kt}(\mathrm{uPrueba}(S, T, n)) \le \mathrm{indiceFijo}(\pi) + 2 \lceil \log_2 (\max(T, n) + 1) \rceil$.
+  \own{}
+  \leanfile{Sagitta/Map/KtPruebaFija.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The process made of the fixed code that writes $\pi$ and the budget $\mathrm{pair}(T, n) + 1$ is
+  correct; this gives solvability and the upper bounds, and the lower bound is that a process that
+  returns a value reads its input.
+\end{proof}
+
+\section{The third account: justifying a ``no''}
+\label{sec:information-third-account}
+
+In the closed universe of Section~\ref{sec:information-closed-universe} the verifier checks every
+``yes'' with its certificate. A ``no'' has to be justified by a refutation that the universe
+checks. Here the refutations are those of resolution in bounded space. A refutation in space $s$
+is a list of moves, each of which loads a clause of the formula, adds the resolvent of two clauses
+that are in memory, or deletes a clause, such that memory never holds more than $s$ clauses and the
+run ends with the empty clause in memory. Its length counts loads and resolutions. The number
+$\mathrm{largoMinimo}(F, s) \in \mathbb{N} \cup \{\infty\}$ is the least length of a refutation of
+$F$ in space $s$.
+
+\begin{definition}[Verdicts, their price, and the third account]
+  \label{def:information-third-account}
+  \lean{Sagitta.Map.Tiempo.TerceraCuenta.Veredicto, Sagitta.Map.Tiempo.TerceraCuenta.aceptaJ, Sagitta.Map.Tiempo.TerceraCuenta.precioJ, Sagitta.Map.Tiempo.TerceraCuenta.terceraCuenta, Sagitta.Map.Tiempo.CajaGris.largoMinimo}
+  \leanok
+  A verdict on a formula $F$ is either $\mathrm{si}(\sigma)$, with a list $\sigma$ of Booleans read
+  as an assignment that is false outside the list, or $\mathrm{no}(s, ms)$, with a space $s$ and a
+  list $ms$ of moves. The universe accepts $\mathrm{si}(\sigma)$ when $F$ evaluates to true under
+  $\sigma$, and $\mathrm{no}(s, ms)$ when $ms$ is a legal run in space $s$ that ends with the empty
+  clause. The price of $\mathrm{si}(\sigma)$ is the number of literals read by the evaluation of $F$
+  under $\sigma$, clause by clause until the first false one, and the price of $\mathrm{no}(s, ms)$
+  is the length of $ms$. The third account $\mathrm{terceraCuenta}(F) \in \mathbb{N} \cup \{\infty\}$
+  is the infimum of the prices of the accepted verdicts.
+  \own{}
+  \leanfile{Sagitta/Map/TerceraCuenta.lean}
+\end{definition}
+
+\begin{theorem}[The third account of an unsatisfiable formula is its shortest refutation in the best space]
+  \label{thm:information-third-account-length}
+  \lean{Sagitta.Map.Tiempo.TerceraCuenta.terceraCuenta_eq_largo}
+  \leanok
+  \uses{def:information-third-account}
+  Let $F$ be a list of clauses that is not satisfiable. Then
+  $\mathrm{terceraCuenta}(F) = \inf_s \mathrm{largoMinimo}(F, s)$.
+  \own{}
+  \leanfile{Sagitta/Map/TerceraCuenta.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A refutation in space $s$ is an accepted verdict $\mathrm{no}(s, ms)$ of the same price, so the
+  left side is at most the right side; an accepted verdict $\mathrm{si}(\sigma)$ is impossible for
+  an unsatisfiable formula, and an accepted $\mathrm{no}(s, ms)$ is a refutation in space $s$.
+\end{proof}
+
+\begin{theorem}[The third account of the pigeonhole formula is at least $2^{\lfloor n/24 \rfloor}$, in resolution]
+  \label{thm:information-third-account-pigeonhole}
+  \lean{Sagitta.Map.Tiempo.TerceraCuenta.terceraCuenta_palomar}
+  \leanok
+  \uses{def:information-third-account}
+  Let $\mathrm{formulaPal}(n)$ be the pigeonhole formula with $n + 1$ pigeons and $n$ holes, with
+  its variables renamed by a fixed order. For every $n \in \mathbb{N}$,
+  $2^{\lfloor n/24 \rfloor} \le \mathrm{terceraCuenta}(\mathrm{formulaPal}(n))$, as elements of
+  $\mathbb{N} \cup \{\infty\}$.
+  \own{}
+  \leanfile{Sagitta/Map/TerceraCuenta.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Every accepted verdict on the pigeonhole formula is a $\mathrm{no}$, since the formula has no
+  satisfying assignment, and every accepted refutation, in any space, has length at least
+  $2^{\lfloor n/24 \rfloor}$ by the lower bound for resolution proved in cslib-frontier.
+\end{proof}
+
+\section{Conservation of work, in a black-box model}
+\label{sec:information-work}
+
+In this section the object is a finite type $\alpha$ of options and an oracle $f : \alpha \to
+\mathrm{Bool}$ that is seen only by asking.
+
+\begin{definition}[Query algorithms, fillings and their chain, in a black-box model]
+  \label{def:information-filling}
+  \lean{Sagitta.Map.Tiempo.Pregunta, Sagitta.Map.Tiempo.Pregunta.corre, Sagitta.Map.Tiempo.Pregunta.vistos, Sagitta.Map.Tiempo.Pregunta.costo, Sagitta.Map.Tiempo.DecideExiste, Sagitta.Map.Tiempo.ConservacionTrabajo.Llenado, Sagitta.Map.Tiempo.ConservacionTrabajo.Llenado.tablaDe, Sagitta.Map.Tiempo.ConservacionTrabajo.Llenado.costoLl, Sagitta.Map.Tiempo.ConservacionTrabajo.encadenar}
+  \leanok
+  A query algorithm over $\alpha$ is either an answer in $\mathrm{Bool}$, or a query of an option
+  $i \in \alpha$ together with a continuation for each of the two answers. Its cost on $f$ is the
+  number of queries on the path that $f$ selects. It decides existence when, for every $f$, it
+  answers $\mathrm{true}$ if and only if $f(i) = \mathrm{true}$ for some $i$. A filling over
+  $\alpha$ with tables in a type $\tau$ is a tree of the same shape whose leaves hold a table
+  $T \in \tau$ instead of an answer; $\mathrm{tablaDe}(L, f)$ is the table at the leaf that $f$
+  selects and $\mathrm{costoLl}(L, f)$ is the number of queries on that path. Given $Q : \tau \to$
+  query algorithm, $\mathrm{encadenar}(L, Q)$ is the query algorithm that runs the filling $L$ and
+  then $Q(T)$ with the table $T$ found.
+  \own{}
+  \leanfile{Sagitta/Map/ConservacionTrabajo.lean}
+\end{definition}
+
+\begin{theorem}[Work is conserved between filling a table and querying it, in a black-box model]
+  \label{thm:information-work-conserved}
+  \lean{Sagitta.Map.Tiempo.ConservacionTrabajo.trabajo_se_conserva}
+  \leanok
+  \uses{def:information-filling}
+  Let $\alpha$ and $\tau$ be types with $\alpha$ finite, $L$ a filling over $\alpha$ with tables in
+  $\tau$ and $Q : \tau \to$ query algorithm. Assume that $\mathrm{encadenar}(L, Q)$ decides
+  existence. Then $|\alpha| \le \mathrm{costoLl}(L, \mathrm{nula}) + \mathrm{costo}(Q(T_0),
+  \mathrm{nula})$, where $\mathrm{nula}$ is the oracle that is false on every option and $T_0 =
+  \mathrm{tablaDe}(L, \mathrm{nula})$.
+  \own{}
+  \leanfile{Sagitta/Map/ConservacionTrabajo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The cost of the chain is the sum of the costs of the two phases. An algorithm that decides
+  existence must look at every option when the oracle is $\mathrm{nula}$, because an option left
+  unseen could be changed to $\mathrm{true}$ without the algorithm noticing.
+\end{proof}
+
+\begin{definition}[A table as a bounded-memory detector in backtracking]
+  \label{def:information-table-detector}
+  \lean{Sagitta.Map.Tiempo.ConservacionTrabajo.tablaLlena, Sagitta.Map.Tiempo.ConservacionTrabajo.memoriaTabla, Sagitta.Map.Tiempo.Vivo, Sagitta.Map.Tiempo.SanoN, Sagitta.Map.Tiempo.DemoraN, Sagitta.Map.Tiempo.buscar, Sagitta.Map.Tiempo.nodos}
+  \leanok
+  Let $\mathrm{sol} : \mathrm{List}(\mathrm{Bool}) \to \mathrm{Bool}$ be a predicate on lists of
+  bits. A prefix $p$ is alive with $k$ bits to fix when some list $q$ of length $k$ makes
+  $\mathrm{sol}(p \mathbin{+\!\!+} q)$ true. A detector $\det : \mathrm{List}(\mathrm{Bool}) \to
+  \mathrm{Bool}$ is sound with horizon $N$ when for every prefix $p$ with $|p| \le N$, $\det(p) =
+  \mathrm{true}$ implies that $p$ is not alive with $N - |p|$ bits to fix. It has delay $d$ with
+  horizon $N$ when for every prefix $p$ with $|p| + d \le N$ that is not alive with $N - |p|$ bits
+  to fix, $\det(p \mathbin{+\!\!+} q) = \mathrm{true}$ for every $q$ of length $d$. Backtracking
+  with $\det$ at a prefix $p$ with $k$ bits to fix returns at once if $\det(p)$ holds, and
+  otherwise tries the extension by $\mathrm{false}$ and, if that fails, by $\mathrm{true}$;
+  $\mathrm{nodos}$ is the number of nodes it visits. For $N \in \mathbb{N}$,
+  $\mathrm{tablaLlena}(\mathrm{sol}, N)$ is the table that says, for each prefix $p$, that $p$ is
+  not alive with $N - |p|$ bits to fix, and $\mathrm{memoriaTabla}(T)$ is the detector whose state
+  is the prefix read and whose alarm is the table $T$.
+  \own{}
+  \leanfile{Sagitta/Map/ConservacionTrabajo.lean}
+\end{definition}
+
+\begin{theorem}[A full table makes backtracking linear, with no delay]
+  \label{thm:information-perfect-table}
+  \lean{Sagitta.Map.Tiempo.ConservacionTrabajo.tabla_perfecta}
+  \leanok
+  \uses{def:information-table-detector}
+  For every $\mathrm{sol} : \mathrm{List}(\mathrm{Bool}) \to \mathrm{Bool}$ and $N \in \mathbb{N}$,
+  the detector $\det = \mathrm{memoriaTabla}(\mathrm{tablaLlena}(\mathrm{sol}, N))$ is sound with
+  horizon $N$, has delay $0$ with horizon $N$, and backtracking with $\det$ from the empty prefix
+  with $N$ bits to fix visits at most $2N + 1$ nodes.
+  \own{}
+  \leanfile{Sagitta/Map/ConservacionTrabajo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  On prefixes of length at most $N$ the detector answers exactly ``not alive'', which gives
+  soundness and delay $0$; with a perfect detector the search visits one path, plus one failed
+  child per level.
+\end{proof}
+
+\begin{theorem}[Work is conserved against randomness, in a black-box model]
+  \label{thm:information-work-random}
+  \lean{Sagitta.Map.Tiempo.ConservacionDual.trabajo_se_conserva_azar}
+  \leanok
+  \uses{def:information-filling, thm:information-work-conserved}
+  Let $\alpha$ be a finite type with decidable equality and at least one element, let $\iota$ and
+  $\tau$ be types, $S$ a nonempty finite set of seeds in $\iota$, $L : \iota \to$ filling and
+  $Q : \iota \to \tau \to$ query algorithm, and $\varepsilon \in \mathbb{Q}$. Write
+  $\mathrm{prom}_S(x) = \frac{1}{|S|} \sum_{r \in S} x(r)$ and, for a query algorithm $t$ and
+  $f : \alpha \to \mathrm{Bool}$, $\mathrm{errQ}(t, f)$ for $0$ if $t$ answers $\mathrm{true}$
+  exactly when $f$ has an option equal to $\mathrm{true}$ and $1$ otherwise. Assume that for every
+  $f$, $\mathrm{prom}_S(r \mapsto \mathrm{errQ}(\mathrm{encadenar}(L_r, Q_r), f)) \le \varepsilon$.
+  Then
+  \[
+    (1 - 2\varepsilon) |\alpha| \le \mathrm{prom}_S\bigl(r \mapsto \mathrm{costoLl}(L_r, \mathrm{nula}) + \mathrm{costo}(Q_r(\mathrm{tablaDe}(L_r, \mathrm{nula})), \mathrm{nula})\bigr).
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/ConservacionDual.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Apply the inequality of Yao's principle, in its easy direction, to the distribution that puts weight one half on $\mathrm{nula}$
+  and one half on the uniform choice of an indicator function; a deterministic algorithm that asks
+  $q$ options on $\mathrm{nula}$ errs with probability at least $\frac12 (1 - q/|\alpha|)$, and
+  the bound is averaged over the seeds.
+\end{proof}
+
+\begin{theorem}[Some seed does at most the average cost, for weighted finite averages]
+  \label{thm:information-yao}
+  \lean{Sagitta.Map.Tiempo.ConservacionDual.yao_abstracto}
+  \leanok
+  Let $\iota$ and $\kappa$ be types with $\kappa$ finite, $S$ a nonempty finite subset of $\iota$,
+  $w : \kappa \to \mathbb{Q}$ with $w(k) \ge 0$ for every $k$ and $\sum_k w(k) = 1$,
+  $c : \iota \to \kappa \to \mathbb{Q}$ and $M \in \mathbb{Q}$. Assume that for every $k$,
+  $\frac{1}{|S|} \sum_{r \in S} c(r, k) \le M$. Then there is $r \in S$ with
+  $\sum_k w(k) c(r, k) \le M$.
+  \own{}
+  \leanfile{Sagitta/Map/ConservacionDual.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Exchange the two averages: the average over the seeds of the weighted sum is at most $M$, and
+  some seed is at most the average.
+\end{proof}
+
+\section{Short and fast programs, and time as a channel}
+\label{sec:information-time-channel}
+
+\begin{definition}[Short and fast programs for a set of instances, on cslib machines]
+  \label{def:information-short-fast}
+  \lean{Sagitta.Map.Informacion.Tiempo.ProgramasCortos}
+  \leanok
+  \uses{def:information-ktmt-log}
+  Let $\mathrm{enc} : \alpha \hookrightarrow \{0,1\}^*$, $V : \alpha \times \{0,1\}^* \to
+  \mathrm{Bool}$ and $A \subseteq \alpha$. $\mathrm{ProgramasCortos}(A)$ says: there is $c$ such that
+  every $a \in A$ is solved, in the sense of Definition~\ref{def:information-ktmt-log}, by a machine
+  numbered $i$ with clock $t$, where $n = |\mathrm{enc}(a)|$, $i \le c \lfloor \log_2 (n + 2)
+  \rfloor + c$ and $t \le (n + 2)^c$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Tiempo.lean}
+\end{definition}
+
+\begin{theorem}[Short and fast programs exist if and only if machine $\mathrm{kt}$ is logarithmic, on cslib machines]
+  \label{thm:information-short-iff-kt}
+  \lean{Sagitta.Map.Informacion.Tiempo.cortos_iff_kt}
+  \leanok
+  \uses{def:information-short-fast, def:information-ktmt-log}
+  Let $\mathrm{enc} : \alpha \hookrightarrow \{0,1\}^*$, $V : \alpha \times \{0,1\}^* \to
+  \mathrm{Bool}$ and $A \subseteq \alpha$. Then $\mathrm{ProgramasCortos}(A)$ holds if and only if
+  $\mathrm{KtMTLog}(A)$ holds.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Tiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From short and fast programs, $\mathrm{ktMT}(a) \le i + \lceil \log_2 t \rceil \le 4c \lfloor
+  \log_2 (n+2) \rfloor$. From a logarithmic $\mathrm{kt}$, a machine that attains it has index at
+  most $c \lfloor \log_2 (n+2) \rfloor$ and a clock below $2^{c \lfloor \log_2 (n+2) \rfloor}$,
+  which is at most $(n+2)^c$.
+\end{proof}
+
+\begin{theorem}[Capacity of the time channel, in a counting model]
+  \label{thm:information-time-channel}
+  \lean{Sagitta.Map.Informacion.Tiempo.capacidad_canal_tiempo}
+  \leanok
+  Let $n, T \in \mathbb{N}$ and $f : \mathrm{Fin}(2^n) \to \mathbb{N}$ be injective with $f(m) \le T$
+  for every $m$. Then $2^n \le T + 1$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Tiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Corestrict $f$ to $\mathrm{Fin}(T + 1)$ and compare cardinalities of an injection.
+\end{proof}
+
+\begin{theorem}[Search in order sends a word as its running time, in a counting model]
+  \label{thm:information-search-encodes}
+  \lean{Sagitta.Map.Informacion.Tiempo.busqueda_codifica}
+  \leanok
+  \uses{thm:information-time-channel}
+  For $n \in \mathbb{N}$ and a verifier $V : \mathrm{Fin}(2^n) \to \mathrm{Bool}$, let
+  $\mathrm{tiempoBusqueda}(V)$ be the number of candidates tried when the candidates $0, 1, \dots$
+  are tried in order, extended by false outside the range, until the first one that $V$ accepts
+  (with fuel $2^n$). Then the map $w \mapsto \mathrm{tiempoBusqueda}(x \mapsto [x = w])$ on
+  $\mathrm{Fin}(2^n)$ is injective, and for every $w$ its value is $w + 1$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Tiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The search stops exactly after the first accepted candidate, which for the verifier of equality to
+  $w$ is $w$ itself, so the number of candidates tried is $w + 1$; injectivity follows.
+\end{proof}
+
+\section{Determinant and permanent modulo two}
+\label{sec:information-det-perm}
+
+\begin{theorem}[The determinant equals the permanent over the integers modulo two]
+  \label{thm:information-det-perm}
+  \lean{Sagitta.Map.Informacion.Tiempo.det_eq_permanent_zmod2}
+  \leanok
+  Let $m$ be a finite type with decidable equality and $M$ a matrix over $\mathbb{Z}/2\mathbb{Z}$
+  indexed by $m \times m$. Then $\det M = \mathrm{perm}\, M$.
+  \source{\cite{Valiant79}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Informacion/Tiempo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Expand both as sums over permutations; the sign of a permutation is $1$ or $-1$ and $-1 = 1$ in
+  characteristic two, so the terms agree.
+\end{proof}
+
+\section{Boxes and pipes}
+\label{sec:information-box}
+
+The model is the black box of Section~\ref{sec:information-work}, with the leaves of a tree of
+choices. Let $\iota$ and $\eta$ be finite types. An oracle $f : \iota \times \eta \to \mathrm{Bool}$
+has the subtree of $q \in \iota$ as its leaves $(q, y)$, and $\mathrm{hayDebajo}(f, q)$ says
+that some leaf $(q, y)$ of the subtree is true. A box is a map $\mathrm{caja}$ from oracles to
+$\mathrm{Fin}(s) \to \mathrm{Bool}$, with no cost and no knowledge of the query that will be asked.
+A run for the query $q$ is a query algorithm $R(q)$ over $\mathrm{Fin}(s) \oplus (\iota \times
+\eta)$ that reads a bit of the box or a leaf at cost one.
+
+\begin{definition}[A run that answers from a box, and that reads at most $t$; own runs]
+  \label{def:information-box-run}
+  \lean{Sagitta.Map.Tiempo.PlanoCaja.Responde, Sagitta.Map.Tiempo.PlanoCaja.Lee, Sagitta.Map.Tiempo.CanoProducto.Propia}
+  \leanok
+  \uses{def:information-filling}
+  For $\mathrm{caja}$ and $R$ as above, $\mathrm{Responde}(\mathrm{caja}, R)$ says: for every $f$ and
+  every $q$, the answer of $R(q)$ on the combined oracle that reads the box
+  $\mathrm{caja}(f)$ on the left and $f$ on the right is $\mathrm{hayDebajo}(f, q)$. For
+  $t \in \mathbb{N}$, $\mathrm{Lee}(R, t)$ says that for every $q$ and every combined oracle $g$, the
+  cost of $R(q)$ on $g$ is at most $t$. $\mathrm{Propia}(R)$ says that for every $q$, every $g$ and
+  every leaf $p$ read by $R(q)$ on $g$, $p$ belongs to the subtree $q$, that is, $p_1 = q$.
+  \own{}
+  \leanfile{Sagitta/Map/PlanoCaja.lean}
+\end{definition}
+
+\begin{theorem}[Lower bound for a static box, in a black-box model]
+  \label{thm:information-static-box}
+  \lean{Sagitta.Map.Tiempo.PlanoCaja.cota_caja_estatica}
+  \leanok
+  \uses{def:information-box-run}
+  Let $\iota, \eta$ be finite types, $s, t \in \mathbb{N}$, $\mathrm{caja} : (\iota \times \eta \to
+  \mathrm{Bool}) \to \mathrm{Fin}(s) \to \mathrm{Bool}$ and $R : \iota \to \text{query
+  algorithm over } \mathrm{Fin}(s) \oplus (\iota \times \eta)$. Assume $\mathrm{Responde}(\mathrm{caja},
+  R)$ and $\mathrm{Lee}(R, t)$. Then $(|\iota| - s) \cdot |\eta| \le 2^s \cdot |\iota| \cdot t$,
+  with the subtraction of natural numbers.
+  \own{}
+  \leanfile{Sagitta/Map/PlanoCaja.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Let $Z$ be the set of leaves read by some run on the zero oracle with some content of the box;
+  it has at most $2^s |\iota| t$ elements. A subtree with all its leaves in $Z$ is saturated, and in
+  every other subtree there is a leaf outside $Z$; putting the ones only on such leaves, no run sees
+  a one, so the box alone has to say which of the unsaturated subtrees are full, which takes
+  $2^{\text{unsaturated}} \le 2^s$ contents.
+\end{proof}
+
+\begin{theorem}[Product form of the bound for a box, with own runs, in a black-box model]
+  \label{thm:information-product-form}
+  \lean{Sagitta.Map.Tiempo.CanoProducto.forma_producto}
+  \leanok
+  \uses{def:information-box-run}
+  Under the hypotheses of the previous theorem, assume also $\mathrm{Propia}(R)$, $t \le |\eta|$ and
+  $0 < |\eta|$. Then, in the real numbers, $|\iota| \cdot (1 - t / |\eta|) \le s$.
+  \own{}
+  \leanfile{Sagitta/Map/CanoProducto.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For own runs the count of the previous argument gives $(2|\eta| - t)^{|\iota|} \le 2^s
+  |\eta|^{|\iota|}$ in the natural numbers; take logarithms and use $\log (1 + x) \ge x \log 2$ for
+  $x \in [0, 1]$.
+\end{proof}
+
+\section{Description gives no lower bound}
+\label{sec:information-descriptive}
+
+\begin{theorem}[Charging the description at each step does not leave polynomial time, in a cost model]
+  \label{thm:information-description-poly}
+  \lean{Sagitta.Map.Tiempo.CotaDescriptiva.descripcion_no_saca_de_pol}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.Pol
+  Let $L \in \mathbb{N}$ and $t, S : \mathbb{N} \to \mathbb{N}$ with $t \in \mathrm{Pol}$ and
+  $S(n) \le t(n)$ for every $n$, where $\mathrm{Pol}$ is the set of functions $f$ with
+  $f(n) \le c (n+1)^k$ for all $n$ for some $c, k$. Let $\mathrm{costoReal}(L, t, S)(n) = t(n)
+  (L + S(n))$, a declared cost of $t(n)$ steps that each read a program of $L$ bits and a state of
+  $S(n)$ bits. Then $\mathrm{costoReal}(L, t, S) \in \mathrm{Pol}$.
+  \own{}
+  \leanfile{Sagitta/Map/CotaDescriptiva.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The cost is at most $t(n) (L + t(n))$, a product and a sum of members of $\mathrm{Pol}$, and
+  $\mathrm{Pol}$ is closed downward.
+\end{proof}
+
+\section{Blum speed-up}
+\label{sec:information-blum}
+
+The cost in this section is $\mathrm{cost}(c, n)$, the least \texttt{evaln} budget with which the
+code $c$ halts on $n$ (a measure of Blum, not machine time). A code $c$ \emph{computes} $f$ when
+$c$ on every $n$ halts with value $f(n)$. For functions $g, h : \mathbb{N} \to \mathbb{N}$,
+$g = O(h)$ means that there are $C, N$ with $g(n) \le C h(n)$ for all $n \ge N$.
+
+\begin{definition}[Speed-up for a rate $r$, on codes of Mathlib]
+  \label{def:information-speedup}
+  \lean{Sagitta.Map.Tiempo.AceleracionBlum.Computa, Sagitta.Map.Tiempo.AceleracionBlum.TieneAceleracion}
+  \leanok
+  For $r : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ and $f : \mathbb{N} \to \mathbb{N}$,
+  $\mathrm{TieneAceleracion}(r, f)$ says: some code computes $f$, and for every code $i$ that
+  computes $f$ there is a code $j$ that computes $f$ and a bound $N$ with
+  $r(n, \mathrm{cost}(j, n)) \le \mathrm{cost}(i, n)$ for all $n \ge N$.
+  \source{\cite{Blum67}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/AceleracionBlum.lean}
+\end{definition}
+
+\begin{theorem}[A function with speed-up has no optimal program, on codes of Mathlib]
+  \label{thm:information-blum-sin-optimo}
+  \lean{Sagitta.Map.Tiempo.AceleracionBlum.sin_optimo}
+  \leanok
+  \uses{def:information-speedup}
+  Let $r : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ and $f : \mathbb{N} \to \mathbb{N}$ with
+  $(n + 1) x \le r(n, x)$ for all $n, x$, and assume $\mathrm{TieneAceleracion}(r, f)$. Then there
+  is no code $i$ that computes $f$ such that for every code $j$ that computes $f$,
+  $\mathrm{cost}(i, \cdot) = O(\mathrm{cost}(j, \cdot))$.
+  \source{\cite{Blum67}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/AceleracionBlum.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From a program $i$, speed-up with the rate bounded below by $(n+1)x$ gives a program $j$ whose
+  cost is negligible against that of $i$; together with $\mathrm{cost}(j, \cdot) = O(\mathrm{cost}(i,
+  \cdot))$ negligibility forces $\mathrm{cost}(j, n) = 0$ from some point on, but the cost of a
+  halting code exceeds its input.
+\end{proof}
+
+\begin{theorem}[Existence of a function with speed-up for every computable rate, on codes of Mathlib]
+  \label{thm:information-blum-exists}
+  \lean{Sagitta.Map.Tiempo.BlumExiste.blum}
+  \leanok
+  \uses{def:information-speedup}
+  Let $r : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ be computable as a function of two variables.
+  Then there is $f : \mathbb{N} \to \mathbb{N}$ with $f(n) \le 1$ for all $n$, computable, and
+  $\mathrm{TieneAceleracion}(r, f)$.
+  \source{\cite{Blum67}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/BlumExiste.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A diagonalization with cancellation, built with the recursion theorem of Mathlib and the
+  s-m-n theorem; the cost of each level is measured by an unbounded search instead of being bounded
+  from the syntax. The case of a monotone rate gives the general one through its monotone envelope.
+\end{proof}
+
+\section{The cut of costs}
+\label{sec:information-cut}
+
+\begin{theorem}[A function whose programs form a strict ladder with unbounded codes, on codes of Mathlib]
+  \label{thm:information-irrational-cut}
+  \lean{Sagitta.Map.Tiempo.CorteRacional.existe_irracional}
+  \leanok
+  \uses{thm:information-blum-exists}
+  There is a computable $f : \mathbb{N} \to \mathbb{N}$ with $f(n) \le 1$ for all $n$ and a sequence
+  of codes $s : \mathbb{N} \to \text{codes}$ such that every $s_k$ computes $f$,
+  $\mathrm{cost}(s_{k+1}, \cdot) \in o(\mathrm{cost}(s_k, \cdot))$ for every $k$, and for every $m
+  \in \mathbb{N}$ there is $k$ with $m < \mathrm{encode}(s_k)$. Here $g \in o(h)$ means that for
+  every $c$ there is $N$ with $c \cdot g(n) \le h(n)$ for all $n \ge N$, and $\mathrm{encode}$ is the
+  natural number that Mathlib assigns to a code.
+  \own{}
+  \leanfile{Sagitta/Map/CorteRacional.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take the function of Blum speed-up for the linear rate. The ladder descends from any program; its
+  costs are positive and strictly decreasing in the order of $o$, so the programs are pairwise
+  different, and there are finitely many codes below any bound.
+\end{proof}
+
+\begin{theorem}[Levin's search is below every rung of a ladder of solvers, with a free verifier]
+  \label{thm:information-levin-below}
+  \lean{Sagitta.Map.Tiempo.CorteRacional.levin_en_O}
+  \leanok
+  \uses{thm:information-closed-law}
+  Let $V : \mathbb{N} \to \mathbb{N} \to \mathrm{Bool}$, $i : \mathbb{N} \to \mathbb{N}$ and
+  $t : \mathbb{N} \to \mathbb{N} \to \mathbb{N}$ with $1 \le t(k, x)$ for all $k, x$, and assume
+  that for all $k, x$ there is $y$ with $\mathrm{correr}(i(k), t(k, x), x) = \mathrm{some}\ y$ and
+  $V(x, y) = \mathrm{true}$. Then for every $k$, $x \mapsto \mathrm{costoLevin}(V, x)$ is
+  $O(x \mapsto t(k, x))$.
+  \own{}
+  \leanfile{Sagitta/Map/CorteRacional.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For each $k$ and $x$, Levin's bound for one program gives $\mathrm{costoLevin}(V, x) < 8 \cdot
+  2^{i(k)} t(k, x)$, so the constant is $8 \cdot 2^{i(k)}$.
+\end{proof}
+
+\section{Writing an index}
+\label{sec:information-index}
+
+\begin{theorem}[Writing one of $m$ cases takes at least $\lceil \log_k m \rceil$ symbols]
+  \label{thm:information-write-index}
+  \lean{Sagitta.Map.Tiempo.EscalaLog.codificar_log}
+  \leanok
+  Let $m, k, \ell \in \mathbb{N}$ and $e : \mathrm{Fin}(m) \to (\mathrm{Fin}(\ell) \to
+  \mathrm{Fin}(k))$ be injective. Then $\lceil \log_k m \rceil \le \ell$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/EscalaLog.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An injection between finite types gives $m \le k^\ell$ by cardinality, and the ceiling of the
+  logarithm is the least exponent with that property.
+\end{proof}
