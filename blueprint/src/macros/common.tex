@@ -39,3 +39,28 @@
 \newcommand{\notours}[1]{\par\smallskip\noindent\textit{Not this project's work.} Copied without
   modification from #1 (repository and commit in \texttt{VENDORED.md}), under its Apache-2.0
   license.}
+
+% More classes, for the map.
+\newcommand{\cL}{\mathsf{L}}
+\newcommand{\cNL}{\mathsf{NL}}
+\newcommand{\cEXP}{\mathsf{EXP}}
+\newcommand{\cNEXP}{\mathsf{NEXP}}
+\newcommand{\cBPP}{\mathsf{BPP}}
+\newcommand{\cPH}{\mathsf{PH}}
+\newcommand{\cPpoly}{\mathsf{P}/\mathrm{poly}}
+\newcommand{\cTFNP}{\mathsf{TFNP}}
+\newcommand{\cPLS}{\mathsf{PLS}}
+\newcommand{\cconP}{\mathsf{coNP}}
+\newcommand{\SPACE}{\mathsf{SPACE}}
+\newcommand{\NSPACE}{\mathsf{NSPACE}}
+\newcommand{\NTIME}{\mathsf{NTIME}}
+\newcommand{\KC}{\mathrm{K}}
+
+% Entries of the map. Where the Lean file is; and, next to \own, what kind of entry it is when it
+% is not a result: a tool for other entries, or the record of an attempt.
+\newcommand{\leanfile}[1]{\par\smallskip\noindent\textit{Where.}
+  \href{https://github.com/julatec/sagitta/blob/main/#1}{\texttt{#1}}}
+\newcommand{\infrastructure}{\par\smallskip\noindent\textit{Role.} Infrastructure: it supports
+  other entries and is not a result in itself.}
+\newcommand{\exploration}{\par\smallskip\noindent\textit{Role.} Exploration: the record of an
+  attempt, kept as it was left.}

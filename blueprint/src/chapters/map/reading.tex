@@ -1,0 +1,45 @@
+% Opens the second part: what the map is and how to read its entries.
+% Labels of this file begin with kind:reading.
+\chapter{How to read the map}
+\label{chap:reading}
+
+The \emph{map} is the rest of the Lean development of this repository: the library
+\texttt{SagittaMap} (\texttt{Sagitta/Map}, namespace \texttt{Sagitta.Map}). It is where the ideas
+of the arrow were tried before the chain of Part~I was written down, and it keeps what was
+formalized on the way. The arrow does not import the map: nothing in Part~I depends on an entry of
+this part.
+
+\textbf{Language.} The identifiers and the comments of the map are in Spanish, as they were
+written. Each entry of this part gives the statement in English next to the Lean name, and says in
+which file it is.
+
+\textbf{Kinds of entries.} An entry of the map is one of four kinds, and says which:
+\begin{itemize}
+  \item a result of the literature, formalized again here: it names its \emph{source} and carries a
+    \emph{Fidelity} note;
+  \item a definition or a statement of this project, marked as its \emph{own}, with no literature
+    source;
+  \item \emph{infrastructure}: a tool that other entries use (an encoding, a closure property, a
+    bridge between two libraries), not a result in itself;
+  \item an \emph{exploration}: the record of an attempt, kept as it was left.
+\end{itemize}
+
+\textbf{Models.} Many results of the map are not stated for Turing machines. They are stated in a
+smaller model (a tree of configurations, an abstract cost model, a Boolean circuit, a finite
+structure), in which the argument of the source can be followed without the machine. Each entry
+says in which model its Lean statement lives, and the Fidelity note says how that differs from the
+statement of the source. A result in a smaller model is not the theorem of the source for
+machines, and no entry claims that it is.
+
+\textbf{Fidelity.} A Fidelity note that says ``Not checked against the printed source'' means
+exactly that: the Lean statement was written from the standard form of the result and has not been
+compared with the publication. Chapter~\ref{chap:fidelity} lists the entries with a source and the
+state of each comparison.
+
+\textbf{What a green node means in this part.} The definition or the statement is formalized and
+its proof is complete: the map builds with no \texttt{sorry}. As in Part~I, a named hypothesis is a
+definition of type \texttt{Prop} taken as an explicit argument; a green node for it says that the
+definition exists, not that the hypothesis holds. Chapter~\ref{chap:hypotheses} lists the named
+hypotheses of both parts.
+% The file-by-file check of axioms (#print axioms under #guard_msgs) that Part I describes is not
+% in place for the map yet. When it is, say so here.

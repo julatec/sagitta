@@ -25,8 +25,14 @@ properties. The \emph{Turing-machine layer} (\texttt{Sagitta.Arrow.TM}, library
 cslib-frontier, form such a model, proves Bennett's theorem for them, and derives the
 consequences with the vendored proofs of Cook--Levin, Ladner and search-to-decision.
 
+\textbf{Two parts.} The first part (Chapters~\ref{chap:model} to~\ref{chap:consequences}) is the
+arrow: the chain above, in the two layers just described. The second part is the \emph{map}
+(\texttt{Sagitta.Map}, library \texttt{SagittaMap}): the rest of the Lean development of the
+repository, one chapter per area. Chapter~\ref{chap:reading} says how to read it; what follows in
+this introduction is about the first part.
+
 \textbf{What a green node means.} Every node of the dependency graph is formalized, and every proof
-is complete: the project has no \texttt{sorry}, and each main file ends with
+is complete: the project has no \texttt{sorry}, and each main file of the arrow ends with
 \texttt{\#print axioms} under \texttt{\#guard\_msgs}, so only \texttt{propext},
 \texttt{Classical.choice} and \texttt{Quot.sound} are used. The three named hypotheses --- the
 arrow ($\cP \neq \cNP$), the decision hypothesis and law 2.2 --- are \emph{definitions} of type
@@ -38,10 +44,29 @@ Lean statement differs from the source (another machine model, another encoding,
 stronger form), a \emph{Fidelity} note says how. The laws, the localization and the decision
 hypothesis are this project's own; they are marked as such and have no source.
 
+\bppart{The arrow}
 \input{chapters/model}
 \input{chapters/laws}
 \input{chapters/localization}
 \input{chapters/decision}
 \input{chapters/bennett}
 \input{chapters/consequences}
+\bppart{The map}
+\input{chapters/map/reading}
+\input{chapters/map/machines}
+\input{chapters/map/search}
+\input{chapters/map/dynamics}
+\input{chapters/map/information}
+\input{chapters/map/arithmetic}
+\input{chapters/map/structure}
+\input{chapters/map/barriers}
+\input{chapters/map/physics}
+\input{chapters/map/infinite}
+\input{chapters/map/scales}
+\input{chapters/map/arrow}
+
+\bppart{Hypotheses and fidelity}
+\input{chapters/hypotheses}
+\input{chapters/fidelity}
+
 \input{chapters/references}
