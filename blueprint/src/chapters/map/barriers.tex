@@ -4,4 +4,719 @@
 \chapter{Barriers and symmetries}
 \label{chap:barriers}
 
-This chapter is not written yet.
+This chapter collects results about what a method cannot decide when it does not look at the
+thing that the answer depends on. It has an abstract lemma for techniques that are invariant under
+a relation between worlds, and its instance for proofs that relativize, taken with the
+Baker--Gill--Solovay oracles as a named hypothesis. It has the count of how many bits a symmetry
+saves, with Burnside's identity and canonical forms. It has the fixed-point theorem of Lawvere with
+its corollaries for Cantor's theorem and for halting, in an abstract model of programs. It has the
+conservation of work in black-box query models, where the oracle or the verifier is seen only
+through questions. It ends with two controls on a polynomial that vanishes on the Boolean cube.
+Each entry says in which model its Lean statement lives; none of them is about Turing machines.
+
+
+\section{Invariant techniques decide only invariant statements}
+\label{sec:barriers-curie}
+
+This section is about an abstract set of worlds $W$, a relation $R$ on it, a technique $t : W \to
+V$ that gives a verdict at each world, and a reader $d : V \to \mathrm{Prop}$ that turns the verdict
+into a claim. No machine and no complexity class appear in it.
+
+\begin{definition}[Invariant techniques and techniques that decide a statement, on an abstract set of worlds]
+  \label{def:barriers-invariant-decide}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.Invariante, Sagitta.Map.Borde.CurieDePruebas.CorrectaEn, Sagitta.Map.Borde.CurieDePruebas.Decide}
+  \leanok
+  Let $W$ and $V$ be types, $R$ a relation on $W$, $t : W \to V$, $d : V \to \mathrm{Prop}$ and
+  $\varphi : W \to \mathrm{Prop}$. The technique $t$ is \emph{invariant under $R$} when $t(a) = t(b)$
+  for all $a, b$ with $R(a,b)$. It is \emph{correct for $\varphi$ at $w$}, read with $d$, when
+  $d(t(w))$ holds if and only if $\varphi(w)$ holds. It \emph{decides} $\varphi$ (read with $d$)
+  when it is correct at every $w \in W$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{definition}
+
+\begin{theorem}[An invariant technique that decides a statement decides an invariant statement, on abstract worlds]
+  \label{thm:barriers-curie}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.curie}
+  \leanok
+  \uses{def:barriers-invariant-decide}
+  Let $W, V$ be types, $R$ a relation on $W$, $t : W \to V$ invariant under $R$, $d : V \to
+  \mathrm{Prop}$ and $\varphi : W \to \mathrm{Prop}$, and assume that $t$ decides $\varphi$ with the
+  reader $d$. Then for all $a, b \in W$ with $R(a,b)$, $\varphi(a)$ if and only if $\varphi(b)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The two correctness facts give $d(t(a)) \leftrightarrow \varphi(a)$ and $d(t(b)) \leftrightarrow
+  \varphi(b)$. Rewrite $t(a)$ as $t(b)$ with the invariance and chain the two equivalences.
+\end{proof}
+
+\begin{theorem}[An invariant technique decides no statement that two related worlds separate, on abstract worlds]
+  \label{thm:barriers-curie-no-decide}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.curie_no_decide}
+  \leanok
+  \uses{def:barriers-invariant-decide}
+  Let $W, V$ be types, $R$ a relation on $W$, $t : W \to V$ invariant under $R$, $d : V \to
+  \mathrm{Prop}$ and $\varphi : W \to \mathrm{Prop}$. If $R(a,b)$, $\varphi(a)$ holds and
+  $\varphi(b)$ does not, then $t$ does not decide $\varphi$ with the reader $d$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $t$ decided $\varphi$, it would be correct at $a$ and at $b$. Correctness at $a$ gives
+  $d(t(a))$, invariance turns it into $d(t(b))$, and correctness at $b$ gives $\varphi(b)$, a
+  contradiction.
+\end{proof}
+
+\begin{theorem}[A technique that decides a statement separates the worlds that the statement separates, on abstract worlds]
+  \label{thm:barriers-decide-separa}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.decide_separa}
+  \leanok
+  \uses{def:barriers-invariant-decide}
+  Let $W, V$ be types, $t : W \to V$, $d : V \to \mathrm{Prop}$ and $\varphi : W \to \mathrm{Prop}$,
+  and assume that $t$ decides $\varphi$ with the reader $d$. If $\varphi(a)$ holds and $\varphi(b)$
+  does not, then $t(a) \ne t(b)$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $t(a) = t(b)$, correctness at $a$ gives $d(t(a))$, hence $d(t(b))$, and correctness at $b$
+  gives $\varphi(b)$, a contradiction.
+\end{proof}
+
+\section{Techniques that relativize}
+\label{sec:barriers-relativization}
+
+Here the worlds are oracles. A technique \emph{relativizes} when its verdict is the same at every
+oracle. The first statements are abstract; the last ones use the classes with an oracle of
+cslib-frontier, with the existence of the two oracles of Baker, Gill and Solovay taken as a named
+hypothesis and not proved.
+
+\begin{definition}[Techniques that relativize, on an abstract set of oracles]
+  \label{def:barriers-relativiza}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.Relativiza}
+  \leanok
+  Let $O$ and $V$ be types. A technique $t : O \to V$ \emph{relativizes} when $t(A) = t(B)$ for all
+  $A, B \in O$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{definition}
+
+\begin{theorem}[No technique that relativizes decides a statement that two oracles separate, on abstract oracles]
+  \label{thm:barriers-relativiza-no-decide}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.relativiza_no_decide}
+  \leanok
+  \uses{def:barriers-relativiza, thm:barriers-curie-no-decide}
+  Let $O, V$ be types, $t : O \to V$ a technique that relativizes, $d : V \to \mathrm{Prop}$ and
+  $\varphi : O \to \mathrm{Prop}$. If $\varphi(A)$ holds and $\varphi(B)$ does not, then $t$ does
+  not decide $\varphi$ with the reader $d$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A technique that relativizes is invariant under the relation that is true of every pair, so
+  Theorem~\ref{thm:barriers-curie-no-decide} applies to the pair $A, B$.
+\end{proof}
+
+\begin{definition}[$\mathsf{P}^O = \mathsf{NP}^O$ and proofs that give a statement at every oracle, for a coded set of instances]
+  \label{def:barriers-pnp-oracle}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.PigualNP, Sagitta.Map.Borde.CurieDePruebas.PruebaRelativizada}
+  \leanok
+  % uses-lean: Cslib.Complexity.PWithOracle, Cslib.Complexity.NPWithOracle
+  Let $\alpha$ be a type of instances and $\enc : \alpha \hookrightarrow \mathrm{List}\ \mathrm{Bool}$
+  an injective encoding. For an oracle $O$, a set of lists of bits, $\mathrm{PigualNP}(\enc, O)$
+  says that the class of problems decidable in polynomial time relative to $O$ with respect to
+  $\enc$ equals the class of problems with polynomial-time verifiers relative to $O$ and
+  polynomially long certificates, that is, $\cP^O = \cNP^O$. A statement $S$ about oracles is
+  \emph{proved in a relativizing way} when $S(O)$ holds for every oracle $O$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: there are an oracle with $\mathsf{P}^A = \mathsf{NP}^A$ and an oracle with $\mathsf{P}^B \ne \mathsf{NP}^B$]
+  \label{def:barriers-bgs}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.BakerGillSolovay}
+  \leanok
+  \uses{def:barriers-pnp-oracle}
+  For an injective encoding $\enc : \alpha \hookrightarrow \mathrm{List}\ \mathrm{Bool}$, the
+  hypothesis states that there is an oracle $A$ with $\mathrm{PigualNP}(\enc, A)$ and an oracle
+  $B$ with $\neg\,\mathrm{PigualNP}(\enc, B)$. The existence of such oracles is the result of
+  \cite{BGS75}; here it is a hypothesis that theorems take as an argument and it is not proved.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{definition}
+
+\begin{theorem}[No proof that gives the same answer at every oracle settles $\mathsf{P}^O = \mathsf{NP}^O$, assuming the oracles]
+  \label{thm:barriers-ninguna-relativizada}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.ninguna_relativizada}
+  \leanok
+  \uses{def:barriers-bgs, def:barriers-pnp-oracle, thm:barriers-relativiza-no-decide}
+  Let $\alpha$ be a type and $\enc : \alpha \hookrightarrow \mathrm{List}\ \mathrm{Bool}$ an
+  injective encoding. Assume the hypothesis of Definition~\ref{def:barriers-bgs} for $\enc$. Then
+  it is not the case that $\mathrm{PigualNP}(\enc, O)$ holds for every oracle $O$, and it is not
+  the case that $\neg\,\mathrm{PigualNP}(\enc, O)$ holds for every oracle $O$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take the oracles $A$ and $B$ of the hypothesis. A statement that holds at every oracle is decided
+  by a constant technique, which relativizes, and Theorem~\ref{thm:barriers-relativiza-no-decide}
+  applied to $A$ and $B$ excludes it, once for $\mathrm{PigualNP}$ and once for its negation.
+\end{proof}
+
+\begin{definition}[Classes with an oracle, for a coded set of instances]
+  \label{def:barriers-oracle-classes}
+  \lean{Cslib.Complexity.PWithOracle, Cslib.Complexity.NPWithOracle}
+  \leanok
+  For an oracle language $A$ and an encoding $\enc$ of instances, $\mathrm{PWithOracle}(A, \enc)$ is
+  the set of problems decidable in polynomial time by a machine that may query $A$, and
+  $\mathrm{NPWithOracle}(A, \enc)$ is the set of problems that have a verifier computable in
+  polynomial time with oracle $A$ and polynomially long certificates.
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/Oracle.lean}
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{theorem}[Breaking the symmetry is necessary and not sufficient, on pairs of Booleans]
+  \label{thm:barriers-rompe-pero-no-decide}
+  \lean{Sagitta.Map.Borde.CurieDePruebas.rompe_pero_no_decide}
+  \leanok
+  \uses{def:barriers-relativiza, def:barriers-invariant-decide, thm:barriers-decide-separa}
+  The worlds are the pairs $(x, y)$ of Booleans, $\varphi_j(w)$ is the statement $w_1 = \mathrm{true}$,
+  and the technique is $w \mapsto w_1 \wedge w_2$ (the Boolean conjunction of the two coordinates).
+  Then this technique does not relativize, and for every reader $d : \mathrm{Bool} \to
+  \mathrm{Prop}$ it does not decide $\varphi_j$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/CurieDePruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It takes different values at $(\mathrm{true}, \mathrm{true})$ and $(\mathrm{false},
+  \mathrm{true})$, so it does not relativize. At $(\mathrm{true}, \mathrm{false})$ and
+  $(\mathrm{false}, \mathrm{false})$ it takes the same value while $\varphi_j$ holds at the first
+  and fails at the second, so Theorem~\ref{thm:barriers-decide-separa} excludes deciding.
+\end{proof}
+
+\section{What a symmetry is worth in bits}
+\label{sec:barriers-symmetry}
+
+The setting is a group $G$ acting on a type $\sigma$. The number of orbits and its logarithm
+measure the information of a state up to the symmetry; a canonical form is a function that picks
+a representative in each orbit.
+
+\begin{definition}[Number of orbits, information up to symmetry and canonical forms]
+  \label{def:barriers-orbits}
+  \lean{Sagitta.Map.Informacion.Simetria.orbitas, Sagitta.Map.Informacion.Simetria.infoSalvo, Sagitta.Map.Informacion.Simetria.EsCanonica}
+  \leanok
+  Let a group $G$ act on a type $\sigma$. The number $\mathrm{orbitas}(G, \sigma)$ is the cardinality
+  of the quotient of $\sigma$ by the orbit relation. The \emph{information up to symmetry}
+  $\mathrm{infoSalvo}(G, \sigma)$ is the real number $\log_2 \mathrm{orbitas}(G, \sigma)$. A function
+  $c : \sigma \to \sigma$ is a \emph{canonical form} when $c(g \cdot x) = c(x)$ for all $g \in G$,
+  $x \in \sigma$, and $c(x)$ lies in the orbit of $x$ for all $x$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Simetria.lean}
+\end{definition}
+
+\begin{theorem}[Counting of fixed points over the group elements, for a finite group acting on a finite type]
+  \label{thm:barriers-burnside}
+  \lean{Sagitta.Map.Informacion.Simetria.burnside}
+  \leanok
+  \uses{def:barriers-orbits}
+  Let $G$ be a finite group acting on a finite type $\sigma$. Then
+  \[
+    \sum_{g \in G} \bigl|\{x \in \sigma : g \cdot x = x\}\bigr|
+      = \mathrm{orbitas}(G, \sigma) \cdot |G| .
+  \]
+  This is the identity usually called Burnside's lemma \cite{Burnside}.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Simetria.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the identity of Mathlib for the sum of the sizes of the fixed-point sets, after rewriting
+  the cardinality of the quotient as $\mathrm{orbitas}(G, \sigma)$.
+\end{proof}
+
+\begin{theorem}[A symmetry saves at most $\log_2 |G|$ bits, for a finite group acting on a finite type]
+  \label{thm:barriers-ahorro-acotado}
+  \lean{Sagitta.Map.Informacion.Simetria.ahorro_acotado}
+  \leanok
+  \uses{def:barriers-orbits, thm:barriers-burnside}
+  Let $G$ be a finite group acting on a finite type $\sigma$. Then
+  \[
+    \log_2 |\sigma| - \log_2 |G| \le \mathrm{infoSalvo}(G, \sigma)
+    \quad\text{and}\quad
+    \mathrm{infoSalvo}(G, \sigma) \le \log_2 |\sigma| .
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Simetria.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The upper bound is monotonicity of the logarithm, since there are at most $|\sigma|$ orbits. For
+  the lower bound, the term $g = 1$ of Theorem~\ref{thm:barriers-burnside} gives $|\sigma| \le
+  \mathrm{orbitas}(G, \sigma) \cdot |G|$; take logarithms, with the case of no orbits treated
+  separately.
+\end{proof}
+
+\begin{theorem}[A canonical form erases the bits that the symmetry saves, on a finite type]
+  \label{thm:barriers-canonica-borra}
+  \lean{Sagitta.Map.Informacion.Simetria.canonica_borra}
+  \leanok
+  \uses{def:barriers-orbits}
+  % uses-lean: Sagitta.Map.Informacion.Reversible.bitsBorrados
+  Let $G$ be a group acting on a finite type $\sigma$ with decidable equality, and let $c$ be a
+  canonical form. Let $\mathrm{bitsBorrados}(c, S) = \log_2 |S| - \log_2 |c(S)|$ be the number of
+  bits that the map $c$ erases on a finite set $S$, where $c(S)$ is the image of $S$. Then
+  \[
+    \mathrm{bitsBorrados}(c, \sigma) = \log_2 |\sigma| - \mathrm{infoSalvo}(G, \sigma) .
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Simetria.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The image of a canonical form has exactly $\mathrm{orbitas}(G, \sigma)$ elements: the map
+  from the quotient to the image that sends an orbit to the value of $c$ on it is a bijection.
+  Unfold the definition of the erased bits.
+\end{proof}
+
+\begin{theorem}[A canonical form erases nothing if and only if the action is trivial, on a finite type]
+  \label{thm:barriers-canonica-no-borra}
+  \lean{Sagitta.Map.Informacion.Simetria.canonica_no_borra_iff}
+  \leanok
+  \uses{def:barriers-orbits}
+  % uses-lean: Sagitta.Map.Informacion.Reversible.bitsBorrados
+  Let $G$ be a group acting on a finite type $\sigma$ with decidable equality, and let $c$ be a
+  canonical form. Then $\mathrm{bitsBorrados}(c, \sigma) = 0$ if and only if $g \cdot x = x$ for all
+  $g \in G$ and $x \in \sigma$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Simetria.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The erased bits are zero exactly when $c$ is injective on $\sigma$. If $c$ is injective, then
+  $c(g \cdot x) = c(x)$ gives $g \cdot x = x$. If the action is trivial, then $c(x)$ lies in the
+  orbit $\{x\}$, so $c(x) = x$ and $c$ is injective.
+\end{proof}
+
+\section{Fixed points of a diagonal map, Cantor and halting}
+\label{sec:barriers-lawvere}
+
+The statements are about functions between types: a function $e : A \to A \to B$ is read as a
+family of functions $A \to B$ indexed by $A$. Programs appear only through an abstract type of
+programs with a relation ``$p$ halts on $q$''.
+
+\begin{definition}[A table that represents a function]
+  \label{def:barriers-representa}
+  \lean{Sagitta.Map.Informacion.Repeticiones.Representa}
+  \leanok
+  For $e : A \to A \to B$ and $g : A \to B$, $e$ \emph{represents} $g$ when there is $a \in A$ with
+  $e(a, x) = g(x)$ for all $x \in A$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{definition}
+
+\begin{theorem}[Fixed point for a table that represents its modified diagonal, on functions between types]
+  \label{thm:barriers-lawvere-debil}
+  \lean{Sagitta.Map.Informacion.Repeticiones.lawvere_debil}
+  \leanok
+  \uses{def:barriers-representa}
+  Let $e : A \to A \to B$ and $f : B \to B$. If $e$ represents the function $x \mapsto f(e(x, x))$,
+  then there is $b \in B$ with $f(b) = b$. This is the weak form of the fixed-point theorem of
+  Lawvere \cite{Lawvere69}.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Let $a$ be the row of $e$ that equals the modified diagonal. Then $e(a, a) = f(e(a, a))$, so
+  $e(a, a)$ is a fixed point.
+\end{proof}
+
+\begin{theorem}[Fixed point for a surjective table, on functions between types]
+  \label{thm:barriers-lawvere}
+  \lean{Sagitta.Map.Informacion.Repeticiones.lawvere}
+  \leanok
+  \uses{thm:barriers-lawvere-debil}
+  Let $e : A \to A \to B$ be surjective, as a map from $A$ to the functions $A \to B$, and let
+  $f : B \to B$. Then there is $b \in B$ with $f(b) = b$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the statement of Mathlib, \texttt{Function.exists\_fixed\_point\_of\_surjective}, applied
+  to $e$ and $f$; it also follows from Theorem~\ref{thm:barriers-lawvere-debil}, since a
+  surjection represents every function.
+\end{proof}
+
+\begin{definition}[Hypothesis: the admissible deciders are closed under the program that negates]
+  \label{def:barriers-niega}
+  \lean{Sagitta.Map.Informacion.Repeticiones.Niega, Sagitta.Map.Informacion.Repeticiones.Decide}
+  \leanok
+  Let $P$ be a type of programs, $\mathrm{Para} : P \to P \to \mathrm{Prop}$ a relation (read ``$p$
+  halts on $q$'') and $\mathrm{Adm}$ a property of functions $P \to P \to \mathrm{Bool}$. A function
+  $h$ \emph{decides} $\mathrm{Para}$ when $h(p, q) = \mathrm{true}$ if and only if
+  $\mathrm{Para}(p, q)$, for all $p, q$. The hypothesis $\mathrm{Niega}(\mathrm{Para},
+  \mathrm{Adm})$ says that for every $h$ with $\mathrm{Adm}(h)$ there is $d \in P$ such that, for
+  all $q$, $\mathrm{Para}(d, q)$ holds if and only if $h(q, q) = \mathrm{false}$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{definition}
+
+\begin{theorem}[Halting is undecidable by admissible deciders, in an abstract model of programs, assuming negation is available]
+  \label{thm:barriers-parada-indecidible}
+  \lean{Sagitta.Map.Informacion.Repeticiones.parada_indecidible}
+  \leanok
+  \uses{def:barriers-niega, thm:barriers-lawvere-debil}
+  Let $P$ be a type, $\mathrm{Para} : P \to P \to \mathrm{Prop}$ and $\mathrm{Adm}$ a property of
+  functions $P \to P \to \mathrm{Bool}$. Assume $\mathrm{Niega}(\mathrm{Para}, \mathrm{Adm})$. Then
+  there is no $h$ such that $\mathrm{Adm}(h)$ holds and $h$ decides $\mathrm{Para}$. The argument
+  is the diagonal one of Turing \cite{Turing36}.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Let $h$ be admissible and decide $\mathrm{Para}$, and let $d$ be the program given by the
+  hypothesis. Then the table $h$ represents the function $q \mapsto \neg h(q, q)$ with the row $d$.
+  Boolean negation has no fixed point, and the contrapositive of
+  Theorem~\ref{thm:barriers-lawvere-debil} gives a contradiction.
+\end{proof}
+
+\begin{theorem}[The diagonal word of Cantor is not diagonal for the verifier, on a family of four rivals with words of three bits]
+  \label{thm:barriers-cantor-no-basta}
+  \lean{Sagitta.Map.Informacion.Repeticiones.cantor_no_basta}
+  \leanok
+  % uses-lean: Sagitta.Map.Borde.JugadaDiagonal.Diagonal
+  Let $\mathrm{sal} : \mathrm{Fin}\ 4 \to \mathrm{Fin}\ 3 \to \mathrm{Bool}$ be the function with
+  $\mathrm{sal}(p, i) = \mathrm{true}$ if and only if $p = 3$: the rivals $0, 1, 2$ output the word
+  of three $\mathrm{false}$ and the rival $3$ outputs the word of three $\mathrm{true}$. Let $w :
+  \mathrm{Fin}\ 3 \to \mathrm{Bool}$ be the word of Cantor, $w(i) = \neg\,\mathrm{sal}(i, i)$, where
+  the index $i \in \mathrm{Fin}\ 3$ is read as the rival $i$ of $\mathrm{Fin}\ 4$. Then $w$ is not
+  \emph{diagonal} for $\mathrm{sal}$, where a word $x$ is diagonal when $\mathrm{sal}(p) \ne x$ for
+  every rival $p$.
+  \own{}
+  \leanfile{Sagitta/Map/Informacion/Repeticiones.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The word $w$ has three $\mathrm{true}$, which is the output of the rival $3$. Equality of the two
+  functions on $\mathrm{Fin}\ 3$ is checked case by case.
+\end{proof}
+
+\section{Black-box models: work and information are conserved}
+\label{sec:barriers-blackbox}
+
+The statements of this section are in models where the instance is seen only through questions: an
+oracle $f : \alpha \to \mathrm{Bool}$ on a finite set of options, or a verifier that answers
+questions about a hidden solution. Time is the number of questions. The arguments do not use the
+content of an instance, so they hold relative to any oracle. They are not statements about
+machines and say nothing about $\cP$ against $\cNP$.
+
+\begin{theorem}[Filling a table and then querying it costs at least the number of options, in the query-tree model]
+  \label{thm:barriers-trabajo-se-conserva}
+  \lean{Sagitta.Map.Tiempo.ConservacionTrabajo.trabajo_se_conserva}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.Pregunta, Sagitta.Map.Tiempo.DecideExiste, Sagitta.Map.Tiempo.ConservacionTrabajo.Llenado
+  Let $\alpha$ be a finite type of options and $\tau$ a type of tables. A \emph{query tree} over
+  $\alpha$ either answers a Boolean or asks about an option $i \in \alpha$ and continues according
+  to the answer $f(i)$ of the oracle $f : \alpha \to \mathrm{Bool}$. A \emph{filling} is a tree of
+  the same kind whose leaves hold a table $T \in \tau$; on the oracle $f$ it produces the table
+  $\mathrm{tablaDe}(L, f)$ and asks $\mathrm{costoLl}(L, f)$ questions. Let $L$ be a filling and
+  $Q : \tau \to$ query trees over $\alpha$, and let $\mathrm{encadenar}(L, Q)$ be the query tree
+  that runs $L$ and then $Q(T)$ with the table $T$ obtained. Assume that $\mathrm{encadenar}(L, Q)$
+  decides whether there is a good option, that is, that for every oracle $f$ it answers
+  $\mathrm{true}$ if and only if $f(i) = \mathrm{true}$ for some $i$. Let $\mathbf{0}$ be the oracle
+  that answers $\mathrm{false}$ to every option. Then
+  \[
+    |\alpha| \le \mathrm{costoLl}(L, \mathbf{0}) + \mathrm{costo}\bigl(Q(\mathrm{tablaDe}(L, \mathbf{0})), \mathbf{0}\bigr),
+  \]
+  where $\mathrm{costo}(t, f)$ is the number of questions that $t$ asks on $f$.
+  \own{}
+  \leanfile{Sagitta/Map/ConservacionTrabajo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The cost of the composition on an oracle is the sum of the costs of the two phases. A query tree
+  that decides whether there is a good option asks at least $|\alpha|$ questions on the oracle
+  $\mathbf{0}$, because an option left unasked can be made good without changing the answers.
+\end{proof}
+
+\begin{theorem}[A solver with a short program, a short hint and few queries still searches, against a yes/no verifier]
+  \label{thm:barriers-ley-si-no}
+  \lean{Sagitta.Map.Tiempo.LeyTresMemorias.ley_si_no}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.Resuelve, Sagitta.Map.Tiempo.LeyTresMemorias.igual, Sagitta.Map.Tiempo.LeyTresMemorias.ArbolV
+  Let $P, C, Y$ be finite types with $Y$ of decidable equality, and $L, s, t \in \mathbb{N}$ with
+  $|P| \le 2^L$ and $|C| \le 2^s$. A \emph{query tree} either returns a candidate in $Y$ or asks a
+  query and continues according to the answer. The verifier of a hidden $y \in Y$ answers the query
+  $z$ with $\mathrm{true}$ if and only if $z = y$. Let $A : P \to C \to$ query trees with answers in
+  $\mathrm{Bool}$ and candidates in $Y$, and assume that $A$ \emph{solves in time $t$}: for every
+  $y \in Y$ there are $p \in P$ and $c \in C$ such that the tree $A(p, c)$, run against the
+  verifier of $y$, returns $y$ after at most $t$ queries. Then
+  \[
+    |Y| \le 2^L \cdot 2^s \cdot (t + 1) .
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/LeyTresMemorias.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The $|P| \cdot |C|$ trees cover $Y$ and each one finds at most $t + 1$ hidden solutions, because
+  every answer ``no'' discards a single candidate. A covering lemma then bounds $|Y|$ by the
+  product of the counts, and the bounds on $|P|$ and $|C|$ finish.
+\end{proof}
+
+\begin{theorem}[The cost of one run: time or space, with a yes/no verifier, for automata with a bounded number of states]
+  \label{thm:barriers-ley-cubo}
+  \lean{Sagitta.Map.Tiempo.CuboCostos.ley_cubo}
+  \leanok
+  % uses-lean: Sagitta.Map.Tiempo.CuboCostos.Automata, Sagitta.Map.Tiempo.CuboCostos.ResuelveA, Sagitta.Map.Tiempo.LeyTresMemorias.igual
+  Let $P, C, \sigma, Y$ be finite types with $Y$ of decidable equality, and $L, s, S, t \in
+  \mathbb{N}$ with $|P| \le 2^L$, $|C| \le 2^s$ and $|\sigma| \le 2^S$. An \emph{automaton} with
+  states $\sigma$, queries in $Y$ and answers in $\mathrm{Bool}$ has an initial state, a query for
+  each state, a transition from a state and an answer to a state, and an output $\sigma \to
+  \mathrm{Option}\ Y$; it has no step counter. Let $A : P \to C \to$ automata, and assume that $A$
+  solves with budget $t$ against the yes/no verifier: for every $y \in Y$ there are $p, c$ such that
+  the automaton $A(p, c)$, run from its initial state against the verifier of $y$ with at most $t$
+  queries, outputs $y$. Then
+  \[
+    |Y| \le 2^L \cdot 2^s \cdot \min\bigl(t + 1,\ 2^{S - 1}\bigr),
+  \]
+  where $S - 1$ is the subtraction of natural numbers.
+  \own{}
+  \leanfile{Sagitta/Map/CuboCostos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The $|P| \cdot |C|$ automata cover $Y$ and each one finds at most $\min(t + 1, 2^{S-1})$ hidden
+  solutions, by the lemma that bounds the solutions found by one automaton by the number of
+  queries and by half the number of states. The covering lemma finishes as for
+  Theorem~\ref{thm:barriers-ley-si-no}.
+\end{proof}
+
+\begin{theorem}[Paying for a family of problems: the sizes add up, against a yes/no verifier]
+  \label{thm:barriers-precio-se-paga}
+  \lean{Sagitta.Map.Tiempo.DosCuentas.precio_se_paga}
+  \leanok
+  \uses{thm:barriers-ley-si-no}
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.Resuelve, Sagitta.Map.Tiempo.LeyTresMemorias.igual, Sagitta.Map.Tiempo.LeyTresMemorias.ArbolV
+  For each $m \in \mathbb{N}$ let $Y_m, P_m, C_m$ be finite types, $Y_m$ of decidable equality, and
+  let $L, s, t : \mathbb{N} \to \mathbb{N}$ with $|Y_m| = 2^m$, $|P_m| \le 2^{L(m)}$ and $|C_m| \le
+  2^{s(m)}$. For each $m$ let $A_m : P_m \to C_m \to$ query trees with answers in $\mathrm{Bool}$ and
+  candidates in $Y_m$, and assume that $A_m$ solves in time $t(m)$ against the yes/no verifier, in
+  the sense of Theorem~\ref{thm:barriers-ley-si-no}. Then for every $m$,
+  \[
+    m \le L(m) + \bigl(s(m) + \lceil \log_2 (t(m) + 1) \rceil\bigr),
+  \]
+  where the ceiling of the logarithm is the natural number $\mathrm{clog}_2(t(m) + 1)$.
+  \own{}
+  \leanfile{Sagitta/Map/DosCuentas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Apply the logarithmic form of Theorem~\ref{thm:barriers-ley-si-no} at size $m$ and rewrite
+  $|Y_m| = 2^m$ and the ceiling of the logarithm of a power of two.
+\end{proof}
+
+\begin{theorem}[A program written once pays nothing per instance: bound for a fixed tree with hints, against a yes/no verifier]
+  \label{thm:barriers-una-vez-no-informa}
+  \lean{Sagitta.Map.Tiempo.DosCuentas.una_vez_no_informa, Sagitta.Map.Tiempo.DosCuentas.ResuelveUniforme}
+  \leanok
+  \uses{thm:barriers-ley-si-no}
+  % uses-lean: Sagitta.Map.Tiempo.LeyTresMemorias.igual, Sagitta.Map.Tiempo.LeyTresMemorias.ArbolV
+  Let $C, Y$ be finite types with $Y$ of decidable equality, and $m, s, t \in \mathbb{N}$ with
+  $|Y| = 2^m$ and $|C| \le 2^s$. Let $A : C \to$ query trees with answers in $\mathrm{Bool}$ and
+  candidates in $Y$. Say that $A$ \emph{solves uniformly in time $t$} when for every $y \in Y$ there
+  is $c \in C$ such that $A(c)$, run against the yes/no verifier of $y$, returns $y$ after at most
+  $t$ queries. If $A$ solves uniformly in time $t$, then
+  \[
+    2^m \le 2^s \cdot (t + 1) .
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/DosCuentas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the law of Theorem~\ref{thm:barriers-ley-si-no} with a single program, after rewriting
+  $|Y| = 2^m$.
+\end{proof}
+
+\begin{theorem}[Generating the box and then reading it costs at least the number of leaves, in the query-tree model with a box]
+  \label{thm:barriers-plano-generacion}
+  \lean{Sagitta.Map.Tiempo.PlanoCaja.plano_generacion}
+  \leanok
+  \uses{thm:barriers-trabajo-se-conserva}
+  % uses-lean: Sagitta.Map.Tiempo.ConservacionTrabajo.Llenado, Sagitta.Map.Tiempo.Pregunta
+  Let $\alpha$ be a finite type of leaves, $s \in \mathbb{N}$, and let $L$ be a filling (as in
+  Theorem~\ref{thm:barriers-trabajo-se-conserva}) that produces a table $\mathrm{Fin}\ s \to
+  \mathrm{Bool}$, the \emph{box} of $s$ bits. Let $R$ be a query tree over the disjoint union
+  $\mathrm{Fin}\ s \oplus \alpha$, whose questions read a bit of the box or a leaf of the oracle.
+  Assume that for every oracle $f : \alpha \to \mathrm{Bool}$, $R$ run on the combined oracle that
+  answers the box bits with $\mathrm{tablaDe}(L, f)$ and the leaves with $f$ returns $\mathrm{true}$
+  if and only if $f(i) = \mathrm{true}$ for some $i$. Then, with $\mathbf{0}$ the oracle that answers
+  $\mathrm{false}$ to every leaf,
+  \[
+    |\alpha| \le \mathrm{costoLl}(L, \mathbf{0}) + \mathrm{costo}\bigl(R, \mathrm{Sum.elim}\ (\mathrm{tablaDe}(L, \mathbf{0}))\ \mathbf{0}\bigr),
+  \]
+  where $\mathrm{costo}(R, \cdot)$ counts all questions of $R$, reads of the box included. The bound
+  does not depend on $s$.
+  \own{}
+  \leanfile{Sagitta/Map/PlanoCaja.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Fixing the box turns $R$ into a query tree over $\alpha$ that counts only the reads of the
+  oracle, and the conservation of work for the filling and that tree gives the bound with the
+  reads of $f$ only. The number of questions of the fixed tree is at most that of $R$.
+\end{proof}
+
+\begin{theorem}[Whoever solves without the seed pays the information of the creator, against a yes/no verifier]
+  \label{thm:barriers-paga-la-informacion}
+  \lean{Sagitta.Map.Tiempo.HuevoGallina.paga_la_informacion, Sagitta.Map.Tiempo.HuevoGallina.ResuelveFamilia}
+  \leanok
+  \uses{thm:barriers-ley-si-no}
+  % uses-lean: Sagitta.Map.Tiempo.HuevoGallina.Creador, Sagitta.Map.Tiempo.LeyTresMemorias.igual, Sagitta.Map.Tiempo.LeyTresMemorias.ArbolV
+  Let $K$ be a creator on a type $Y$ of decidable equality: a number $r$ of random bits, a function
+  $g : \mathrm{Fin}\ (2^r) \to Y$ from the seed to the hidden solution, and a declared cost. Assume
+  that $g$ is injective. Let $C$ be a finite type with $|C| \le 2^s$ and $A : C \to$ query trees with
+  answers in $\mathrm{Bool}$ and candidates in $Y$. Assume that $A$ \emph{solves the family of the
+  creator in time $t$}: for every seed $\sigma$ there is $c \in C$ such that $A(c)$, run against the
+  yes/no verifier of $g(\sigma)$, returns $g(\sigma)$ after at most $t$ queries. Then
+  \[
+    2^r \le 2^s \cdot (t + 1) .
+  \]
+  \own{}
+  \leanfile{Sagitta/Map/HuevoGallina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Each hint finds at most $t + 1$ hidden solutions, so the image of $g$ has at most $2^s (t + 1)$
+  elements; since $g$ is injective, the image has $2^r$ elements.
+\end{proof}
+
+\section{Two controls on a polynomial that vanishes on the cube}
+\label{sec:barriers-controls}
+
+These two statements record a check of a proof method on a polynomial that is zero at every point
+of $\{0,1\}^n$ and not zero as a polynomial. They are explorations, and they say nothing about a
+lower bound.
+
+\begin{definition}[Variables in blocks, the part that is linear in each block and the polynomial $p$]
+  \label{def:barriers-linear-part}
+  \lean{Sagitta.Map.Borde.BasuraEnElCubo.Var, Sagitta.Map.Borde.BasuraEnElCubo.gradoBloque, Sagitta.Map.Borde.BasuraEnElCubo.LinealPorBloques, Sagitta.Map.Borde.BasuraEnElCubo.parteLineal, Sagitta.Map.Borde.BasuraEnElCubo.p}
+  \leanok
+  Let $R$ be a commutative ring and $k, r \in \mathbb{N}$. The variables are the pairs $(a, \rho)$ with
+  $a \in \mathrm{Fin}\ (k+1)$ (the block) and $\rho \in \mathrm{Fin}\ (r+1)$ (the position). The degree
+  of a monomial in the block $a$ is the sum of its exponents on the variables of that block. For a
+  polynomial $q$, $\mathrm{parteLineal}(q)$ is the sum of the terms of $q$ whose monomial has degree
+  exactly one in every block. The polynomial $p$ over $R$ is
+  \[
+    p = (x_{0,0}^2 - x_{0,0}) \cdot \prod_{a \ne 0} x_{a,0} .
+  \]
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/Borde/BasuraEnElCubo.lean}
+\end{definition}
+
+\begin{theorem}[The linear part by blocks is not a function of the values on the cube, for polynomials over a nontrivial commutative ring]
+  \label{thm:barriers-parte-lineal-no-funcional}
+  \lean{Sagitta.Map.Borde.BasuraEnElCubo.parteLineal_no_funcional}
+  \leanok
+  \uses{def:barriers-linear-part}
+  Let $R$ be a nontrivial commutative ring and $k, r \in \mathbb{N}$. Then there are polynomials
+  $q_1, q_2$ in the variables of Definition~\ref{def:barriers-linear-part} over $R$ such that
+  $q_1(x) = q_2(x)$ for every $x$ with every coordinate equal to $0$ or $1$, and
+  $\mathrm{parteLineal}(q_1) \ne \mathrm{parteLineal}(q_2)$.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/Borde/BasuraEnElCubo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take $q_1 = p$ and $q_2 = 0$. The polynomial $p$ vanishes on the cube because $x^2 - x = 0$ for
+  $x \in \{0, 1\}$. Its linear part by blocks is $-\prod_a x_{a,0}$, which is not zero, while the
+  linear part of $0$ is $0$.
+\end{proof}
+
+\begin{definition}[Agreement on a grid and the grid $\{0,1,2\}$]
+  \label{def:barriers-grid}
+  \lean{Sagitta.Map.Borde.Malla.malla3, Sagitta.Map.Borde.Malla.CoincidenEn}
+  \leanok
+  For a commutative ring $R$ with decidable equality, $\mathrm{malla3}(R)$ is the finite set
+  $\{0, 1, 2\}$ of $R$. For a finite set $S \subseteq R$ and two polynomials $f, g$ over $R$ in the
+  variables of a type $\sigma$, $\mathrm{CoincidenEn}(S, f, g)$ says that $f(x) = g(x)$ for every $x
+  : \sigma \to R$ with $x_i \in S$ for all $i$.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/Borde/Malla.lean}
+\end{definition}
+
+\begin{theorem}[The grid $\{0,1,2\}$ separates $p$ from $0$, which the cube does not, over a domain of characteristic zero]
+  \label{thm:barriers-la-malla-separa}
+  \lean{Sagitta.Map.Borde.Malla.la_malla_separa}
+  \leanok
+  \uses{def:barriers-linear-part, def:barriers-grid}
+  Let $R$ be an integral domain of characteristic zero with decidable equality, and $k, r \in
+  \mathbb{N}$. Then $p(x) = 0$ for every $x$ with every coordinate equal to $0$ or $1$, and it is not
+  the case that $p(x) = 0$ for every $x$ with every coordinate in $\{0, 1, 2\}$.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/Borde/Malla.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The first part is the vanishing of $p$ on the cube. For the second, evaluate $p$ at the point with
+  every coordinate equal to $2$: the value is a power of $2$, which is not zero in a domain of
+  characteristic zero.
+\end{proof}
+
+\begin{theorem}[No finite grid is enough, over an infinite integral domain]
+  \label{thm:barriers-ninguna-malla-basta}
+  \lean{Sagitta.Map.Borde.Malla.ninguna_malla_basta}
+  \leanok
+  \uses{def:barriers-grid}
+  Let $\sigma$ be a finite type and $R$ an infinite integral domain. For every finite set $S
+  \subseteq R$ and every $i \in \sigma$ there are polynomials $q_1 \ne q_2$ over $R$ in the
+  variables of $\sigma$ with $\mathrm{CoincidenEn}(S, q_1, q_2)$. The statement uses the
+  combinatorial Nullstellensatz of \cite{Alon99}, as formalized in Mathlib.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/Borde/Malla.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The polynomial $\prod_{s \in S} (x_i - s)$ is not zero, because a value of $x_i$ outside $S$
+  makes it nonzero, and it vanishes at every point of the grid $S^\sigma$. Take it as $q_1$ and take
+  $q_2 = 0$.
+\end{proof}
