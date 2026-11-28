@@ -4,4 +4,1400 @@
 \chapter{Bounded arithmetic and logic}
 \label{chap:arithmetic}
 
-This chapter is not written yet.
+This chapter has the formalization of Buss's bounded arithmetic $S^1_2$ and of the results around it.
+The language, the axioms BASIC, the $\Sigma^b_1$ formulas and the theory $S^1_2$ are written on the
+first-order logic of Mathlib, and so are $T^1_2$ and $T^0_2$. A sequent calculus with PIND as a rule
+and the completeness theorem for it come next. Then come the Cobham functions, the witnessing theorem
+and the theorem of Parikh, with the results about polynomial time that follow from them. The last
+sections are about the statements that $S^1_2$ and $T^1_2$ do not prove if some conjecture holds,
+about a propositional version of $S^1_2$ in the system of Frege, and about proof systems. Many results
+are stated in a model smaller than the one of the source (a sequent calculus, the theory of Cobham
+programs, an abstract proof system); each entry says which.
+
+\section{The theory $S^1_2$}
+\label{sec:arithmetic-s12}
+
+The theory $S^1_2$ is given as a class of structures of the language of bounded arithmetic, and also
+as a theory of Mathlib. The two are shown to have the same models.
+
+\begin{definition}[The language of bounded arithmetic and the axioms BASIC]
+  \label{def:arithmetic-basic}
+  \lean{Sagitta.Map.Acotada.L, Sagitta.Map.Acotada.EsModeloBASIC}
+  \leanok
+  \own{}
+  \infrastructure{}
+  The language $L$ has the constant $0$, the unary function symbols $S$, $|x|$ and $\lfloor x/2
+  \rfloor$, the binary function symbols $+$, $\cdot$ and $x \# y$, and the binary relation symbol
+  $\le$. Write $1$ for $S0$ and $2x$ for $(SS0)\cdot x$. An $L$-structure satisfies BASIC when, for
+  all its elements $x, y, z, u, v$, it satisfies the following $32$ clauses.
+  \begin{enumerate}
+    \item $y \le x \to y \le Sx$.
+    \item $x \ne Sx$.
+    \item $0 \le x$.
+    \item $(x \le y \wedge x \ne y) \leftrightarrow Sx \le y$.
+    \item $x \ne 0 \to 2x \ne 0$.
+    \item $y \le x \vee x \le y$.
+    \item $x \le y \to y \le x \to x = y$.
+    \item $x \le y \to y \le z \to x \le z$.
+    \item $|0| = 0$.
+    \item $x \ne 0 \to |2x| = S|x| \wedge |S(2x)| = S|x|$.
+    \item $|1| = 1$.
+    \item $x \le y \to |x| \le |y|$.
+    \item $|x \# y| = S(|x| \cdot |y|)$.
+    \item $0 \# y = 1$.
+    \item $x \ne 0 \to 1 \# (2x) = 2(1 \# x) \wedge 1 \# S(2x) = 2(1 \# x)$.
+    \item $x \# y = y \# x$.
+    \item $|x| = |y| \to x \# z = y \# z$.
+    \item $|x| = |u| + |v| \to x \# y = (u \# y)\cdot(v \# y)$.
+    \item $x \le x + y$.
+    \item $x \le y \to x \ne y \to S(2x) \le 2y \wedge S(2x) \ne 2y$.
+    \item $x + y = y + x$.
+    \item $x + 0 = x$.
+    \item $x + Sy = S(x + y)$.
+    \item $(x + y) + z = x + (y + z)$.
+    \item $x + y \le x + z \leftrightarrow y \le z$.
+    \item $x \cdot 0 = 0$.
+    \item $x \cdot Sy = x \cdot y + x$.
+    \item $x \cdot y = y \cdot x$.
+    \item $x \cdot (y + z) = x \cdot y + x \cdot z$.
+    \item $1 \le x \to (x \cdot y \le x \cdot z \leftrightarrow y \le z)$.
+    \item $x \ne 0 \to |x| = S|\lfloor x/2 \rfloor|$.
+    \item $x = \lfloor y/2 \rfloor \leftrightarrow (2x = y \vee S(2x) = y)$.
+  \end{enumerate}
+  \leanfile{Sagitta/Map/Acotada.lean}
+\end{definition}
+
+\begin{definition}[Sharply bounded, $\Sigma^b_1$ and $\Pi^b_1$ formulas]
+  \label{def:arithmetic-sigma1}
+  \lean{Sagitta.Map.Acotada.EsAguda, Sagitta.Map.Acotada.EsSigma1, Sagitta.Map.Acotada.EsPi1}
+  \leanok
+  \uses{def:arithmetic-basic}
+  \own{}
+  \infrastructure{}
+  Write $\forall x \le t\, \varphi$ for $\forall x (x \le t \to \varphi)$ and $\exists x \le t\,
+  \varphi$ for $\exists x (x \le t \wedge \varphi)$. The \emph{sharply bounded} formulas of $L$ are
+  the smallest class that contains $\bot$ and the atomic formulas, is closed under implication, and
+  is closed under $\forall x \le |t|$ and $\exists x \le |t|$ for every term $t$. The classes of
+  $\Sigma^b_1$ and $\Pi^b_1$ formulas are defined together. The $\Sigma^b_1$ formulas are the
+  smallest class such that: (a) it contains the sharply bounded formulas; (b) it is closed under
+  $\exists x \le t$ and under $\forall x \le |t|$, for every term $t$; (c) it is closed under
+  $\wedge$ and $\vee$; (d) if $B$ is $\Pi^b_1$ and $A$ is $\Sigma^b_1$, then $\neg B$ and $B \to A$
+  are $\Sigma^b_1$. The $\Pi^b_1$ formulas are the smallest class such that: (a) it contains the
+  sharply bounded formulas; (b) it is closed under $\forall x \le t$ and under $\exists x \le |t|$;
+  (c) it is closed under $\wedge$ and $\vee$; (d) if $B$ is $\Sigma^b_1$ and $A$ is $\Pi^b_1$, then
+  $\neg B$ and $B \to A$ are $\Pi^b_1$.
+  \leanfile{Sagitta/Map/Acotada.lean}
+\end{definition}
+
+\begin{definition}[Models of $S^1_2$]
+  \label{def:arithmetic-s12-model}
+  \lean{Sagitta.Map.Acotada.EsModeloS12}
+  \leanok
+  \uses{def:arithmetic-basic, def:arithmetic-sigma1}
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  An $L$-structure $M$ is a model of $S^1_2$ when it satisfies BASIC and the induction on the
+  length (PIND) for $\Sigma^b_1$ formulas: for every $k$, every $\Sigma^b_1$ formula $\varphi(x,
+  p_1, \dots, p_k)$ and all $p \in M^k$, if $\varphi(0, p)$ holds and $\varphi(\lfloor x/2 \rfloor,
+  p) \to \varphi(x, p)$ holds for every $x \in M$, then $\varphi(x, p)$ holds for every $x \in M$.
+  \leanfile{Sagitta/Map/Acotada.lean}
+\end{definition}
+
+\begin{theorem}[The standard structure is a model of $S^1_2$]
+  \label{thm:arithmetic-nat-s12}
+  \lean{Sagitta.Map.Acotada.nat_esModeloS12}
+  \leanok
+  \uses{def:arithmetic-s12-model}
+  Let $\mathbb{N}$ be the $L$-structure in which $|x|$ is the number of binary digits of $x$, $x \#
+  y = 2^{|x| \cdot |y|}$, $\lfloor x/2 \rfloor$ is the integer part of $x/2$, and the other symbols
+  have their usual meaning. Then $\mathbb{N}$ is a model of $S^1_2$.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Acotada.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Each of the $32$ clauses of BASIC is checked in $\mathbb{N}$ by simplification and \texttt{omega}.
+  PIND holds for every formula, by strong induction on $x$, because $\lfloor x/2 \rfloor < x$ when $x
+  \ne 0$.
+\end{proof}
+
+\begin{theorem}[$S^1_2$ as a theory of Mathlib has the same models]
+  \label{thm:arithmetic-s12-theory}
+  \lean{Sagitta.Map.Acotada.modelo_S12_iff}
+  \leanok
+  \uses{def:arithmetic-s12-model}
+  Let $S^1_2$ also denote the theory of $L$ made of the $32$ axioms of BASIC and, for each
+  $\Sigma^b_1$ formula $\varphi(x, p_1, \dots, p_k)$, the universal closure of the PIND axiom for
+  $\varphi$. For every $L$-structure $M$, $M$ satisfies this theory if and only if $M$ is a model of
+  $S^1_2$ in the sense of Definition~\ref{def:arithmetic-s12-model}.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Teoria.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The theory is a union of the axioms of BASIC and the PIND axioms. The BASIC part is the
+  equivalence for BASIC, and for each PIND axiom, realizing its closure is the clause of the
+  definition.
+\end{proof}
+
+\section{$T^1_2$, $T^0_2$ and their inclusions with $S^1_2$}
+\label{sec:arithmetic-t12}
+
+The theories $T^1_2$ and $T^0_2$ are given by their models, in the same style as $S^1_2$. The two
+inclusions are statements about all models.
+
+\begin{definition}[Models of $T^1_2$ and $T^0_2$]
+  \label{def:arithmetic-t12-models}
+  \lean{Sagitta.Map.Acotada.EsModeloT12, Sagitta.Map.Acotada.EsModeloT02}
+  \leanok
+  \uses{def:arithmetic-basic, def:arithmetic-sigma1}
+  \own{}
+  \infrastructure{}
+  An $L$-structure $M$ is a model of $T^1_2$ when it satisfies BASIC and the ordinary induction for
+  $\Sigma^b_1$ formulas: for every $k$, every $\Sigma^b_1$ formula $\varphi(x, p_1, \dots, p_k)$ and
+  all $p \in M^k$, if $\varphi(0, p)$ holds and $\varphi(x, p) \to \varphi(Sx, p)$ holds for every
+  $x \in M$, then $\varphi(x, p)$ holds for every $x \in M$. It is a model of $T^0_2$ when it
+  satisfies BASIC and the same induction for the sharply bounded formulas.
+  \leanfile{Sagitta/Map/T12.lean}
+\end{definition}
+
+\begin{theorem}[Every model of $S^1_2$ is a model of $T^0_2$]
+  \label{thm:arithmetic-s12-contains-t02}
+  \lean{Sagitta.Map.Acotada.Arranque.s12ContieneT02}
+  \leanok
+  \uses{def:arithmetic-s12-model, def:arithmetic-t12-models}
+  Every $L$-structure that is a model of $S^1_2$ is a model of $T^0_2$.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Arranque.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Given a sharply bounded $A(x)$ and $a$, apply PIND for a $\Pi^b_1$ formula to $B(z) = \forall w \le
+  a\,(w + z \le a \to A(w) \to A(w + z))$. The step from $\lfloor z/2 \rfloor$ to $z$ uses $B(\lfloor
+  z/2 \rfloor)$ twice and, if $z$ is odd, once the induction step of $A$.
+\end{proof}
+
+\begin{theorem}[Every model of $T^1_2$ is a model of $S^1_2$]
+  \label{thm:arithmetic-t12-contains-s12}
+  \lean{Sagitta.Map.Acotada.Arranque.t12ContieneS12}
+  \leanok
+  \uses{def:arithmetic-s12-model, def:arithmetic-t12-models}
+  Every $L$-structure that is a model of $T^1_2$ is a model of $S^1_2$.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Arranque2.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  BASIC is common to both. For PIND, go down through the high-order bits $\lfloor a/2^j \rfloor$ of
+  $a$ one at a time by ordinary induction on a $\Sigma^b_1$ formula, from $0$ to $a$; each is the half
+  of the next, so the step of PIND is the step of the induction.
+\end{proof}
+
+\section{A sequent calculus for $S^1_2$ with PIND as a rule}
+\label{sec:arithmetic-sequents}
+
+Mathlib has no proof calculus. The calculus below has the axioms of BASIC as initial sequents and
+PIND as an inference rule; its derivations are data.
+
+\begin{definition}[The sequent calculus]
+  \label{def:arithmetic-deriva}
+  \lean{Sagitta.Map.Acotada.Deriva, Sagitta.Map.Acotada.Vale}
+  \leanok
+  \uses{def:arithmetic-basic, def:arithmetic-sigma1}
+  \own{}
+  \infrastructure{}
+  A sequent $\Gamma \Rightarrow \Delta$ is a pair of lists of formulas of $L$ with free variables
+  indexed by $\mathbb{N}$. A derivation of a sequent is built with the following rules:
+  $\varphi \Rightarrow \varphi$; $\Rightarrow \varphi$ for $\varphi$ a quantifier-free instance of an
+  axiom of BASIC; $\Rightarrow t = t$; $s = t, A(s) \Rightarrow A(t)$ for $A$ atomic; weakening,
+  with contraction and exchange, given by a map from the positions of the premise to those of the
+  conclusion; cut; $\bot \Rightarrow$; the rules for $\to$ on both sides; the rules for $\forall$ on
+  both sides, the right rule with a variable that does not occur elsewhere; and the rule PIND: from
+  $\Gamma, A(\lfloor a/2 \rfloor) \Rightarrow A(a), \Delta$ infer $\Gamma, A(0) \Rightarrow A(t),
+  \Delta$, for $A$ a $\Sigma^b_1$ formula, with $a$ not in $\Gamma$, $\Delta$ or the parameters. The
+  sequent $\Gamma \Rightarrow \Delta$ \emph{holds} in a structure $M$ under an assignment $v$ when,
+  if every formula of $\Gamma$ is true under $v$, some formula of $\Delta$ is.
+  \leanfile{Sagitta/Map/Secuentes.lean}
+\end{definition}
+
+\begin{theorem}[Soundness of the sequent calculus for the models of $S^1_2$]
+  \label{thm:arithmetic-deriva-correcta}
+  \lean{Sagitta.Map.Acotada.Deriva.correcta}
+  \leanok
+  \uses{def:arithmetic-deriva, def:arithmetic-s12-model}
+  Let $d$ be a derivation of $\Gamma \Rightarrow \Delta$, $M$ a model of $S^1_2$ and $v$ an
+  assignment of the variables to elements of $M$. Then $\Gamma \Rightarrow \Delta$ holds in $M$
+  under $v$.
+  \source{\cite{Buss98}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Secuentes.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on the derivation. The initial sequents hold because $M$ satisfies BASIC and equality,
+  the rule PIND holds because $M$ satisfies PIND for $\Sigma^b_1$ formulas, and the other rules hold
+  by the semantics of the connectives.
+\end{proof}
+
+\begin{definition}[Free-cut free derivations]
+  \label{def:arithmetic-free-cut}
+  \lean{Sagitta.Map.Acotada.Deriva.sinCortesLibres, Sagitta.Map.Acotada.Deriva.formulasDeCorte}
+  \leanok
+  \uses{def:arithmetic-deriva}
+  \own{}
+  \infrastructure{}
+  An occurrence of a formula in a sequent of a derivation is \emph{anchored} when it is a direct
+  descendant of a formula of a non-logical initial sequent (BASIC or equality), or of a principal
+  formula of an inference PIND. A cut is anchored when its cut formula is atomic and both of its
+  occurrences above the cut are anchored, or when it is not atomic and at least one of them is
+  anchored. A derivation is free-cut free when every cut in it is anchored. The cut formulas of a
+  derivation are the formulas of its cut inferences.
+  \leanfile{Sagitta/Map/Secuentes.lean}
+\end{definition}
+
+\begin{theorem}[In a free-cut free derivation every cut formula is $\Sigma^b_1$]
+  \label{thm:arithmetic-cut-sigma1}
+  \lean{Sagitta.Map.Acotada.Deriva.formulasDeCorte_sigma1}
+  \leanok
+  \uses{def:arithmetic-free-cut, def:arithmetic-sigma1}
+  Let $d$ be a derivation of $\Gamma \Rightarrow \Delta$ that is free-cut free. Then every cut
+  formula $\varphi$ of $d$ is a $\Sigma^b_1$ formula.
+  \source{\cite{Buss98}.}
+  \fidelity{Not checked against the printed source.}
+  The elimination of free cuts, which would say that every derivable sequent has such a derivation,
+  is not proved here; it is stated in the file as the open proposition
+  \texttt{EliminacionDeCortesLibres}.
+  \leanfile{Sagitta/Map/Secuentes.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $d$. At a cut, the cut formula is atomic, and then it is sharply bounded, or it has an
+  anchored occurrence, which descends from an axiom of BASIC or equality or from a principal formula
+  of PIND; anchored occurrences are $\Sigma^b_1$.
+\end{proof}
+
+\section{The completeness theorem}
+\label{sec:arithmetic-completeness}
+
+Provability of a sentence by models is shown to be the same as derivability in the calculus of the
+previous section from finitely many axioms of $S^1_2$.
+
+\begin{definition}[Provability by models and derivability from $S^1_2$]
+  \label{def:arithmetic-proves}
+  \lean{Sagitta.Map.Acotada.Demuestra, Sagitta.Map.Acotada.DerivaS12, Sagitta.Map.Acotada.Der}
+  \leanok
+  \uses{def:arithmetic-s12-model, def:arithmetic-deriva}
+  \own{}
+  \infrastructure{}
+  $S^1_2$ \emph{proves} a sentence $\sigma$ of $L$ when $\sigma$ is true in every model of $S^1_2$. A
+  sequent $\Gamma \Rightarrow \Delta$ is \emph{derivable} when there is a derivation of it. The
+  sentence $\sigma$ is derivable from $S^1_2$ when, for some finite list of axioms of the theory
+  $S^1_2$, regarded as formulas, the sequent that has these axioms as antecedent and $\sigma$ as
+  the only formula of the succedent is derivable.
+  \leanfile{Sagitta/Map/Completitud/Teorema.lean}
+\end{definition}
+
+\begin{theorem}[Completeness of the sequent calculus, for any theory]
+  \label{thm:arithmetic-completeness-theory}
+  \lean{Sagitta.Map.Acotada.completitud_teoria}
+  \leanok
+  \uses{def:arithmetic-deriva}
+  Let $\mathrm{Th}$ be a theory of $L$ and $\Gamma$, $\Delta$ lists of formulas with free variables in
+  $\mathbb{N}$. Assume that, for every structure $M$ that satisfies $\mathrm{Th}$ and every
+  assignment $v : \mathbb{N} \to M$, the sequent $\Gamma \Rightarrow \Delta$ holds in $M$ under
+  $v$. Then there is a list $\mathrm{As}$ of formulas, each the formula of a sentence of
+  $\mathrm{Th}$, such that $\mathrm{As}, \Gamma \Rightarrow \Delta$ is derivable.
+  \source{\cite{Godel30, Henkin49}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Completitud/Teorema.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By contradiction. If no finite list of axioms of $\mathrm{Th}$ derives the sequent, the axioms, the
+  antecedent and the negations of the succedent are consistent. Lindenbaum's lemma extends them to a
+  maximal Henkin set, and the term model of this set satisfies $\mathrm{Th}$ and falsifies the
+  sequent.
+\end{proof}
+
+\begin{theorem}[Provability by models is derivability in the sequent calculus]
+  \label{thm:arithmetic-demuestra-iff-deriva}
+  \lean{Sagitta.Map.Acotada.demuestra_iff_deriva}
+  \leanok
+  \uses{def:arithmetic-proves, thm:arithmetic-completeness-theory, thm:arithmetic-deriva-correcta}
+  For every sentence $\sigma$ of $L$, $S^1_2$ proves $\sigma$ if and only if $\sigma$ is derivable
+  from $S^1_2$.
+  \source{\cite{Godel30, Henkin49}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Completitud/Teorema.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The forward direction is Theorem~\ref{thm:arithmetic-completeness-theory} applied to $S^1_2$, the
+  empty antecedent and the succedent $\sigma$. The converse is soundness
+  (Theorem~\ref{thm:arithmetic-deriva-correcta}) applied to a model of $S^1_2$, which satisfies the
+  axioms in the antecedent.
+\end{proof}
+
+\section{Cobham functions}
+\label{sec:arithmetic-cobham}
+
+The programs of Cobham are a syntax for the functions of polynomial time built by bounded recursion on
+notation. They live in a model of their own, a type of programs with an evaluation function, and are
+tied to machines only by the last entry of this section.
+
+\begin{definition}[Cobham programs and their evaluation]
+  \label{def:arithmetic-cob}
+  \lean{Sagitta.Map.Cobham.Cob, Sagitta.Map.Cobham.Cob.eval, Sagitta.Map.Cobham.notacion}
+  \leanok
+  \source{\cite{Cobham65}.}
+  \fidelity{Not checked against the printed source.}
+  A Cobham program with $n$ arguments is built from: the constant $0$ and the projections $v \mapsto
+  v_i$ ($n$ arguments); the successor, the sum, the truncated difference $x \dot- y$, the product,
+  $\lfloor x/2 \rfloor$, the length $|x|$ and $x \# y = 2^{|x||y|}$; the conditional, which gives $y$
+  if $x = 0$ and $z$ otherwise; the composition $f(g_1(v), \dots, g_m(v))$; and the bounded recursion
+  on notation $\mathrm{rn}(g, h, k)$ with $g$ of $n$ arguments, $h$ of $n + 2$ and $k$ of $n + 1$. The
+  evaluation is the function of the arguments given by these clauses; for the recursion it is the
+  function $F$ with $F(0, \bar y) = g(\bar y)$ and, for $x > 0$,
+  \[
+    F(x, \bar y) = \min\bigl(h(x, F(\lfloor x/2 \rfloor, \bar y), \bar y),\; k(x, \bar y)\bigr).
+  \]
+  \leanfile{Sagitta/Map/Cobham.lean}
+\end{definition}
+
+\begin{theorem}[Cobham programs run in polynomial time on multi-tape machines]
+  \label{thm:arithmetic-cob-polytime}
+  \lean{Sagitta.Map.Cobham.cob_polinomial}
+  \leanok
+  \uses{def:arithmetic-cob, def:polytime}
+  For every $n$ and every Cobham program $c$ with $n$ arguments, the function $c.\mathrm{eval} :
+  (\mathrm{Fin}\ n \to \mathbb{N}) \to \mathbb{N}$ is computable in polynomial time by a multi-tape
+  machine, when a tuple of $n$ numbers is encoded as the tuple of their binary encodings and the
+  result as a binary number.
+  \source{\cite{Cobham65}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/TiempoCobham.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $c$. The leaves are solved by the tactic \texttt{polytime} of the machine library, the
+  composition is a composition of machines with a tuple, and the bounded recursion on notation is
+  computed from the top, by a loop whose state grows by at most a polynomial in each step.
+\end{proof}
+
+\section{Functions definable in $S^1_2$ and the witnessing lemma}
+\label{sec:arithmetic-witness}
+
+A function is definable in $S^1_2$ when a $\Sigma^b_1$ formula defines it and $S^1_2$ proves that the
+formula is total. The functions that satisfy this are those of polynomial time.
+
+\begin{definition}[Provably total $\Sigma^b_1$ formulas and $\Sigma^b_1$-definable functions]
+  \label{def:arithmetic-definable}
+  \lean{Sagitta.Map.Acotada.DemuestraTotal, Sagitta.Map.Acotada.DefinibleSigma1}
+  \leanok
+  \uses{def:arithmetic-s12-model, def:arithmetic-sigma1}
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  A formula $\varphi(x, y)$ of $L$ with two free variables is \emph{provably total in $S^1_2$} when
+  there is a term $t(x)$ such that in every model $M$ of $S^1_2$: for every $x \in M$ there is $y \in
+  M$ with $y \le t(x)$ and $\varphi(x, y)$; and for all $x, y, z \in M$, if $\varphi(x, y)$ and
+  $\varphi(x, z)$ then $y = z$. A function $f : \mathbb{N} \to \mathbb{N}$ is \emph{$\Sigma^b_1$-definable
+  in $S^1_2$} when there is a $\Sigma^b_1$ formula $\varphi(x, y)$ that is provably total in
+  $S^1_2$ and such that $\varphi(n, f(n))$ is true in $\mathbb{N}$ for every $n$.
+  \leanfile{Sagitta/Map/Definibles.lean}
+\end{definition}
+
+\begin{theorem}[$\Sigma^b_1$-definable functions are computed by Cobham programs]
+  \label{thm:arithmetic-definable-cobham}
+  \lean{Sagitta.Map.Cobham.definible_es_cobham}
+  \leanok
+  \uses{def:arithmetic-definable, def:arithmetic-cob}
+  Let $f : \mathbb{N} \to \mathbb{N}$ be $\Sigma^b_1$-definable in $S^1_2$. Then there is a Cobham
+  program $c$ with one argument such that $c.\mathrm{eval}(n) = f(n)$ for every $n$.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  This is the witnessing theorem of Buss, proved by models and not by cut elimination.
+  \leanfile{Sagitta/Map/Conservacion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Represent $\varphi$ and ``there is $y \le t(x)$ with $\varphi$'' by fixed Cobham programs. If some
+  program gives a witness in $\mathbb{N}$ for every input, its first half is a $y$ with $\varphi(x,
+  y)$, and by the uniqueness proved in $S^1_2$ it is $f(x)$. If no program does, then a saturated
+  model of $S^1_2$ with an element $d$ that has no witness is built by Herbrand and compactness; there
+  $S^1_2$ gives a witness, a contradiction.
+\end{proof}
+
+\begin{theorem}[$\Sigma^b_1$-definable functions are of polynomial time]
+  \label{thm:arithmetic-definable-polytime}
+  \lean{Sagitta.Map.Cobham.definibleEsPolinomial}
+  \leanok
+  \uses{thm:arithmetic-definable-cobham, thm:arithmetic-cob-polytime, def:arithmetic-definable}
+  % uses-lean: Sagitta.Map.EsPolinomial
+  Let $f : \mathbb{N} \to \mathbb{N}$ be $\Sigma^b_1$-definable in $S^1_2$. Then $f$ is computable in
+  polynomial time by a Turing machine of Mathlib, with the numbers in binary.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/TiempoCobham.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By Theorem~\ref{thm:arithmetic-definable-cobham} some Cobham program computes $f$; by
+  Theorem~\ref{thm:arithmetic-cob-polytime} it runs in polynomial time, and composing with $n
+  \mapsto (n)$ and passing to the machines of Mathlib gives the claim.
+\end{proof}
+
+\begin{definition}[The witnessing calculus on $\Sigma^b_1$ formulas in negation normal form]
+  \label{def:arithmetic-witness-calculus}
+  \lean{Sagitta.Map.Extraccion.Termino, Sagitta.Map.Extraccion.Termino.val, Sagitta.Map.Extraccion.Entorno, Sagitta.Map.Extraccion.ext, Sagitta.Map.Extraccion.Chico, Sagitta.Map.Extraccion.Formula, Sagitta.Map.Extraccion.Formula.Vale, Sagitta.Map.Extraccion.Deriv, Sagitta.Map.Extraccion.Arbol, Sagitta.Map.Extraccion.Arbol.peso, Sagitta.Map.Extraccion.Arbol.valor, Sagitta.Map.Extraccion.pesoL, Sagitta.Map.Extraccion.Prog, Sagitta.Map.Extraccion.Prog.correr, Sagitta.Map.Extraccion.Prog.Limitado}
+  \leanok
+  \own{}
+  \infrastructure{}
+  Terms are built from variables, $0$, successor, $+$, $\cdot$, $\lfloor t/2 \rfloor$, $|t|$ and
+  $t \# u$; an environment gives a natural number to each variable, and $\mathrm{ext}(a, \rho)$ puts
+  $a$ as the variable $0$ in front of $\rho$. Formulas are atoms $t \le u$, $t = u$ and their
+  negations, conjunction, disjunction, $\exists x \le t\, \varphi$ and $\forall x \le |t|\,
+  \varphi$. A derivation is a sequent calculus with identity, arithmetic facts between atoms,
+  structural rules, cut, case split on an atom, the rules for the connectives, the two rules for the
+  bounded existential quantifier, the rules for the small universal quantifier, and PIND. A witness
+  is a tree; its weight is the number of its nodes plus the number of bits of its numbers. A
+  program has one instruction for each rule, and \texttt{correr}$(n, \rho, a)$ runs it on a bound
+  $n$ for the lengths of the variables, an environment $\rho$ and a list $a$ of witnesses, and
+  returns the position of a formula and its witness. A program is bounded when the bounds of its
+  recursions are increasing and polynomial. An environment is small for $n$ when every $\rho(i)$
+  has at most $n$ bits.
+  \leanfile{Sagitta/Map/Testigo.lean}
+\end{definition}
+
+\begin{theorem}[Witnessing lemma, for a calculus of $\Sigma^b_1$ formulas in negation normal form]
+  \label{thm:arithmetic-witness-lemma}
+  \lean{Sagitta.Map.Extraccion.lema_del_testigo}
+  \leanok
+  \uses{def:arithmetic-witness-calculus}
+  Let $t$ be a term, $\varphi$ a formula, and $d$ a derivation of the sequent $\Rightarrow \exists x
+  \le t\, \varphi$. Then there is a bounded program $p$ such that: for all $n$ and every environment
+  $\rho$ that is small for $n$, the program $p$ run on $n$, $\rho$ and the empty list of witnesses
+  returns a witness whose value $a$ satisfies $a \le t(\rho)$ and $\varphi$ is true in the
+  environment $\mathrm{ext}(a, \rho)$; and there is a polynomial $q$ such that for all $n$, all
+  small $\rho$ and all lists $a$ of witnesses, the weight of the witness that $p$ returns is at most
+  $q(n + \text{weight}(a))$.
+  \source{\cite{Buss98}.}
+  \fidelity{Not checked against the printed source.}
+  The calculus is not the one of Section~\ref{sec:arithmetic-sequents}: its formulas are $\Sigma^b_1$
+  by construction, so no cut elimination is needed here.
+  \leanfile{Sagitta/Map/Basicos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The program is obtained from $d$ by erasing the formulas, keeping one instruction for each rule;
+  that it returns a witness is proved by induction on $d$, and its weight bound by a bound on the
+  steps of each rule.
+\end{proof}
+
+\section{The easy direction of the theorem of Buss}
+\label{sec:arithmetic-easy}
+
+The converse to Theorem~\ref{thm:arithmetic-definable-polytime} is stated with two named hypotheses.
+
+\begin{definition}[$\Sigma^b_1$-definability for several arguments, and Cobham programs without recursion]
+  \label{def:arithmetic-definable-n}
+  \lean{Sagitta.Map.Acotada.DefinibleCobham.DefinibleN, Sagitta.Map.Acotada.DefinibleCobham.SinRn}
+  \leanok
+  \uses{def:arithmetic-cob, def:arithmetic-definable}
+  \own{}
+  \infrastructure{}
+  A function $f : (\mathrm{Fin}\ n \to \mathbb{N}) \to \mathbb{N}$ is $\Sigma^b_1$-definable in
+  $S^1_2$ when there are a $\Sigma^b_1$ formula $\varphi(x_1, \dots, x_n, y)$ and a term $t(\bar x)$
+  such that in every model of $S^1_2$ every $\bar x$ has some $y \le t(\bar x)$ with $\varphi(\bar x,
+  y)$, this $y$ is unique, and $\varphi(v, f(v))$ is true in $\mathbb{N}$ for every $v$. A Cobham
+  program has no recursion when it is built with the basic programs and composition only.
+  \leanfile{Sagitta/Map/DefinibleCobham.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: polynomial-time functions are Cobham programs]
+  \label{def:arithmetic-hyp-pol-cobham}
+  \lean{Sagitta.Map.Acotada.DefinibleCobham.PolinomialEsCobham}
+  \leanok
+  \uses{def:arithmetic-cob}
+  % uses-lean: Sagitta.Map.EsPolinomial
+  The statement that for every $f : \mathbb{N} \to \mathbb{N}$ computable in polynomial time by a
+  Turing machine of Mathlib, with the numbers in binary, there is a Cobham program $c$ with one
+  argument such that $c.\mathrm{eval}(n) = f(n)$ for every $n$. It is a definition of type
+  \texttt{Prop}; it is a known theorem of Cobham, and it is not proved in this repository.
+  \source{\cite{Cobham65}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DefinibleCobham.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: bounded recursion on notation preserves definability]
+  \label{def:arithmetic-hyp-recursion}
+  \lean{Sagitta.Map.Acotada.DefinibleCobham.RecursionDefinible}
+  \leanok
+  \uses{def:arithmetic-definable-n, def:arithmetic-cob}
+  The statement that for all $n$, $g$, $h$, $k$ Cobham programs with $n$, $n + 2$ and $n + 1$
+  arguments, if $g.\mathrm{eval}$, $h.\mathrm{eval}$ and $k.\mathrm{eval}$ are $\Sigma^b_1$-definable
+  in $S^1_2$, then so is the evaluation of $\mathrm{rn}(g, h, k)$. It is a definition of type
+  \texttt{Prop}; it is a known theorem of Buss and it is not proved in this repository.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DefinibleCobham.lean}
+\end{definition}
+
+\begin{theorem}[Cobham programs without recursion are $\Sigma^b_1$-definable]
+  \label{thm:arithmetic-sinrn-definable}
+  \lean{Sagitta.Map.Acotada.DefinibleCobham.sinRn_definible}
+  \leanok
+  \uses{def:arithmetic-definable-n}
+  Let $c$ be a Cobham program with $n$ arguments that has no recursion. Then $c.\mathrm{eval}$ is
+  $\Sigma^b_1$-definable in $S^1_2$.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DefinibleCobham.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on the proof that $c$ has no recursion. The basic programs are terms, the truncated
+  difference or the conditional, each definable by a $\Sigma^b_1$ formula, and the composition of
+  definable functions is definable.
+\end{proof}
+
+\begin{theorem}[The theorem of Buss, from two hypotheses]
+  \label{thm:arithmetic-buss}
+  \lean{Sagitta.Map.Acotada.DefinibleCobham.teoremaDeBuss_de}
+  \leanok
+  \uses{def:arithmetic-hyp-pol-cobham, def:arithmetic-hyp-recursion, thm:arithmetic-definable-polytime, def:arithmetic-definable}
+  % uses-lean: Sagitta.Map.EsPolinomial
+  Assume that polynomial-time functions are Cobham programs (Definition~\ref{def:arithmetic-hyp-pol-cobham})
+  and that bounded recursion on notation preserves definability
+  (Definition~\ref{def:arithmetic-hyp-recursion}). Then for every $f : \mathbb{N} \to \mathbb{N}$, $f$
+  is $\Sigma^b_1$-definable in $S^1_2$ if and only if $f$ is computable in polynomial time.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DefinibleCobham.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The forward direction is Theorem~\ref{thm:arithmetic-definable-polytime}. For the converse, the
+  first hypothesis gives a Cobham program for $f$; with the second, every Cobham program is
+  definable, by induction on the program, and a definable program with one argument gives a
+  $\Sigma^b_1$-definition of the function.
+\end{proof}
+
+\section{The theorem of Parikh}
+\label{sec:arithmetic-parikh}
+
+Parikh's theorem is stated for $S^1_2$ with $\Sigma^b_1$ formulas and unique outputs, and for $T^1_2$
+with bounded formulas and no uniqueness.
+
+\begin{theorem}[The theorem of Parikh for $S^1_2$, for $\Sigma^b_1$ formulas with a unique output]
+  \label{thm:arithmetic-parikh}
+  \lean{Sagitta.Map.Acotada.Parikh.parikh}
+  \leanok
+  \uses{def:arithmetic-sigma1, def:arithmetic-definable, def:arithmetic-s12-model}
+  Let $\varphi(x, y)$ be a $\Sigma^b_1$ formula with two free variables. Assume that in every model
+  $M$ of $S^1_2$ and for every $x \in M$ there is exactly one $y \in M$ with $\varphi(x, y)$. Then
+  there is a term $t(x)$ such that in every model $M$ of $S^1_2$: for every $x \in M$ there is $y \le
+  t(x)$ with $\varphi(x, y)$, and for all $x, y, z \in M$, if $\varphi(x, y)$ and $\varphi(x, z)$ then
+  $y = z$.
+  \source{\cite{Parikh71}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Parikh.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If no term bounds the output, compactness gives a model of $S^1_2$ with an element $c$ for which no
+  term does. The elements bounded by a term in $c$ form an initial segment that is closed under the
+  functions, because they are monotone in every model of $S^1_2$; it is a model of BASIC because BASIC
+  is universal, and of PIND because $\Sigma^b_1$ formulas say the same in the segment as in the
+  model. In the segment $S^1_2$ gives an output for $c$, bounded by a term, a contradiction.
+\end{proof}
+
+\begin{definition}[Bounded formulas]
+  \label{def:arithmetic-bounded}
+  \lean{Sagitta.Map.Borde.OscilacionParikh.EsAcotada}
+  \leanok
+  \uses{def:arithmetic-basic}
+  \own{}
+  \infrastructure{}
+  The bounded formulas of $L$ are the smallest class that contains $\bot$ and the atomic formulas, is
+  closed under implication, and is closed under $\forall x \le t$ and $\exists x \le t$ for every
+  term $t$.
+  \leanfile{Sagitta/Map/Borde/OscilacionParikh.lean}
+\end{definition}
+
+\begin{theorem}[The theorem of Parikh for $T^1_2$, for bounded formulas without uniqueness]
+  \label{thm:arithmetic-parikh-t12}
+  \lean{Sagitta.Map.Borde.ParikhT12.parikh_existe_T12}
+  \leanok
+  \uses{def:arithmetic-bounded, def:arithmetic-t12-models}
+  Let $\varphi(x, y)$ be a bounded formula with two free variables. Assume that in every model $M$ of
+  $T^1_2$ and for every $x \in M$ there is $y \in M$ with $\varphi(x, y)$. Then there is a term $t(x)$
+  such that in every model $M$ of $T^1_2$ and for every $x \in M$ there is $y \in M$ with $y \le t(x)$
+  and $\varphi(x, y)$.
+  \source{\cite{Parikh71}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/ParikhT12.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is the argument of the previous theorem: compactness, the initial segment of the elements
+  bounded by a term in a counterexample element, which is a model of $T^1_2$ because the formulas
+  are bounded and the functions are monotone (Theorem~\ref{thm:arithmetic-t12-contains-s12}), and
+  the output that the theory gives in the segment.
+\end{proof}
+
+\section{Decision by two bounded formulas, and $\cP = \cNP$}
+\label{sec:arithmetic-delta}
+
+A problem is a function from lists of bits to booleans. A string $w$ is read as a number, and a
+formula with one free variable defines a problem when it is true of the number of $w$ exactly for
+the strings of the problem.
+
+\begin{definition}[A formula defines a problem]
+  \label{def:arithmetic-defines}
+  \lean{Sagitta.Map.Acotada.DefinidoPor, Sagitta.Map.Acotada.numeroDe}
+  \leanok
+  \own{}
+  \infrastructure{}
+  % uses-lean: Sagitta.Map.Problema
+  For a list of bits $w$, the number of $w$ is the number whose binary expansion is the digit $1$
+  followed by the digits of $w$, the first bit of $w$ being the least significant. A formula
+  $\varphi(x)$ of $L$ with one free variable \emph{defines} the problem $P$ when, for every list of
+  bits $w$, $P(w) = \mathrm{true}$ if and only if $\varphi$ is true in $\mathbb{N}$ of the number of
+  $w$.
+  \leanfile{Sagitta/Map/SigmaNP.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: $S^1_2$ decides between two formulas]
+  \label{def:arithmetic-hyp-decides}
+  \lean{Sagitta.Map.DeltaUno.DemuestraDisyuncion}
+  \leanok
+  \uses{def:arithmetic-s12-model}
+  For formulas $\varphi(x)$ and $\psi(x)$ with one free variable, the statement that in every model
+  $M$ of $S^1_2$ and for every $x \in M$, $\varphi(x)$ or $\psi(x)$ holds. It is a definition of
+  type \texttt{Prop}.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DeltaUno.lean}
+\end{definition}
+
+\begin{theorem}[What $S^1_2$ decides with two $\Sigma^b_1$ formulas is in $\cP$]
+  \label{thm:arithmetic-delta-p}
+  \lean{Sagitta.Map.DeltaUno.deltaUno_en_P}
+  \leanok
+  \uses{def:arithmetic-hyp-decides, def:arithmetic-defines, def:arithmetic-sigma1, thm:arithmetic-definable-cobham, thm:arithmetic-cob-polytime}
+  % uses-lean: Sagitta.Map.P, Sagitta.Map.Problema
+  Let $\varphi(x)$ and $\psi(x)$ be $\Sigma^b_1$ formulas with one free variable. Assume that
+  $S^1_2$ decides between $\varphi$ and $\psi$ (Definition~\ref{def:arithmetic-hyp-decides}). Let
+  $\mathit{Pr}$ be a problem such that $\varphi$ defines $\mathit{Pr}$ and $\psi$ defines the
+  problem $w \mapsto \neg \mathit{Pr}(w)$. Then $\mathit{Pr}$ is decided by a Turing machine of
+  Mathlib in polynomial time.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DeltaUno.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By the witnessing argument there is a Cobham program $c$ such that for every $n$, either
+  $c(n) = 0$ and $\varphi(n)$, or $c(n) = 1$ and $\psi(n)$. Then $\mathit{Pr}(w)$ is true if and only
+  if $c$ of the number of $w$ is $0$, which is polynomial time by the machines for Cobham programs.
+\end{proof}
+
+\begin{definition}[Hypothesis: $S^1_2$ decides SAT]
+  \label{def:arithmetic-hyp-decides-sat}
+  \lean{Sagitta.Map.CookS12.S12DecideSat}
+  \leanok
+  \uses{def:arithmetic-hyp-decides, def:arithmetic-defines, def:arithmetic-sigma1}
+  The statement that there are $\Sigma^b_1$ formulas $\varphi(x)$ and $\psi(x)$ with one free
+  variable such that $\varphi$ defines the problem SAT, $\psi$ defines its complement, and $S^1_2$
+  decides between $\varphi$ and $\psi$. Here SAT is the problem of the strings that encode a
+  satisfiable CNF formula. It is a definition of type \texttt{Prop}.
+  \own{}
+  \leanfile{Sagitta/Map/CookS12.lean}
+\end{definition}
+
+\begin{theorem}[If $S^1_2$ decides SAT, then $\cP = \cNP$]
+  \label{thm:arithmetic-decides-sat-pnp}
+  \lean{Sagitta.Map.CookS12.pIgualNP_si_s12_decide_sat}
+  \leanok
+  \uses{def:arithmetic-hyp-decides-sat, thm:arithmetic-delta-p}
+  % uses-lean: Sagitta.Map.P, Sagitta.Map.NP
+  Assume that $S^1_2$ decides SAT (Definition~\ref{def:arithmetic-hyp-decides-sat}). Then $\cP =
+  \cNP$, as sets of problems.
+  \source{\cite{Buss86}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/CookS12.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By Theorem~\ref{thm:arithmetic-delta-p}, SAT is in $\cP$. Since SAT is $\cNP$-hard (the theorem of
+  Cook and Levin of the machine library), $\cNP \subseteq \cP$, and $\cP \subseteq \cNP$ is
+  known.
+\end{proof}
+
+\section{Bounded formulas and the classes $\cNP$ and $\cconP$}
+\label{sec:arithmetic-sigma-np}
+
+The classes of problems that $\Sigma^b_1$ and $\Pi^b_1$ formulas define are those of $\cNP$ and
+$\cconP$.
+
+\begin{theorem}[The problems defined by $\Sigma^b_1$ formulas are those of $\cNP$]
+  \label{thm:arithmetic-sigma-np}
+  \lean{Sagitta.Map.SigmaFagin.sigmaIgualNP, Sagitta.Map.SigmaFagin.sigmaSubNP, Sagitta.Map.SigmaFagin.npSubSigma}
+  \leanok
+  \uses{def:arithmetic-defines, def:arithmetic-sigma1, thm:arithmetic-cob-polytime}
+  % uses-lean: Sagitta.Map.NP, Sagitta.Map.Problema
+  For every problem $P$, $P \in \cNP$ if and only if there is a $\Sigma^b_1$ formula $\varphi(x)$ with
+  one free variable that defines $P$. The direction from the formula to $\cNP$ is
+  \texttt{sigmaSubNP}, and the direction from $\cNP$ to the formula is \texttt{npSubSigma}.
+  \own{}
+  \leanfile{Sagitta/Map/SigmaFagin/Palabras.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For $\Sigma^b_1 \subseteq \cNP$, a $\Sigma^b_1$ formula is represented in $\mathbb{N}$ as ``there is
+  $y \le t$ with $\delta = 0$'' for Cobham programs $\delta$ and $t$, and the verifier computes
+  $\delta$, in polynomial time by Theorem~\ref{thm:arithmetic-cob-polytime}. For $\cNP \subseteq
+  \Sigma^b_1$, the language of the query of $P$ is in $\cNP$ in the machine library, whose Fagin
+  theorem for ordered structures gives an existential second-order sentence, which is translated into
+  a $\Sigma^b_1$ formula in which the input is the free variable.
+\end{proof}
+
+\begin{theorem}[$\cNP \ne \cconP$ as a question about formulas]
+  \label{thm:arithmetic-np-conp-formulas}
+  \lean{Sagitta.Map.SigmaFagin.npDistintoCoNP_iff_formulas}
+  \leanok
+  \uses{thm:arithmetic-sigma-np, def:arithmetic-defines, def:arithmetic-sigma1}
+  % uses-lean: Sagitta.Map.NPDistintoCoNP, Sagitta.Map.Problema
+  $\cNP \ne \cconP$ if and only if there is a problem $P$ that is defined by a $\Pi^b_1$ formula with
+  one free variable and that is defined by no $\Sigma^b_1$ formula with one free variable.
+  \own{}
+  \leanfile{Sagitta/Map/SigmaFagin/Palabras.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is \texttt{npDistintoCoNP\_iff} with Theorem~\ref{thm:arithmetic-sigma-np}: the $\Sigma^b_1$
+  formulas give $\cNP$, their duals the $\Pi^b_1$ formulas give $\cconP$, and the two classes are
+  different if and only if some problem is in one and not in the other.
+\end{proof}
+
+\section{Student and teacher witnessing for a universal theory of Cobham programs}
+\label{sec:arithmetic-kpt}
+
+The result is stated for the universal theory of the true universal sentences of the language that has
+one function symbol for each Cobham program, and not for $S^1_2$ or $T^1_2$.
+
+\begin{definition}[The theory of Cobham programs]
+  \label{def:arithmetic-tc}
+  \lean{Sagitta.Map.Cobham.LC, Sagitta.Map.Cobham.TC}
+  \leanok
+  \uses{def:arithmetic-cob}
+  \own{}
+  \infrastructure{}
+  The language $L_C$ has a function symbol for each Cobham program, with the arity of the program,
+  and no relation symbol. The structure $\mathbb{N}$ interprets each symbol as the evaluation of the
+  program. The theory $TC$ is the set of universal sentences of $L_C$ that are true in $\mathbb{N}$.
+  \leanfile{Sagitta/Map/TeoriaCobham.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: $TC$ proves $\forall x\, \exists y\, \forall z\, \varphi$]
+  \label{def:arithmetic-hyp-aea}
+  \lean{Sagitta.Map.Cobham.DemuestraAEA}
+  \leanok
+  \uses{def:arithmetic-tc}
+  For a Cobham program $\chi$ with three arguments, the statement that in every $L_C$-structure $M$
+  that satisfies $TC$ and for every $x \in M$ there is $y \in M$ such that for every $z \in M$ the
+  value of the symbol $\chi$ on $(x, y, z)$ is the value of the constant program $0$. The formula
+  $\varphi$ is ``$\chi$ gives $0$''. It is a definition of type \texttt{Prop}.
+  \source{\cite{KPT91}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/KPT.lean}
+\end{definition}
+
+\begin{definition}[The student wins in $k$ rounds]
+  \label{def:arithmetic-student}
+  \lean{Sagitta.Map.Cobham.GanaAlumno, Sagitta.Map.Cobham.previas}
+  \leanok
+  \uses{def:arithmetic-cob}
+  \own{}
+  \infrastructure{}
+  For a list of counterexamples $z_0, \dots, z_{k-1}$ and a round $i$, the list $\mathrm{previas}(z,
+  i)$ has $z_j$ at the places $j < i$ and $0$ elsewhere. For a Cobham program $\chi$ with three
+  arguments and programs $f_0, \dots, f_{k-1}$ with $k + 1$ arguments, the student wins in $k$ rounds
+  when for every $x \in \mathbb{N}$ and every list $z_0, \dots, z_{k-1}$ of natural numbers there is
+  a round $i < k$ with $\chi(x,\ f_i(x, \mathrm{previas}(z, i)),\ z_i) = 0$.
+  \leanfile{Sagitta/Map/KPT.lean}
+\end{definition}
+
+\begin{theorem}[Student-teacher witnessing for the universal theory $TC$]
+  \label{thm:arithmetic-kpt}
+  \lean{Sagitta.Map.Cobham.kpt, Sagitta.Map.Cobham.kpt_iff}
+  \leanok
+  \uses{def:arithmetic-hyp-aea, def:arithmetic-student}
+  Let $\chi$ be a Cobham program with three arguments. If $TC$ proves $\forall x\, \exists y\,
+  \forall z\, (\chi(x, y, z) = 0)$ (Definition~\ref{def:arithmetic-hyp-aea}), then there are $k$ and
+  Cobham programs $f_0, \dots, f_{k-1}$ with which the student wins in $k$ rounds. Conversely, if
+  there are such $k$ and programs, $TC$ proves it.
+  \source{\cite{KPT91}.}
+  \fidelity{Not checked against the printed source.}
+  The statement is for the universal theory $TC$, not for $S^1_2$ or $T^1_2$.
+  \leanfile{Sagitta/Map/KPT.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Enumerate all programs, each infinitely often; round $j$ of the teacher says that the $j$-th
+  program of the student fails. If the student never wins in $\mathbb{N}$, every finite set of rounds
+  has a model in $\mathbb{N}$, so by compactness all of them have a model. Its closure is again a model
+  of the universal theory $TC$, in which every element is a program of the constants, and the
+  hypothesis gives a $y$ that is one of the programs, which some round refutes. The converse
+  direction is a direct proof from the disjunction of the rounds.
+\end{proof}
+
+\section{Statements that $S^1_2$ and $T^1_2$ do not prove if circuit sizes oscillate}
+\label{sec:arithmetic-oscillation}
+
+The results of this section are conditional: they assume that a sequence of circuit sizes oscillates
+between polynomial and superpolynomial. This is not proved, and not refuted, here.
+
+\begin{definition}[Hypothesis: a sequence oscillates]
+  \label{def:arithmetic-hyp-oscillation}
+  \lean{Sagitta.Map.Borde.Tricotomia.Bajo, Sagitta.Map.Borde.Tricotomia.Sobre, Sagitta.Map.Borde.Tricotomia.Oscila}
+  \leanok
+  \own{}
+  A function $f : \mathbb{N} \to \mathbb{N}$ is \emph{bounded by a polynomial} when there are $c$ and
+  $k$ with $f(n) \le c\,(n + 1)^k$ for every $n$. It is \emph{above every polynomial} when for all $c$
+  and $k$, $c\,(n + 1)^k < f(n)$ for all large enough $n$. It \emph{oscillates} when it is neither
+  bounded by a polynomial nor above every polynomial. The statement that a given function oscillates
+  is a definition of type \texttt{Prop}.
+  \leanfile{Sagitta/Map/Borde/Tricotomia.lean}
+\end{definition}
+
+\begin{definition}[Good lengths of a problem]
+  \label{def:arithmetic-good-lengths}
+  \lean{Sagitta.Map.Borde.OscilacionParikh.Buenos}
+  \leanok
+  \own{}
+  % uses-lean: Sagitta.Map.Tiempo.Finitud.sucNat, Sagitta.Map.Tiempo.Relleno.satMarco
+  Let $s_P(m)$ be the least number of gates of a Boolean circuit that decides the problem $P$ on the
+  strings of length $m$. For a problem $P$ and numbers $c$ and $k$, the relation $\mathrm{Buenos}(P,
+  c, k)$ between $x$ and $y$ says that $|x| \le |y|$ and $s_P(|y|) \le c\,(|y| + 1)^k$. The problem
+  $\mathrm{satMarco}$ of the next theorems is SAT on framed inputs: the input is unframed, which
+  reads it up to the first marker, what is read is asked to SAT, and everything after the frame is
+  ignored.
+  \leanfile{Sagitta/Map/Borde/OscilacionParikh.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: a sound theory with the Parikh property]
+  \label{def:arithmetic-hyp-parikh-sound}
+  \lean{Sagitta.Map.Borde.OscilacionParikh.Enunciado, Sagitta.Map.Borde.OscilacionParikh.Verdadero, Sagitta.Map.Borde.OscilacionParikh.PolLargo, Sagitta.Map.Borde.OscilacionParikh.CotaPol, Sagitta.Map.Borde.OscilacionParikh.Acotar, Sagitta.Map.Borde.OscilacionParikh.ParikhSana}
+  \leanok
+  \own{}
+  A statement is a relation $\psi(x, y)$ between natural numbers; it stands for $\forall x\, \exists y\,
+  \psi(x, y)$, and it is true when this holds in $\mathbb{N}$. A function $\beta$ has polynomial length
+  when $|\beta(x)| \le c\,(|x| + 1)^d$ for some $c$, $d$ and all $x$. The statement $\psi$ with the
+  output bounded by $\beta$ is the relation $y \le \beta(x) \wedge \psi(x, y)$. For sets $C$ and
+  $\mathrm{Th}$ of statements, $(C, \mathrm{Th})$ is a \emph{sound theory with the Parikh property}
+  when every statement of $\mathrm{Th}$ is true, and for every $\psi \in \mathrm{Th}$ with $\psi \in
+  C$ there is a function $\beta$ of polynomial length such that $\psi$ with the output bounded by
+  $\beta$ is in $\mathrm{Th}$. It is a definition of type \texttt{Prop}.
+  \leanfile{Sagitta/Map/Borde/OscilacionParikh.lean}
+\end{definition}
+
+\begin{theorem}[If framed SAT oscillates in circuits, no sound theory with the Parikh property proves that its good lengths do not end]
+  \label{thm:arithmetic-oscillation-unprovable}
+  \lean{Sagitta.Map.Borde.OscilacionParikh.oscila_no_se_demuestra}
+  \leanok
+  \uses{def:arithmetic-hyp-parikh-sound, def:arithmetic-hyp-oscillation, def:arithmetic-good-lengths}
+  % uses-lean: Sagitta.Map.Tiempo.Finitud.sucNat, Sagitta.Map.Tiempo.Relleno.satMarco
+  Let $C$ and $\mathrm{Th}$ be sets of statements such that $(C, \mathrm{Th})$ is a sound theory
+  with the Parikh property. Assume that the sequence $m \mapsto s_{\mathrm{satMarco}}(m)$ of least
+  circuit sizes oscillates. Let $c$ and $k$ be such that $\mathrm{Buenos}(\mathrm{satMarco}, c,
+  k) \in C$. Then $\mathrm{Buenos}(\mathrm{satMarco}, c, k) \notin \mathrm{Th}$.
+  \source{\cite{BKO20}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/OscilacionParikh.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If $\mathrm{Th}$ proved it, the Parikh property gives a bound of polynomial length for the witnesses,
+  which is true by soundness; the good lengths are then polynomially dense, and by padding
+  $\mathrm{satMarco}$ has circuits of polynomial size, which contradicts that the sequence is not
+  bounded by a polynomial.
+\end{proof}
+
+\begin{definition}[Universal closure and provability of $\forall x\, \exists y\, \varphi$]
+  \label{def:arithmetic-forall-exists}
+  \lean{Sagitta.Map.Acotada.cierre, Sagitta.Map.Borde.OscilacionParikh.existeY, Sagitta.Map.Borde.ParikhT12.DemuestraExisteT12}
+  \leanok
+  \uses{def:arithmetic-t12-models}
+  \own{}
+  \infrastructure{}
+  For a formula $\chi$ with free variables $x_1, \dots, x_n$, its closure is the sentence $\forall
+  x_1 \cdots \forall x_n\, \chi$. For a formula $\varphi(x, y)$, $\exists y\, \varphi$ is the formula
+  with the free variable $x$. $T^1_2$ proves $\forall x\, \exists y\, \varphi$ when in every model
+  $M$ of $T^1_2$ and for every $x \in M$ there is $y \in M$ with $\varphi(x, y)$.
+  \leanfile{Sagitta/Map/Borde/OscilacionParikh.lean}
+\end{definition}
+
+\begin{theorem}[If framed SAT oscillates in circuits, a true $\forall x\, \exists y\, \varphi$ with $\varphi$ bounded is not derivable in $S^1_2$]
+  \label{thm:arithmetic-s12-oscillation}
+  \lean{Sagitta.Map.Borde.FormulaBuenos.s12_oscila_sin_hipotesis}
+  \leanok
+  \uses{def:arithmetic-hyp-oscillation, def:arithmetic-bounded, def:arithmetic-forall-exists, def:arithmetic-proves, thm:arithmetic-oscillation-unprovable}
+  % uses-lean: Sagitta.Map.Tiempo.Finitud.sucNat, Sagitta.Map.Tiempo.Relleno.satMarco
+  Assume that the sequence $m \mapsto s_{\mathrm{satMarco}}(m)$ of least circuit sizes oscillates.
+  Then there is a bounded formula $\varphi(x, y)$ with two free variables such that, for every $x \in
+  \mathbb{N}$, there is $y \in \mathbb{N}$ with $\varphi(x, y)$, and the sentence $\forall x\,
+  \exists y\, \varphi(x, y)$ is not derivable from $S^1_2$.
+  \source{\cite{BKO20}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/FormulaBuenosEnsamble.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Oscillation gives $c$ and $k$ for which the good lengths do not end. A bounded formula that defines
+  $\mathrm{Buenos}(\mathrm{satMarco}, c, k)$ in $\mathbb{N}$ is built from three $\Sigma^b_1$ formulas
+  (the shape of a circuit code, its evaluation, and framed SAT) that come from $\Sigma^b_1 = \cNP$.
+  The theory $S^1_2$ with its Parikh theorem for bounded formulas is a sound theory with the Parikh
+  property, so Theorem~\ref{thm:arithmetic-oscillation-unprovable} applies.
+\end{proof}
+
+\begin{theorem}[If framed SAT oscillates in circuits, a true $\forall x\, \exists y\, \varphi$ with $\varphi$ bounded is not proved by $T^1_2$]
+  \label{thm:arithmetic-t12-oscillation}
+  \lean{Sagitta.Map.Borde.FormulaBuenos.t12_oscila_sin_hipotesis}
+  \leanok
+  \uses{def:arithmetic-hyp-oscillation, def:arithmetic-bounded, def:arithmetic-forall-exists, thm:arithmetic-parikh-t12, thm:arithmetic-oscillation-unprovable}
+  % uses-lean: Sagitta.Map.Tiempo.Finitud.sucNat, Sagitta.Map.Tiempo.Relleno.satMarco
+  Assume that the sequence $m \mapsto s_{\mathrm{satMarco}}(m)$ of least circuit sizes oscillates.
+  Then there is a bounded formula $\varphi(x, y)$ with two free variables such that, for every $x \in
+  \mathbb{N}$, there is $y \in \mathbb{N}$ with $\varphi(x, y)$, and $T^1_2$ does not prove $\forall x\,
+  \exists y\, \varphi(x, y)$ (Definition~\ref{def:arithmetic-forall-exists}).
+  \source{\cite{BKO20}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Borde/FormulaBuenosEnsamble.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  As for $S^1_2$: oscillation gives $c$ and $k$, the formula that defines the good lengths is the same,
+  and $T^1_2$ with the Parikh theorem for $T^1_2$ is a sound theory with the Parikh property for the
+  bounded formulas.
+\end{proof}
+
+\section{Factorization and $S^1_2$}
+\label{sec:arithmetic-factor}
+
+The first result is conditional on a hypothesis about the complexity of finding the least prime
+factor. The second is a bound on certificates that a verifier can check.
+
+\begin{theorem}[$S^1_2$ does not derive the existence of the least prime factor, if finding it is not polynomial]
+  \label{thm:arithmetic-no-factor}
+  \lean{Sagitta.Map.Acotada.FactorizacionS12.s12_no_demuestra_factor}
+  \leanok
+  \uses{def:arithmetic-sigma1, def:arithmetic-proves, def:arithmetic-forall-exists}
+  % uses-lean: Sagitta.Map.EsPolinomial, Sagitta.Map.Acotada.existeUnico
+  Assume that the function $n \mapsto \mathrm{minFac}(n)$, the least prime factor of $n$, is not
+  computable in polynomial time by a Turing machine of Mathlib. Let $\varphi(x, y)$ be a $\Sigma^b_1$
+  formula with two free variables such that $\varphi(n, \mathrm{minFac}(n))$ is true in $\mathbb{N}$
+  for every $n$. Then the closure of $\exists! y\, \varphi(x, y)$ is not derivable from $S^1_2$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/FactorizacionS12.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  If the sentence were derivable from $S^1_2$, the witnessing theorem of Buss for derivations would
+  make $\mathrm{minFac}$ computable in polynomial time, against the assumption.
+\end{proof}
+
+\begin{definition}[Pratt certificates and the check of the graph of the least prime factor]
+  \label{def:arithmetic-pratt}
+  \lean{Sagitta.Map.Acotada.Pratt.Entrada, Sagitta.Map.Acotada.Pratt.entradaOK, Sagitta.Map.Acotada.Pratt.prattOK, Sagitta.Map.Acotada.Pratt.revisaGrafo, Sagitta.Map.Acotada.Pratt.encCertificado}
+  \leanok
+  \own{}
+  \infrastructure{}
+  An entry is a triple $(p, a, [q_1, \dots, q_k])$ of a number, a number and a list of numbers. An
+  entry is correct within a list $C$ of entries when $p \ge 2$, the product of the $q_i$ is $p - 1$,
+  $a^{p-1} \equiv 1 \pmod p$, and every $q_i$ is the first component of some entry of $C$ and
+  satisfies $a^{(p-1)/q_i} \not\equiv 1 \pmod p$. A list of entries is a Pratt certificate when every
+  entry is correct within it. For numbers $n$ and $m$ and a pair $c = (L, C)$ of a list $L$ of
+  numbers and a list $C$ of entries, the check of the graph of the least prime factor is: if $n = 0$,
+  that $m = 2$; if $n = 1$, that $m = 1$; otherwise, that the product of $L$ is $n$, $m \in L$, every
+  $q \in L$ satisfies $m \le q$ and is the first component of an entry of $C$, and $C$ is a Pratt
+  certificate. The encoding of $c$ is a list of bits.
+  \leanfile{Sagitta/Map/Borde/Pratt.lean}
+\end{definition}
+
+\begin{theorem}[Every number has a short certificate that $m$ is its least prime factor]
+  \label{thm:arithmetic-pratt-cert}
+  \lean{Sagitta.Map.Acotada.Pratt.certificado_grafo}
+  \leanok
+  \uses{def:arithmetic-pratt}
+  % uses-lean: Sagitta.Map.Acotada.Pratt.encCertificado
+  For every natural number $n$ there is a pair $c = (L, C)$, with $L$ a list of numbers and $C$ a list
+  of entries, such that the check of the graph of the least prime factor for $n$, $\mathrm{minFac}(n)$
+  and $c$ succeeds, and the length of the binary encoding of $c$ is at most $63\,(|n| + 1)^2$, where
+  $|n|$ is the number of binary digits of $n$.
+  \own{}
+  \leanfile{Sagitta/Map/Borde/Pratt.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For $n < 2$ the empty pair works. Otherwise let $L$ be the list of prime factors of $n$ with
+  repetition; every prime has a Pratt certificate with a bounded number of entries, from the converse
+  of the primality criterion of Lucas, and the lengths of the entries are bounded using that $|a| +
+  |b| \le |ab| + 1$.
+\end{proof}
+
+\section{The second theorem of G\"odel and the theorem of L\"ob, for an abstract system}
+\label{sec:arithmetic-godel}
+
+Both theorems are stated for an abstract system of statements with a provability predicate, with the
+conditions of derivability as hypotheses. No arithmetic is involved.
+
+\begin{definition}[An abstract system of proofs with an internal provability predicate]
+  \label{def:arithmetic-hbl}
+  \lean{Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL, Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.caja, Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.neg, Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.Con}
+  \leanok
+  \own{}
+  \infrastructure{}
+  A system $T$ over a type $S$ of statements and a type $C$ of codes has an implication $a \to b$ and
+  a statement $\bot$ of $S$; a predicate $\mathrm{Pr}$ on $S$ (provability) that is closed under
+  modus ponens and contains the axioms $a \to (b \to a)$ and $(a \to (b \to c)) \to ((a \to b) \to (a
+  \to c))$; a code $\ulcorner a \urcorner$ in $C$ for each statement $a$; and a map $\mathrm{Dem}$ from
+  $C$ to $S$. Write $\Box a$ for $\mathrm{Dem}(\ulcorner a \urcorner)$, $\neg a$ for $a \to \bot$, and
+  $\mathrm{Con}$ for $\neg \Box \bot$.
+  \leanfile{Sagitta/Map/DiagonalGodel.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: the derivability conditions]
+  \label{def:arithmetic-derivability}
+  \lean{Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.D1, Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.D2, Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.D3}
+  \leanok
+  \uses{def:arithmetic-hbl}
+  For a system $T$ as in Definition~\ref{def:arithmetic-hbl}, the three statements: D1, for every $a$,
+  if $\mathrm{Pr}(a)$ then $\mathrm{Pr}(\Box a)$; D2, for all $a$ and $b$, $\mathrm{Pr}(\Box(a \to b)
+  \to (\Box a \to \Box b))$; D3, for every $a$, $\mathrm{Pr}(\Box a \to \Box\Box a)$. Each is a
+  definition of type \texttt{Prop}.
+  \source{\cite{Godel31}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DiagonalGodel.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: a fixed point of the diagonal lemma]
+  \label{def:arithmetic-fixed-point}
+  \lean{Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.PuntoFijoLob, Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.PuntoFijo}
+  \leanok
+  \uses{def:arithmetic-hbl}
+  For statements $\varphi$ and $\psi$, $\psi$ is a fixed point for L\"ob of $\varphi$ when $\mathrm{Pr}(\psi
+  \to (\Box\psi \to \varphi))$ and $\mathrm{Pr}((\Box\psi \to \varphi) \to \psi)$. A statement $G$ is a
+  fixed point of G\"odel when it is a fixed point for L\"ob of $\bot$. Each is a definition of type
+  \texttt{Prop}.
+  \source{\cite{Godel31}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DiagonalGodel.lean}
+\end{definition}
+
+\begin{theorem}[L\"ob's theorem for an abstract system]
+  \label{thm:arithmetic-lob}
+  \lean{Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.lob}
+  \leanok
+  \uses{def:arithmetic-derivability, def:arithmetic-fixed-point}
+  Let $T$ be a system as in Definition~\ref{def:arithmetic-hbl}. Assume D1, D2 and D3
+  (Definition~\ref{def:arithmetic-derivability}). Let $\varphi$ and $\psi$ be statements such that $\psi$
+  is a fixed point for L\"ob of $\varphi$ (Definition~\ref{def:arithmetic-fixed-point}). If
+  $\mathrm{Pr}(\Box\varphi \to \varphi)$, then $\mathrm{Pr}(\varphi)$.
+  \source{\cite{Lob55}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DiagonalGodel.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From D1, D2 and D3 and the first half of the fixed point, $\mathrm{Pr}(\Box\psi \to \Box(\Box\psi
+  \to \varphi))$ follows, and with the assumption $\mathrm{Pr}(\Box\psi \to \varphi)$. The second
+  half of the fixed point gives $\mathrm{Pr}(\psi)$, D1 gives $\mathrm{Pr}(\Box\psi)$, and modus ponens
+  gives $\mathrm{Pr}(\varphi)$.
+\end{proof}
+
+\begin{theorem}[The second theorem of G\"odel for an abstract system]
+  \label{thm:arithmetic-godel2}
+  \lean{Sagitta.Map.Tiempo.DiagonalGodel.SistemaHBL.segundo_teorema}
+  \leanok
+  \uses{thm:arithmetic-lob, def:arithmetic-derivability, def:arithmetic-fixed-point}
+  Let $T$ be a system as in Definition~\ref{def:arithmetic-hbl}. Assume D1, D2 and D3
+  (Definition~\ref{def:arithmetic-derivability}). Let $G$ be a fixed point of G\"odel
+  (Definition~\ref{def:arithmetic-fixed-point}). If $\mathrm{Pr}(\mathrm{Con})$, then
+  $\mathrm{Pr}(\bot)$.
+  \source{\cite{Godel31}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/DiagonalGodel.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  It is Theorem~\ref{thm:arithmetic-lob} with $\varphi = \bot$, since $\mathrm{Con}$ is the statement
+  $\Box\bot \to \bot$.
+\end{proof}
+
+\section{A propositional mirror of $S^1_2$ and the tautology of circuits}
+\label{sec:arithmetic-mirror}
+
+Three results about the translation of bounded formulas into propositional formulas, each in a model
+of its own: the formulas of the witnessing calculus, the system of Frege of the machine library, and
+Boolean circuits.
+
+\begin{definition}[Translation of sharply bounded formulas into propositional formulas]
+  \label{def:arithmetic-translation}
+  \lean{Sagitta.Map.Extraccion.EspejoEF.FP, Sagitta.Map.Extraccion.EspejoEF.Bits, Sagitta.Map.Extraccion.EspejoEF.evalB, Sagitta.Map.Extraccion.EspejoEF.EsSb0, Sagitta.Map.Extraccion.EspejoEF.trad}
+  \leanok
+  \uses{def:arithmetic-witness-calculus}
+  \own{}
+  \infrastructure{}
+  A propositional formula has variables indexed by $\mathbb{N}$ and the connectives $\bot$, $\wedge$,
+  $\vee$ and $\to$; $\mathrm{evalB}(\sigma, p)$ is its value under the assignment $\sigma$. A vector
+  of bits is a map from $\mathbb{N}$ to propositional formulas, the formula of bit $j$. A formula of
+  the witnessing calculus is in the class $\Sigma^b_0$ restricted when its atoms are between simple
+  terms (variables, $0$, successor, sum and $\lfloor t/2 \rfloor$), its quantifiers are $\forall x
+  \le |t|$ and $\exists x \le |t|$ with $t$ simple, and its connectives are conjunction and
+  disjunction. The translation $\mathrm{trad}(\varphi, w, E)$ of a formula, for a width $w$ and a
+  vector of bits $E(i)$ for each variable $i$, translates the atoms with adders and comparators on
+  the bits, a quantifier $\forall x \le |t|$ as the conjunction over $k = 0, \dots, W$ of ``$k \le
+  |t|$ implies the translation of the body'', with $W$ the width of $t$, and $\exists x \le |t|$ as
+  the corresponding disjunction.
+  \leanfile{Sagitta/Map/EspejoEF.lean}
+\end{definition}
+
+\begin{theorem}[Correctness of the translation, on the formulas of the witnessing calculus]
+  \label{thm:arithmetic-trad-eval}
+  \lean{Sagitta.Map.Extraccion.EspejoEF.trad_eval}
+  \leanok
+  \uses{def:arithmetic-translation, def:arithmetic-witness-calculus}
+  Let $\sigma$ be an assignment of the propositional variables, $\varphi$ a formula of the class of
+  Definition~\ref{def:arithmetic-translation}, $w$ a width, $E$ a vector of bits for each variable and
+  $\rho$ an environment such that, for all $i$ and $j$, the value of $E(i)(j)$ under $\sigma$ is the
+  bit $j$ of $\rho(i)$, and $\rho(i) < 2^w$ for all $i$. Then the translation $\mathrm{trad}(\varphi,
+  w, E)$ is true under $\sigma$ if and only if $\varphi$ is true in the environment $\rho$.
+  \source{\cite{Cook75, ParisWilkie85}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/EspejoEF.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on $\varphi$. Atoms are handled by the correctness of the adder and the comparator, and the
+  quantifiers by the correctness of the finite conjunction or disjunction over the values of the
+  bound variable.
+\end{proof}
+
+\begin{theorem}[The induction instance for $N$ has a Frege derivation of $15N + 17$ lines]
+  \label{thm:arithmetic-induction-frege}
+  \lean{Sagitta.Map.Extraccion.EspejoInduccion.induccion_derivable}
+  \leanok
+  % uses-lean: Cslib.Logic.PL.Frege.DerivableInSize
+  Let $V$ be a type of variables, $P : \mathbb{N} \to \mathrm{Proposition}(V)$ a family of
+  propositional formulas and $N$ a number. Let the chain $\mathrm{cadena}(P, i, 0)$ be $\bot \to
+  \bot$ and $\mathrm{cadena}(P, i, m + 1)$ be $(P_i \to P_{i+1}) \wedge \mathrm{cadena}(P, i + 1,
+  m)$. The induction instance for $N$ is $(P_0 \wedge \mathrm{cadena}(P, 0, N)) \to P_N$. Then it has
+  a derivation, without hypotheses, in the system of Frege of the machine library with at most $15N +
+  17$ lines.
+  \source{\cite{ParisWilkie85, Cook75}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/EspejoInduccion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The derivation is built by hand under the antecedent, as a chain of $N$ steps of modus ponens; each
+  step is $15$ lines: $6$ to take the step $P_k \to P_{k+1}$ out of the conjunction, $6$ to take out
+  the rest, and $3$ for the modus ponens, with $17$ lines for the rest.
+\end{proof}
+
+\begin{definition}[The propositional formula that says that a circuit computes a function]
+  \label{def:arithmetic-calcula}
+  \lean{Sagitta.Map.Extraccion.TautologiaCircuitos.Calcula, Sagitta.Map.Extraccion.TautologiaCircuitos.Valida, Sagitta.Map.Extraccion.TautologiaCircuitos.Propaga, Sagitta.Map.Extraccion.TautologiaCircuitos.Coincide}
+  \leanok
+  \uses{def:arithmetic-translation}
+  \own{}
+  \infrastructure{}
+  For $f : (\mathrm{Fin}\ n \to \{0,1\}) \to \{0,1\}$ and a number $s$, the propositional formula
+  $\mathrm{Calcula}(f, s)$ is the conjunction of three parts. Its variables describe a circuit with
+  $s$ gates over $n$ inputs: the type of each gate in two bits, its two wires, and the output wire,
+  in registers of $n + s$ bits, and for each of the $2^n$ inputs the value of each gate. For an
+  assignment $\sigma$ of the variables, $\mathrm{Valida}$ says that the output wire is less than $n +
+  s$ and that each gate $k < s$ reads wires less than $n + k$; $\mathrm{Propaga}$ says that for every
+  input $x < 2^n$ and gate $k < s$ the value of the wire $n + k$ on $x$ is the operation of the gate
+  applied to the values of its two wires; $\mathrm{Coincide}$ says that for every $x < 2^n$ the value
+  of the output wire on $x$ is $f(x)$.
+  \leanfile{Sagitta/Map/TautologiaCircuitos.lean}
+\end{definition}
+
+\begin{theorem}[The formula of circuits, read assignment by assignment]
+  \label{thm:arithmetic-evalb-calcula}
+  \lean{Sagitta.Map.Extraccion.TautologiaCircuitos.evalB_calcula}
+  \leanok
+  \uses{def:arithmetic-calcula}
+  Let $n$ and $s$ be numbers, $\sigma$ an assignment of the propositional variables and $f :
+  (\mathrm{Fin}\ n \to \{0,1\}) \to \{0,1\}$. Then $\mathrm{Calcula}(f, s)$ is true under $\sigma$ if
+  and only if $\mathrm{Valida}$, $\mathrm{Propaga}$ and $\mathrm{Coincide}$ hold for $\sigma$.
+  \source{\cite{Razborov95}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/TautologiaCircuitos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Unfold the conjunction, and read each of its three parts as the corresponding condition; the
+  reading of the parts for propagation and for the output uses the validity.
+\end{proof}
+
+\section{The infinite length of $S^1_2$}
+\label{sec:arithmetic-long}
+
+This section is an exploration: it keeps what was proved about models of $S^1_2$ that are not
+$\mathbb{N}$, and what was found not to follow. The statements about circuits are parameters, and the
+second entry says that, with the way they are given, they have no content about circuits.
+
+\begin{theorem}[A formula is not derivable from $S^1_2$ if and only if it fails at some element of a countable model]
+  \label{thm:arithmetic-long-countermodel}
+  \lean{Sagitta.Map.Acotada.LargoS12.no_deriva_iff_contraejemplo}
+  \leanok
+  \uses{def:arithmetic-proves, def:arithmetic-forall-exists, def:arithmetic-s12-model}
+  Let $\varphi(x)$ be a formula of $L$ with one free variable. The closure of $\varphi$ is not
+  derivable from $S^1_2$ if and only if there are an $L$-structure $M$ that is countable and a model
+  of $S^1_2$, and an element $a \in M$ at which $\varphi(a)$ fails.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/LargoInfinitoS12.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By the completeness theorem, a sentence is not derivable from $S^1_2$ if and only if it fails in a
+  countable model of $S^1_2$, the term model; and the closure of $\varphi$ is true in $M$ if and only
+  if $\varphi$ is true at every element.
+\end{proof}
+
+\begin{definition}[The instances of a formula, and what it means to express a bound]
+  \label{def:arithmetic-expresa}
+  \lean{Sagitta.Map.Acotada.LargoS12.instancia, Sagitta.Map.Acotada.LargoS12.Expresa, Sagitta.Map.Acotada.LargoS12.cotaInferiorSAT, Sagitta.Map.Acotada.LargoS12.cotaInferiorSATDesde}
+  \leanok
+  \own{}
+  \exploration{}
+  % uses-lean: Sagitta.Map.Tiempo.Finitud.sucNat, Sagitta.Map.CookS12.satBits
+  For a formula $\varphi(x)$ of $L$ with one free variable and a number $n$, the instance
+  $\varphi(\bar n)$ is the sentence obtained by putting for $x$ the numeral $\bar n = S(S(\cdots S(0)))$,
+  with $n$ successors. For a formula $\varphi(x)$ and a predicate $Q$ on $\mathbb{N}$, $\varphi$
+  \emph{expresses} $Q$ when for every $n$, $\varphi(n)$ is true in $\mathbb{N}$ if and only if $Q(n)$.
+  Let $s(n)$ be the least number of gates of a Boolean circuit that decides SAT on the strings of
+  length $n$. The lower bound $\mathrm{cotaInferiorSAT}(k, n)$ says $n^k < s(n)$, and
+  $\mathrm{cotaInferiorSATDesde}(k, n_0, n)$ says that if $n_0 \le n$ then $\mathrm{cotaInferiorSAT}(k,
+  n)$.
+  \leanfile{Sagitta/Map/LargoInfinitoS12.lean}
+\end{definition}
+
+\begin{theorem}[Expressing a bound only asks that the bound be true]
+  \label{thm:arithmetic-expresa-verdad}
+  \lean{Sagitta.Map.Acotada.LargoS12.expresa_solo_pide_verdad}
+  \leanok
+  \uses{def:arithmetic-expresa, def:arithmetic-proves}
+  Let $k$ and $n_0$ be numbers and $\varphi(x)$ a formula of $L$ with one free variable. Assume that
+  for every $n$ the instance $\varphi(\bar n)$ is derivable from $S^1_2$. Then $\varphi$ expresses
+  $\mathrm{cotaInferiorSATDesde}(k, n_0)$ if and only if $\mathrm{cotaInferiorSATDesde}(k, n_0, n)$
+  holds for every $n$.
+  \own{}
+  \exploration{}
+  \leanfile{Sagitta/Map/LargoInfinitoS12.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Derivable instances are true in $\mathbb{N}$, by soundness; so $\varphi(n)$ is true for every $n$, and
+  both sides of the equivalence say that the bound holds for every $n$.
+\end{proof}
+
+\section{Proof systems}
+\label{sec:arithmetic-proof-systems}
+
+A proof system for a set of strings is defined as in the source; the entries below are two of its
+elementary properties, and they do not involve any system in particular.
+
+\begin{definition}[Proof systems, polynomially bounded, and polynomial simulation]
+  \label{def:arithmetic-proof-system}
+  \lean{Sagitta.Map.SistemaDePruebas.Sistema, Sagitta.Map.SistemaDePruebas.AcotadoPor, Sagitta.Map.SistemaDePruebas.PSimula}
+  \leanok
+  \source{\cite{CookReckhow79}.}
+  \fidelity{Not checked against the printed source.}
+  % uses-lean: Sagitta.Map.EsPolinomial
+  A proof system for a set $L$ of lists of bits is a function $f$ from lists of bits to lists of bits
+  that is computable in polynomial time by a Turing machine of Mathlib, such that $f(\pi) \in L$ for
+  every $\pi$ and every $y \in L$ is $f(\pi)$ for some $\pi$. It is bounded by the polynomial $p$ when
+  for every $y \in L$ there is $\pi$ with $f(\pi) = y$ and $|\pi| \le p(|y|)$. The system $S_2$
+  polynomially simulates $S_1$ when there are a function $g$ computable in polynomial time and a
+  polynomial $q$ such that $S_2.f(g(\pi)) = S_1.f(\pi)$ and $|g(\pi)| \le q(|\pi|)$ for every $\pi$.
+  \leanfile{Sagitta/Map/SistemaDePruebas.lean}
+\end{definition}
+
+\begin{theorem}[A bounded proof system gives the form of $\cNP$]
+  \label{thm:arithmetic-proof-np-form}
+  \lean{Sagitta.Map.SistemaDePruebas.forma_np}
+  \leanok
+  \uses{def:arithmetic-proof-system}
+  Let $S$ be a proof system for $L$ that is bounded by the polynomial $p$. Then for every list of bits
+  $y$, $y \in L$ if and only if there is a list of bits $\pi$ with $|\pi| \le p(|y|)$ and $S.f(\pi) = y$.
+  \source{\cite{CookReckhow79}.}
+  \fidelity{Not checked against the printed source.}
+  Only one direction of the equivalence between $\cNP$ and bounded proof systems is stated: the
+  membership in $\cNP$ itself is not proved with the definitions of the repository.
+  \leanfile{Sagitta/Map/SistemaDePruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Forward, the bound gives the proof. Backward, $S.f(\pi) \in L$ by the correctness of the system.
+\end{proof}
+
+\begin{theorem}[Polynomial simulation is transitive]
+  \label{thm:arithmetic-psimula-trans}
+  \lean{Sagitta.Map.SistemaDePruebas.pSimula_trans}
+  \leanok
+  \uses{def:arithmetic-proof-system}
+  Let $S_1$, $S_2$, $S_3$ be proof systems for $L$. If $S_3$ polynomially simulates $S_2$ and $S_2$
+  polynomially simulates $S_1$, then $S_3$ polynomially simulates $S_1$.
+  \source{\cite{CookReckhow79}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/SistemaDePruebas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Compose the two translations, which is computable in polynomial time, and compose the polynomials
+  that bound their lengths.
+\end{proof}
