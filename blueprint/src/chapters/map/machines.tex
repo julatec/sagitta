@@ -4,4 +4,1183 @@
 \chapter{Machines and classes}
 \label{chap:machines}
 
-This chapter is not written yet.
+This chapter collects the formalizations about machines and complexity classes. It starts from the
+multi-tape machines of Part~I and counts the configurations of a machine with bounded space. It then
+defines polynomial time on the Turing machines of Mathlib, the classes $\cP$, $\cNP$ and
+$\cconP$ on bit strings, and the statement of $\cP = \cNP$ in the form of the Clay problem. It continues with
+closure properties of polynomial time, with the orders of growth between polynomials and exponentials,
+with Boolean circuits, and with results on trees of configurations, games and hierarchies. Each entry
+says in which model its statement lives; many are not statements about Turing machines. The entries
+for definitions of Part~I (multi-tape machines, runs in time and space, bounded configurations,
+$\cP$, $\cNP$, reductions) are not repeated here, and the entries below refer to them.
+
+
+\section{Bounded space and the number of configurations}
+\label{sec:machines-space}
+
+The multi-tape machines, the time and space of a run and the bounded configurations are in
+Definitions~\ref{def:cslib-tm}, \ref{def:cslib-time-space} and~\ref{def:cslib-configbound}. This
+section has one counting bound of cslib on the configurations of a machine with bounded space, and
+the same count written in bits.
+
+\begin{theorem}[Reachable cores of a space-bounded multi-tape machine]
+  \label{thm:machines-cores}
+  \lean{Turing.MultiTapeTM.encard_cores_le}
+  \leanok
+  \uses{def:cslib-tm, def:cslib-time-space, def:cslib-configbound}
+  Let $\mathrm{tm}$ be a deterministic multi-tape machine with $k$ work tapes, over finite types of
+  symbols and states, let $\mathit{input}$ be a list of symbols of length $n$, and suppose that
+  $\mathrm{tm}$ runs in space $s$ on $\mathit{input}$. Then the set of cores of the last
+  configurations of the computation paths of $\mathrm{tm}$ on $\mathit{input}$ has at most
+  $(n + 2) \cdot \mathrm{storageBound}(\mathit{Symbol}, \mathit{State}, k, s)$ elements.
+  \cslibfile{Cslib/Computability/Machines/Turing/MultiTape/ConfigBound.lean}
+  \notours{cslib}
+\end{theorem}
+
+\begin{definition}[Bits of space of a machine, with a uniform window]
+  \label{def:machines-bits-space}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.bitsEspacio}
+  \leanok
+  \uses{def:cslib-configbound}
+  For finite types $\mathit{Symbol}$ and $\mathit{State}$ and natural numbers $k$, $n$, $S$, put
+  $B = (|\mathit{State}| + 1) \cdot 2^{(|\mathit{Symbol}| + 1) k + k}$ and
+  $e = 2(|\mathit{Symbol}| + 1) + k$. Then
+  \[
+    \mathrm{bitsEspacio}(\mathit{Symbol}, \mathit{State}, k, n, S)
+    = \lceil \log_2 (n + 2) \rceil + \lceil \log_2 B \rceil + e \cdot (k \cdot S).
+  \]
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{definition}
+
+\begin{theorem}[The configurations in a window fit in $\mathrm{bitsEspacio}$ bits]
+  \label{thm:machines-card-bits}
+  \lean{Sagitta.Map.Informacion.EspacioCubo.card_estados_bits}
+  \leanok
+  \uses{def:machines-bits-space, thm:machines-cores}
+  Let $\mathit{Symbol}$ and $\mathit{State}$ be finite types and $k$, $n$, $S$ natural numbers. The
+  finite type of pairs made of a position of the input head in $\{0, \dots, n + 1\}$ and a storage of
+  $k$ work tapes restricted to the window of $S$ cells on each side of the origin has at most
+  $2^{\mathrm{bitsEspacio}(\mathit{Symbol}, \mathit{State}, k, n, S)}$ elements.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Informacion/EspacioCubo.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The number of such pairs is at most $(n + 2)$ times the bound on storages of cslib for the total
+  space $kS$; that bound is at most $B \cdot 2^{e k S}$, and $m \le 2^{\lceil \log_2 m \rceil}$ for the
+  two other factors.
+\end{proof}
+
+\section{Polynomial time on the machines of Mathlib}
+\label{sec:machines-mathlib}
+
+Part~I measures polynomial time on the multi-tape machines of cslib-frontier
+(Definition~\ref{def:polytime}). The map also uses the Turing machines of Mathlib, with several
+stacks, and two bridges between the two. A function is said to be computable in polynomial time on
+Mathlib's machines when some machine computes it with a polynomial bound on the number of steps in
+the length of the encoded input.
+
+\begin{definition}[Encodings in bits, and polynomial time on Mathlib's machines]
+  \label{def:machines-codbits}
+  \lean{Sagitta.Map.CodBits, Sagitta.Map.EsPolinomial}
+  \leanok
+  A \emph{bit encoding} of a type $\alpha$ is an encoding of $\alpha$ in lists of bits, in the sense of
+  Mathlib: a map $\mathrm{encode} : \alpha \to \mathrm{List}\ \mathrm{Bool}$ and a map
+  $\mathrm{decode} : \mathrm{List}\ \mathrm{Bool} \to \mathrm{Option}\ \alpha$ with
+  $\mathrm{decode}(\mathrm{encode}(a)) = \mathrm{some}(a)$. For types $\alpha$ and $\beta$ with a bit
+  encoding, $f : \alpha \to \beta$ satisfies $\mathrm{EsPolinomial}(f)$ when there is a machine of
+  Mathlib (a finite machine with stacks) that computes $f$ in polynomial time for these two encodings:
+  on the encoding of $a$ it halts with the encoding of $f(a)$ within $p(|\mathrm{encode}(a)|)$ steps, for
+  a polynomial $p$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Clases.lean}
+  (the class of encodings is in \texttt{Sagitta/Map/Codificacion.lean}).
+\end{definition}
+
+\begin{theorem}[Polynomial time on Mathlib's machines and on multi-tape machines agree]
+  \label{thm:machines-bridge}
+  \lean{Sagitta.Map.AlfabetoFinito.esPolinomial_iff}
+  \leanok
+  \uses{def:machines-codbits, def:polytime}
+  Let $f : \alpha \to \beta$ with bit encodings on $\alpha$ and on $\beta$. Then $f$ is computable in
+  polynomial time on Mathlib's machines if and only if $f$ is computable in polynomial time on the
+  multi-tape machines of cslib-frontier, with the same encodings viewed as embeddings into lists of
+  bits.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/AlfabetoFinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Cslib-frontier proves that polynomial time on multi-tape machines is the same as on Mathlib's machines
+  with finite alphabets. A machine of Mathlib only has a finite input alphabet, but it can push only
+  finitely many different symbols; the proof restricts every alphabet to those symbols and shows that the
+  restricted machine steps like the original.
+\end{proof}
+
+\begin{theorem}[Polynomial time on the natural numbers: from multi-tape machines to Mathlib's machines]
+  \label{thm:machines-bridge-nat}
+  \lean{Sagitta.Map.Cobham.esPolinomial_of_computable}
+  \leanok
+  \uses{def:machines-codbits, def:polytime}
+  Let $f : \mathbb{N} \to \mathbb{N}$ be computable in polynomial time on the multi-tape machines of
+  cslib-frontier with the binary encoding of the natural numbers on input and output. Then
+  $\mathrm{EsPolinomial}(f)$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/TiempoCobham.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The encoding of the natural numbers of Mathlib is the list of bits of cslib-frontier, so the two
+  notions use the same encodings; then the transfer of cslib-frontier from multi-tape machines to Mathlib's
+  machines applies.
+\end{proof}
+
+\section{The classes P, NP and coNP on bit strings}
+\label{sec:machines-classes}
+
+In this section a \emph{problem} is a function from lists of bits to \texttt{Bool}, and a class is a set
+of problems.
+
+\begin{definition}[The classes $\cP$, $\cNP$ and $\cconP$ of bit-string problems]
+  \label{def:machines-classes}
+  \lean{Sagitta.Map.P, Sagitta.Map.NP, Sagitta.Map.coNP}
+  \leanok
+  \uses{def:machines-codbits}
+  $\cP$ is the set of problems $L$ with $\mathrm{EsPolinomial}(L)$. $\cNP$ is the set of problems $L$
+  for which there are a polynomial $p$ with natural coefficients and a function
+  $V : \mathrm{List}\ \mathrm{Bool} \times \mathrm{List}\ \mathrm{Bool} \to \mathrm{Bool}$ with
+  $\mathrm{EsPolinomial}(V)$ such that, for every $x$,
+  $L(x) = \mathrm{true}$ if and only if there is a list of bits $y$ with $|y| \le p(|x|)$ and
+  $V(x, y) = \mathrm{true}$. $\cconP$ is the set of problems $L$ such that
+  $x \mapsto \lnot L(x)$ is in $\cNP$.
+  \source{\cite{AroraBarak}, Chapter~2.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Clases.lean}
+\end{definition}
+
+\begin{theorem}[$\cP$ is closed under complement, on bit-string problems]
+  \label{thm:machines-p-compl}
+  \lean{Sagitta.Map.AlfabetoFinito.compl_mem_P}
+  \leanok
+  \uses{def:machines-classes, thm:machines-bridge}
+  If $L \in \cP$ then $x \mapsto \lnot L(x)$ is in $\cP$.
+  \source{\cite{AroraBarak}, Chapter~2.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/AlfabetoFinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Through the bridge, $L$ is computable on multi-tape machines; composing with the Boolean negation,
+  which cslib-frontier proves computable in polynomial time, gives the complement.
+\end{proof}
+
+\begin{theorem}[$\cP$ is contained in $\cNP$ and in $\cNP \cap \cconP$, on bit-string problems]
+  \label{thm:machines-p-sub-np}
+  \lean{Sagitta.Map.AlfabetoFinito.pSubNP, Sagitta.Map.AlfabetoFinito.pSubNPInterCoNP}
+  \leanok
+  \uses{def:machines-classes, thm:machines-p-compl, def:reduction}
+  $\cP \subseteq \cNP$, and $\cP \subseteq \cNP \cap \cconP$.
+  \source{\cite{AroraBarak}, Chapter~2.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/AlfabetoFinito.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  For $L \in \cP$, the verifier $(x, y) \mapsto L(x)$ with the polynomial $0$ is computable in polynomial
+  time, as the composition of $L$ with the first projection. For $\cconP$, apply this to the complement
+  of $L$, which is in $\cP$ by Theorem~\ref{thm:machines-p-compl}.
+\end{proof}
+
+\begin{theorem}[$\cNP$ of bit strings is inside $\cNP$ of cslib-frontier]
+  \label{thm:machines-np-cslib}
+  \lean{Sagitta.Map.CookS12.np_a_cslib}
+  \leanok
+  \uses{def:machines-classes, def:NP, thm:machines-bridge}
+  Let $\mathit{Pr}$ be a problem in $\cNP$ in the sense of Definition~\ref{def:machines-classes}. Then the
+  set $\{w \mid \mathit{Pr}(w) = \mathrm{true}\}$ is in the class $\cNP$ of Definition~\ref{def:NP}, for the
+  encoding of lists of bits by themselves.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/CookS12.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The new verifier reads its certificate as a framed list of bits (each bit $b$ as $\mathrm{true}, b$,
+  ended by $\mathrm{false}$) padded with $\mathrm{false}$, so that all certificates have the exact length
+  $2p + 1$ that cslib-frontier asks, and runs the old verifier on the unframed certificate; unframing is
+  computable in polynomial time in cslib-frontier.
+\end{proof}
+
+\section{The statement of P versus NP in the form of the Clay problem}
+\label{sec:machines-cook}
+
+The problem is written once more as in the official statement: a one-tape machine, languages over a finite
+alphabet, and the classes $\cP$ and $\cNP$ for every finite alphabet with at least two symbols. The
+statements of this section are in the model of that statement, not in the model of
+Section~\ref{sec:machines-classes}.
+
+\begin{definition}[Machines, $\cP$ and $\cNP$ in the form of the official statement]
+  \label{def:machines-cook}
+  \lean{Sagitta.Map.Cook.Maquina, Sagitta.Map.Cook.ClaseP, Sagitta.Map.Cook.ClaseNP}
+  \leanok
+  Fix a type $\Sigma$ of input symbols. A machine has a finite tape alphabet $\Gamma$ with decidable equality,
+  a finite type $Q$ of states, an injection of $\Sigma$ into $\Gamma$, a blank symbol of $\Gamma$ that is not
+  the image of a symbol of $\Sigma$, three states $q_0$, $q_{\mathrm{accept}}$ and $q_{\mathrm{reject}}$, and a
+  transition function defined on the states other than the last two, with values in $Q \times \Gamma$
+  and a move to the left or to the right. A configuration is a list to the left of the head, a state, the symbol
+  under the head and a list to the right. The step is defined on the configurations whose state is not
+  $q_{\mathrm{accept}}$ or $q_{\mathrm{reject}}$, and it has no successor on the others. The
+  computation on $w$ starts at the configuration of $q_0$ on $w$ (on the blank if $w$ is empty) and
+  iterates the step. The machine accepts $w$ when the computation reaches a configuration with state
+  $q_{\mathrm{accept}}$. It runs in polynomial time when there is $k$ such that for every $w$ the computation
+  reaches a final configuration in at most $|w|^k + k$ steps. $\mathrm{ClaseP}(\Sigma)$ is the set of languages
+  of the machines that run in polynomial time. For a relation $R$ between lists over $\Sigma$ and lists over a
+  finite alphabet $\Sigma_1$, the language $L_R$ is the set of words $w \# y$ with $R(w, y)$, over the
+  disjoint union of the two alphabets and a separator, and $R$ is polynomial when $L_R \in
+  \mathrm{ClaseP}$. $\mathrm{ClaseNP}(\Sigma)$ is the set of languages $L$ for which there are a finite
+  decidable nonempty alphabet $\Sigma_1$, a number $k$ and a polynomial relation $R$ such that for every
+  $w$, $w \in L$ if and only if there is $y$ with $|y| \le |w|^k$ and $R(w, y)$.
+  \source{\cite{Cook06}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Cook.lean}
+\end{definition}
+
+\begin{definition}[P versus NP, for every finite alphabet with at least two symbols]
+  \label{def:machines-cook-pnp}
+  \lean{Sagitta.Map.Cook.PIgualNP}
+  \leanok
+  \uses{def:machines-cook}
+  For every finite type $\Sigma$ with decidable equality and with at least two elements,
+  $\mathrm{ClaseP}(\Sigma) = \mathrm{ClaseNP}(\Sigma)$. This is a proposition; Lean does not assert it.
+  \source{\cite{Cook06}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Cook.lean}
+\end{definition}
+
+\begin{theorem}[The total language is in P, in the form of the official statement]
+  \label{thm:machines-cook-total}
+  \lean{Sagitta.Map.Cook.todo_en_P}
+  \leanok
+  \uses{def:machines-cook}
+  For every finite type $\Sigma$, the set of all lists over $\Sigma$ is in $\mathrm{ClaseP}(\Sigma)$.
+  \source{\cite{Cook06}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Cook.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The machine with three states that goes from $q_0$ to $q_{\mathrm{accept}}$ in one step, whatever it reads,
+  accepts every word and runs in one step.
+\end{proof}
+
+\begin{definition}[Hypothesis: the two models of P and NP coincide]
+  \label{def:machines-hyp-models}
+  \lean{Sagitta.Map.Cook.CoincideConClases, Sagitta.Map.Cook.comoLenguaje}
+  \leanok
+  \uses{def:machines-classes, def:machines-cook}
+  The proposition that, for every bit-string problem $L$, with $\{w \mid L(w) = \mathrm{true}\}$ the language
+  of $L$ over $\mathrm{Bool}$: $L \in \cP$ if and only if its language is in $\mathrm{ClaseP}(\mathrm{Bool})$, and
+  $L \in \cNP$ if and only if its language is in $\mathrm{ClaseNP}(\mathrm{Bool})$.
+  Lean defines the proposition; it does not prove it.
+  \own{}
+  \leanfile{Sagitta/Map/Cook.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: the answer does not depend on the alphabet]
+  \label{def:machines-hyp-alphabet}
+  \lean{Sagitta.Map.Cook.IndependienteDelAlfabeto}
+  \leanok
+  \uses{def:machines-cook}
+  The proposition that, for every finite type $\Sigma$ with decidable equality and at least two elements,
+  $\mathrm{ClaseP}(\Sigma) = \mathrm{ClaseNP}(\Sigma)$ if and only if
+  $\mathrm{ClaseP}(\mathrm{Bool}) = \mathrm{ClaseNP}(\mathrm{Bool})$.
+  Lean defines the proposition; it does not prove it.
+  \own{}
+  \leanfile{Sagitta/Map/Cook.lean}
+\end{definition}
+
+\begin{definition}[Hypothesis: P = NP, for bit-string problems]
+  \label{def:machines-peqnp}
+  \lean{Sagitta.Map.PIgualNP}
+  \leanok
+  \uses{def:machines-classes}
+  The proposition $\cP = \cNP$ for the classes of Definition~\ref{def:machines-classes}.
+  Lean defines the proposition; it does not prove it, and the question is open.
+  \own{}
+  \leanfile{Sagitta/Map/Clases.lean}
+\end{definition}
+
+\begin{theorem}[The two statements of P = NP agree, given two bridge hypotheses]
+  \label{thm:machines-cook-iff}
+  \lean{Sagitta.Map.Cook.pIgualNP_iff}
+  \leanok
+  \uses{def:machines-cook-pnp, def:machines-peqnp, def:machines-hyp-models, def:machines-hyp-alphabet}
+  Assume that the two models coincide (Definition~\ref{def:machines-hyp-models}) and that the answer does
+  not depend on the alphabet (Definition~\ref{def:machines-hyp-alphabet}). Then the statement of
+  Definition~\ref{def:machines-cook-pnp} holds if and only if $\cP = \cNP$ for the classes of
+  Definition~\ref{def:machines-classes}.
+  \own{}
+  \leanfile{Sagitta/Map/Cook.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By the second hypothesis the statement reduces to the alphabet $\mathrm{Bool}$; by the first, the two
+  classes agree on every problem, and every language over $\mathrm{Bool}$ is the language of some problem.
+\end{proof}
+
+\section{Closure properties of polynomial time}
+\label{sec:machines-closure}
+
+Mathlib only has the identity as a function computable in polynomial time. The properties below are
+proved in this project on its machines, for the notion $\mathrm{EsPolinomial}$ of
+Definition~\ref{def:machines-codbits}. All types have a bit encoding.
+
+\begin{theorem}[Polynomial time is closed under composition]
+  \label{thm:machines-comp}
+  \lean{Sagitta.Map.Componer.esPolinomial_comp}
+  \leanok
+  \uses{def:machines-codbits}
+  If $f : \alpha \to \beta$ and $g : \beta \to \gamma$ satisfy $\mathrm{EsPolinomial}(f)$ and
+  $\mathrm{EsPolinomial}(g)$, then $\mathrm{EsPolinomial}(g \circ f)$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Componer.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A machine that runs the machine of $f$ and then the machine of $g$ on its output; the step count is the
+  sum of the two bounds, the second composed with the first.
+\end{proof}
+
+\begin{theorem}[Polynomial time is closed under pairing]
+  \label{thm:machines-pairs}
+  \lean{Sagitta.Map.Primero.esPolinomial_pares}
+  \leanok
+  \uses{def:machines-codbits, thm:machines-comp}
+  If $f : \alpha \to \beta$ and $g : \alpha \to \gamma$ satisfy $\mathrm{EsPolinomial}(f)$ and
+  $\mathrm{EsPolinomial}(g)$, then $a \mapsto (f(a), g(a))$ satisfies $\mathrm{EsPolinomial}$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Primero.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Write the map as the composition of duplicating the input, applying $g$ to the first component, swapping
+  the components, and applying $f$ to the first component, each in polynomial time, and use
+  Theorem~\ref{thm:machines-comp}.
+\end{proof}
+
+\begin{theorem}[Comparison of natural numbers is polynomial]
+  \label{thm:machines-le}
+  \lean{Sagitta.Map.Comparar.esPolinomial_le}
+  \leanok
+  \uses{def:machines-codbits}
+  The function $q \mapsto \mathrm{decide}(q_1 \le q_2)$ from $\mathbb{N} \times \mathbb{N}$ to
+  $\mathrm{Bool}$ satisfies $\mathrm{EsPolinomial}$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Comparar.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  An explicit machine compares the two binary numbers; the proof bounds its number of steps by a polynomial
+  in the length of the encoded pair.
+\end{proof}
+
+\begin{theorem}[The five closure properties of polynomial time]
+  \label{thm:machines-closure}
+  \lean{Sagitta.Map.cierrePolinomial}
+  \leanok
+  \uses{thm:machines-comp, thm:machines-pairs, thm:machines-le}
+  The following hold for types with a bit encoding. (1) If $f : \alpha \to \beta$ and $g : \beta \to \gamma$
+  satisfy $\mathrm{EsPolinomial}$ then so does $g \circ f$. (2) If $f : \alpha \to \beta$ and
+  $g : \alpha \to \gamma$ satisfy $\mathrm{EsPolinomial}$ then so does $a \mapsto (f(a), g(a))$. (3) The first
+  projection $\alpha \times \beta \to \alpha$ satisfies $\mathrm{EsPolinomial}$. (4) The function
+  $q \mapsto q_1 \wedge q_2$ on $\mathrm{Bool} \times \mathrm{Bool}$ satisfies $\mathrm{EsPolinomial}$.
+  (5) The function $q \mapsto \mathrm{decide}(q_1 \le q_2)$ on $\mathbb{N} \times \mathbb{N}$ satisfies
+  $\mathrm{EsPolinomial}$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/PLS.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The five parts are the lemmas on composition, pairing, first projection and conjunction, and comparison,
+  each proved on the machines of Mathlib.
+\end{proof}
+
+\begin{definition}[The bounded while loop]
+  \label{def:machines-while}
+  \lean{Sagitta.Map.Bucle.sigue, Sagitta.Map.Bucle.mientras, Sagitta.Map.Bucle.Para}
+  \leanok
+  For a step $g : \alpha \to \mathrm{Bool} \times \alpha$, the state left by one step is
+  $\mathrm{sigue}(g)(a) = (g(a))_2$. The loop $\mathrm{mientras}(g, n, a)$ is $a$ if $n = 0$; and, for
+  $n + 1$, it is $\mathrm{mientras}(g, n, (g(a))_2)$ if $(g(a))_1 = \mathrm{true}$ and $(g(a))_2$ otherwise.
+  The loop $g$ \emph{stops within $n$ steps from $a$}, written $\mathrm{Para}(g, n, a)$, when there is
+  $k < n$ with $(g(\mathrm{sigue}(g)^k(a)))_1 = \mathrm{false}$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Bucle.lean}
+\end{definition}
+
+\begin{theorem}[A while loop with polynomial step, polynomial stop and polynomial states is polynomial]
+  \label{thm:machines-while}
+  \lean{Sagitta.Map.MientrasMaquina.esPolinomial_mientras}
+  \leanok
+  \uses{def:machines-while, def:machines-codbits}
+  Let $\alpha$ have a bit encoding, let $g : \alpha \to \mathrm{Bool} \times \alpha$ satisfy
+  $\mathrm{EsPolinomial}(g)$, and let $q$ and $r$ be polynomials with natural coefficients. Assume that
+  (i) for every $a$, $\mathrm{Para}(g, q(|\mathrm{cod}(a)|), a)$ holds, and (ii) for every $a$ and every
+  $k \le q(|\mathrm{cod}(a)|)$, $|\mathrm{cod}(\mathrm{sigue}(g)^k(a))| \le r(|\mathrm{cod}(a)|)$. Then
+  $a \mapsto \mathrm{mientras}(g, q(|\mathrm{cod}(a)|), a)$ satisfies $\mathrm{EsPolinomial}$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/MientrasMaquina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The machine runs the machine of $g$ at most $q(|\mathrm{cod}(a)|)$ times, feeding each output to the next
+  run; by (ii) every intermediate state is at most $r(|\mathrm{cod}(a)|)$ long, so each run costs a
+  polynomial number of steps, and the total is polynomial.
+\end{proof}
+
+\begin{theorem}[Every polynomial has a polynomial-time string of that length]
+  \label{thm:machines-vara}
+  \lean{Sagitta.Map.Vara.tieneVara}
+  \leanok
+  \uses{def:machines-codbits, thm:machines-pairs}
+  For every polynomial $p$ with natural coefficients there is a function $\mathrm{tope}$ from lists of bits to
+  lists of bits with $\mathrm{EsPolinomial}(\mathrm{tope})$ and $|\mathrm{tope}(x)| = p(|x|)$ for every
+  list of bits $x$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Vara.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on the polynomial. A constant $a$ is a list of $a$ bits, built by pushing a bit $a$ times; a sum is
+  the concatenation of the two strings; the product of a polynomial by $X$ is the string that has one copy of
+  the input for each symbol of the string of the polynomial.
+\end{proof}
+
+\section{Orders of growth between polynomials and exponentials}
+\label{sec:machines-growth}
+
+The statements of this section are about functions $\mathbb{N} \to \mathbb{N}$; there are no machines in
+them.
+
+\begin{definition}[Landau classes, polynomial and exponential growth]
+  \label{def:machines-landau}
+  \lean{Sagitta.Map.Tiempo.EsO, Sagitta.Map.Tiempo.O, Sagitta.Map.Tiempo.Pol, Sagitta.Map.Tiempo.Exp}
+  \leanok
+  For $f, g : \mathbb{N} \to \mathbb{N}$, $\mathrm{EsO}(f, g)$ holds when there are $C$ and $N$ with
+  $f(n) \le C \cdot g(n)$ for all $n \ge N$, and $O(g)$ is the set of $f$ with $\mathrm{EsO}(f, g)$.
+  $\mathrm{Pol}$ is the set of $f$ for which there are $c$ and $k$ with $f(n) \le c \cdot (n + 1)^k$ for all
+  $n$. $\mathrm{Exp}$ is the set of $f$ for which there is $K \in \mathrm{Pol}$ with $f(n) \le 2^{K(n)}$ for all
+  $n$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Landau.lean}
+\end{definition}
+
+\begin{definition}[Negligible growth]
+  \label{def:machines-little-o}
+  \lean{Sagitta.Map.Tiempo.o}
+  \leanok
+  For $g : \mathbb{N} \to \mathbb{N}$, $o(g)$ is the set of $f : \mathbb{N} \to \mathbb{N}$ such that for
+  every $c$ there is $N$ with $c \cdot f(n) \le g(n)$ for all $n \ge N$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/LandauDenso.lean}
+\end{definition}
+
+\begin{theorem}[$\mathrm{Pol}$ is closed under composition]
+  \label{thm:machines-pol-comp}
+  \lean{Sagitta.Map.Tiempo.pol_comp}
+  \leanok
+  \uses{def:machines-landau}
+  If $f \in \mathrm{Pol}$ and $g \in \mathrm{Pol}$ then $n \mapsto f(g(n))$ is in $\mathrm{Pol}$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Landau.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  From $f(m) \le c (m + 1)^k$ and $g(n) \le d (n + 1)^j$ one gets
+  $f(g(n)) \le c (d + 1)^k (n + 1)^{jk}$.
+\end{proof}
+
+\begin{theorem}[Composing a linear function $n$ times leaves every polynomial bound]
+  \label{thm:machines-iterated}
+  \lean{Sagitta.Map.Tiempo.iterada_doblar_escapa}
+  \leanok
+  \uses{def:machines-landau, thm:machines-pol-comp}
+  Let $\mathrm{doblar}(n) = 2n$ and let $\mathrm{iterada}(f)(n) = f^{[n]}(n)$, the function $f$
+  composed $n$ times and applied to $n$. For every $K \in \mathrm{Pol}$, $\mathrm{iterada}(\mathrm{doblar})$
+  is not in $O(K)$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Landau.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Here $\mathrm{iterada}(\mathrm{doblar})(n) = n \cdot 2^n$, which is at least $2^n$, and for a polynomial bound
+  $c (n + 1)^k$ the inequality $C c (n + 1)^k < 2^n$ holds from some $n$ on, so no constant $C$ works.
+\end{proof}
+
+\begin{theorem}[The order of negligible growth is dense]
+  \label{thm:machines-dense}
+  \lean{Sagitta.Map.Tiempo.denso}
+  \leanok
+  \uses{def:machines-little-o}
+  If $f \in o(g)$ then there is $m : \mathbb{N} \to \mathbb{N}$ with $f \in o(m)$ and $m \in o(g)$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/LandauDenso.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take $m(n) = \lfloor \sqrt{f(n)\, g(n)} \rfloor$, the integer geometric mean; the inequalities follow
+  from $f \in o(g)$ by squaring.
+\end{proof}
+
+\begin{definition}[The scale $n^a (\log n)^b$]
+  \label{def:machines-scale}
+  \lean{Sagitta.Map.Tiempo.pl}
+  \leanok
+  $\mathrm{pl}(a, b)(n) = n^a \cdot (\lfloor \log_2 n \rfloor)^b$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/EscalaPolinomial.lean}
+\end{definition}
+
+\begin{definition}[The functions $n^{\log^{(k)} n}$]
+  \label{def:machines-quasi}
+  \lean{Sagitta.Map.Tiempo.itlog, Sagitta.Map.Tiempo.cuasi}
+  \leanok
+  $\mathrm{itlog}(k, n)$ is the integer binary logarithm $\lfloor \log_2 \cdot \rfloor$ applied $k$ times to
+  $n$, and $\mathrm{cuasi}(k)(n) = n^{\mathrm{itlog}(k, n)}$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Cuasipolinomial.lean}
+\end{definition}
+
+\begin{theorem}[The scale $n^a (\log n)^b$ is strictly increasing in the lexicographic order]
+  \label{thm:machines-scale-order}
+  \lean{Sagitta.Map.Tiempo.pl_o_de_lt}
+  \leanok
+  \uses{def:machines-scale, def:machines-little-o}
+  If $(a, b)$ is smaller than $(a', b')$ in the lexicographic order of pairs of natural numbers, then
+  $\mathrm{pl}(a, b) \in o(\mathrm{pl}(a', b'))$.
+  \source{asymptotic notation as in \cite{AroraBarak}, Chapter~0.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/EscalaPolinomial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Two cases: if $a < a'$, the power of $n$ wins against any power of the logarithm; if $a = a'$ and
+  $b < b'$, the larger power of the logarithm wins.
+\end{proof}
+
+\begin{theorem}[$n^{\log^{(k)} n}$ is not polynomial]
+  \label{thm:machines-quasi-not-pol}
+  \lean{Sagitta.Map.Tiempo.cuasi_no_pol}
+  \leanok
+  \uses{def:machines-quasi, def:machines-landau}
+  For every $k$, $\mathrm{cuasi}(k)$ is not in $\mathrm{Pol}$.
+  \source{asymptotic notation as in \cite{AroraBarak}, Chapter~0.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Cuasipolinomial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The iterated logarithm is unbounded, so for every $d$ the exponent exceeds $d + 1$ from some $n$ on, and
+  then $n^{d+1}$ is larger than $c (n + 1)^d$.
+\end{proof}
+
+\begin{theorem}[$n^{\log^{(k)} n}$ is exponential]
+  \label{thm:machines-quasi-exp}
+  \lean{Sagitta.Map.Tiempo.cuasi_en_exp}
+  \leanok
+  \uses{def:machines-quasi, def:machines-landau}
+  For every $k$, $\mathrm{cuasi}(k)$ is in $\mathrm{Exp}$.
+  \source{asymptotic notation as in \cite{AroraBarak}, Chapter~0.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Cuasipolinomial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Since $n \le 2^n$ and $\mathrm{itlog}(k, n) \le n$, one has $\mathrm{cuasi}(k)(n) \le 2^{n \cdot n}$, and
+  $n \mapsto n \cdot n$ is in $\mathrm{Pol}$.
+\end{proof}
+
+\begin{theorem}[There is no first superpolynomial function]
+  \label{thm:machines-no-first}
+  \lean{Sagitta.Map.Tiempo.SinPrimerSuperpolinomial.sin_primer_superpolinomial}
+  \leanok
+  \uses{def:machines-landau, def:machines-little-o}
+  Let $f : \mathbb{N} \to \mathbb{N}$ be not in $\mathrm{Pol}$ and tend to infinity (for every $M$ there is $N$
+  with $M \le f(n)$ for all $n \ge N$). Then there is $g$ not in $\mathrm{Pol}$, tending to infinity, with
+  $g \in o(f)$.
+  \source{asymptotic notation as in \cite{AroraBarak}, Chapter~0.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/SinPrimerSuperpolinomial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Take $g(n) = \lfloor \sqrt{f(n)} \rfloor$: it is not in $\mathrm{Pol}$ because $f < (g + 1)^2$, it tends to
+  infinity, and $c \cdot g(n) \le g(n)^2 \le f(n)$ once $g(n) \ge c$.
+\end{proof}
+
+\section{Boolean circuits}
+\label{sec:machines-circuits}
+
+The circuits of this section are lists of gates over wires that may read any wire, as defined below; they are
+not families of circuits built from a machine. All statements are in this model.
+
+\begin{definition}[Circuits as lists of gates]
+  \label{def:machines-circuit}
+  \lean{Sagitta.Map.Shannon.Circuito, Sagitta.Map.Shannon.Op, Sagitta.Map.Shannon.calcula}
+  \leanok
+  A circuit with $n$ inputs and $s$ gates has $n + s$ wires: the first $n$ are the inputs and wire $n + j$ is
+  the output of gate $j$. A circuit is a function that gives, for each gate, one of the three operations
+  \emph{and}, \emph{or}, \emph{not} and two wires (the operation \emph{not} ignores the second), together with
+  the output wire. On an input $x$, the gates are evaluated in order, starting with the inputs and $\mathrm{false}$
+  on the other wires, so a wire that has not been computed yet has value $\mathrm{false}$. $\mathrm{calcula}(C)$ is
+  the function $x \mapsto$ (value of the output wire).
+  \source{circuits as in \cite{Shannon49}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Shannon.lean}
+\end{definition}
+
+\begin{theorem}[Every Boolean function has a circuit, in the model of lists of gates]
+  \label{thm:machines-every-function}
+  \lean{Sagitta.Map.Shannon.toda_funcion_calculable}
+  \leanok
+  \uses{def:machines-circuit}
+  For every $n$ and every function $f : \{0,1\}^n \to \mathrm{Bool}$ there are $t$ and a circuit $C$ with $n$ inputs
+  and $t$ gates with $\mathrm{calcula}(C) = f$.
+  \source{circuits as in \cite{Shannon49}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/TodaFuncion.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Write $f(x)$ as the disjunction, over the inputs $a$ with $f(a) = \mathrm{true}$, of ``$x$ equals $a$'', and
+  ``$x$ equals $a$'' as a conjunction of literals; the circuits for two functions combine into one for their
+  conjunction or disjunction by appending the gates of the second with shifted wires.
+\end{proof}
+
+\begin{definition}[Minimal circuit size, and $\cPpoly$]
+  \label{def:machines-ppoly}
+  \lean{Sagitta.Map.tamMin, Sagitta.Map.PsobrePoly}
+  \leanok
+  \uses{def:machines-circuit, def:machines-classes}
+  For $f : \{0,1\}^n \to \mathrm{Bool}$, $\mathrm{tamMin}(f)$ is the infimum, in the extended natural numbers, of
+  the numbers $t$ such that some circuit with $n$ inputs and $t$ gates computes $f$. The restriction of a
+  problem $L$ to the inputs of $n$ bits is $x \mapsto L(\mathrm{ofFn}(x))$, the problem applied to the list of
+  the $n$ bits. $\cPpoly$ is the class of problems $L$ for which there is a polynomial $p$ with natural
+  coefficients such that, for every $n$, the minimal circuit size of the restriction of $L$ to $n$ bits is
+  at most $p(n)$.
+  \source{circuits as in \cite{Shannon49}; the class $\cPpoly$ as in \cite{KarpLipton80}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Circuitos.lean}
+\end{definition}
+
+\begin{theorem}[Counting bound: some function of $n$ bits has no circuit with $2^n/(8n)$ gates or fewer]
+  \label{thm:machines-shannon}
+  \lean{Sagitta.Map.Shannon.shannon_asintotico}
+  \leanok
+  \uses{def:machines-circuit}
+  For every $n \ge 5$ there is a function $f : \{0,1\}^n \to \mathrm{Bool}$ such that, for every
+  $t \le \lfloor 2^n / (8n) \rfloor$ and every circuit $C$ with $n$ inputs and $t$ gates,
+  $\mathrm{calcula}(C) \ne f$. Division is the division of natural numbers.
+  \source{\cite{Shannon49}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Shannon.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  There are fewer circuits with at most $s$ gates than functions of $n$ bits when $8ns \le 2^n$ and
+  $n \ge 5$: the number of circuits is at most $(s + 1)(3(n+s)^2)^s (n + s)$, which is less than $2^{2^n}$.
+  A surjection from the circuits onto all functions would contradict the count.
+\end{proof}
+
+\begin{theorem}[Some problem is not in $\cPpoly$]
+  \label{thm:machines-outside-ppoly}
+  \lean{Sagitta.Map.existe_problema_fuera_de_PsobrePoly}
+  \leanok
+  \uses{def:machines-ppoly, thm:machines-shannon}
+  There is a problem $L$ that is not in $\cPpoly$.
+  \source{\cite{Shannon49}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Circuitos.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Let $L$ compute, on inputs of $n \ge 5$ bits, the function of Theorem~\ref{thm:machines-shannon}. If a
+  polynomial $p$ bounded its circuit sizes, then $p(n) \le 2^n / (8n)$ for a large $n$, which contradicts that
+  no circuit of that size computes that function.
+\end{proof}
+
+\section{Reachability, Savitch's recursion and games, on a tree of configurations}
+\label{sec:machines-savitch}
+
+The statements of this section are not about Turing machines. They are about a step relation on a type $C$ of
+configurations (the type is finite where a statement says so), about a number that counts the frames of a
+recursion, and about finite game trees.
+
+\begin{definition}[Step relations, paths and midpoint search]
+  \label{def:machines-config-tree}
+  \lean{Sagitta.Map.Tiempo.Paso, Sagitta.Map.Tiempo.Alcanza, Sagitta.Map.Tiempo.alc}
+  \leanok
+  A step on a type $C$ is a map $R$ that gives to each $c \in C$ a set $R(c) \subseteq C$ of next
+  configurations. $\mathrm{Alcanza}(R, t, c, d)$ means that there is a path of $t$ steps from $c$ to $d$: it
+  holds for $t = 0$ and $d = c$, and, if it holds for $t, c, d$ and $e \in R(d)$, it holds for $t + 1, c, e$.
+  For a finite type $C$ with decidable equality and decidable membership, the midpoint search
+  $\mathrm{alc}(R, i, u, v)$ is a Boolean: for $i = 0$ it is $u = v \lor v \in R(u)$, and for $i + 1$ it is
+  true when some $w \in C$ has $\mathrm{alc}(R, i, u, w)$ and $\mathrm{alc}(R, i, w, v)$ true.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Savitch.lean}
+  (the step and the paths are defined in \texttt{Sagitta/Map/FormaDelTiempo.lean}).
+\end{definition}
+
+\begin{theorem}[Midpoint search decides reachability, on a finite graph of configurations]
+  \label{thm:machines-savitch}
+  \lean{Sagitta.Map.Tiempo.savitch}
+  \leanok
+  \uses{def:machines-config-tree}
+  Let $R$ be a step on a finite type $C$ with decidable equality and decidable membership, and let
+  $u, v \in C$. Then there is $t$ with $\mathrm{Alcanza}(R, t, u, v)$ if and only if
+  $\mathrm{alc}(R, \lceil \log_2 |C| \rceil, u, v) = \mathrm{true}$.
+  \source{\cite{Savitch70}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Savitch.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The search of depth $i$ accepts exactly the pairs joined by a path of at most $2^i$ steps, and a path
+  between two of the $|C|$ configurations can be shortened to fewer than $|C|$ steps, which is at most
+  $2^{\lceil \log_2 |C| \rceil}$.
+\end{proof}
+
+\begin{definition}[Frames and bits of the stack of the midpoint search]
+  \label{def:machines-savitch-cost}
+  \lean{Sagitta.Map.Tiempo.costoSav, Sagitta.Map.Tiempo.bitsSavitch}
+  \leanok
+  For an operation $\mathrm{op}$ on natural numbers and $n$, $\mathrm{costoSav}(\mathrm{op}, n)$ is defined on
+  the depth $i$ by $\mathrm{costoSav}(\mathrm{op}, n)(0) = 1$ and
+  $\mathrm{costoSav}(\mathrm{op}, n)(i + 1) = 1 + \mathrm{op}$ folded over $2n$ copies of
+  $\mathrm{costoSav}(\mathrm{op}, n)(i)$, starting from $0$. Then
+  $\mathrm{bitsSavitch}(n) = \mathrm{costoSav}(\max, n)(\lceil \log_2 n \rceil) \cdot 3 \lceil \log_2 n \rceil$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Savitch.lean}
+\end{definition}
+
+\begin{theorem}[Bits of the stack of the midpoint search for $2^s$ configurations]
+  \label{thm:machines-savitch-bits}
+  \lean{Sagitta.Map.Tiempo.savitch_bits}
+  \leanok
+  \uses{def:machines-savitch-cost}
+  For every $s$, $\mathrm{bitsSavitch}(2^s) = 3 s (s + 1)$.
+  \source{\cite{Savitch70}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Savitch.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  With $\max$ the fold of equal values is that value, so $\mathrm{costoSav}(\max, n)(i) = i + 1$ for
+  $n \ge 1$; and $\lceil \log_2 2^s \rceil = s$.
+\end{proof}
+
+\begin{definition}[Game trees: value, alternating depth and number of leaves; the game of the midpoint search]
+  \label{def:machines-game}
+  \lean{Sagitta.Map.Tiempo.Juego, Sagitta.Map.Tiempo.Juego.prof, Sagitta.Map.Tiempo.Juego.hojas, Sagitta.Map.Tiempo.juegoSav}
+  \leanok
+  \uses{def:machines-config-tree}
+  A game is a leaf with a Boolean, or a node with $n$ options of the player ``exists'' or of the player
+  ``for all'', each option being a game. The depth $\mathrm{prof}$ of a leaf is $0$; that of a node with $n$
+  options is $\lceil \log_2 n \rceil$ plus the supremum of the depths of its options. The number of leaves
+  $\mathrm{hojas}$ of a leaf is $1$; that of a node is the sum over its options. For a step $R$ on $C$ and a
+  function $e : \mathrm{Fin}(n) \to C$, the game $\mathrm{juegoSav}(R, e, i, u, v)$ is, for $i = 0$, the leaf with
+  the Boolean $u = v \lor v \in R(u)$, and, for $i + 1$, the node of ``exists'' with $n$ options $j$, each of
+  them a node of ``for all'' with two options: $\mathrm{juegoSav}(R, e, i, u, e(j))$ and
+  $\mathrm{juegoSav}(R, e, i, e(j), v)$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/Alternancia.lean}
+\end{definition}
+
+\begin{theorem}[The number of leaves of a game tree is at most $2$ to its depth]
+  \label{thm:machines-leaves}
+  \lean{Sagitta.Map.Tiempo.Juego.hojas_le_dos_pow_prof}
+  \leanok
+  \uses{def:machines-game}
+  For every game $g$, $\mathrm{hojas}(g) \le 2^{\mathrm{prof}(g)}$.
+  \source{\cite{ChandraKozenStockmeyer81}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Alternancia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Induction on the game. A node with $n$ options has at most $n \cdot 2^{m}$ leaves, where $m$ is the largest
+  depth of an option, and $n \le 2^{\lceil \log_2 n \rceil}$.
+\end{proof}
+
+\begin{theorem}[The midpoint search as a game of alternating depth $s(s+1)$]
+  \label{thm:machines-savitch-game}
+  \lean{Sagitta.Map.Tiempo.savitch_alternante}
+  \leanok
+  \uses{def:machines-game}
+  Let $R$ be a step on $C$ with decidable equality and decidable membership, let $s \in \mathbb{N}$, let
+  $e : \mathrm{Fin}(2^s) \to C$ and let $u, v \in C$. Then
+  $\mathrm{prof}(\mathrm{juegoSav}(R, e, s, u, v)) = s (s + 1)$.
+  \source{\cite{ChandraKozenStockmeyer81}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Alternancia.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By induction, for $n \ge 1$ options the depth at level $i$ is $i (\lceil \log_2 n \rceil + 1)$; take
+  $n = 2^s$ and $i = s$.
+\end{proof}
+
+\begin{theorem}[The game of the midpoint search has many leaves, with iterated logarithms]
+  \label{thm:machines-savitch-quasi}
+  \lean{Sagitta.Map.Tiempo.savitch_cuasi}
+  \leanok
+  \uses{def:machines-game, def:machines-quasi}
+  Let $R$ be a step on $C$ with decidable equality and decidable membership, let $n$ and $k$ be natural
+  numbers, $e : \mathrm{Fin}(n) \to C$ and $u, v \in C$. Then
+  $\mathrm{cuasi}(k + 1)(n) \le \mathrm{hojas}(\mathrm{juegoSav}(R, e, \mathrm{itlog}(k + 1, n), u, v))$.
+  \source{\cite{Savitch70}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Cuasipolinomial.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The game of depth $i$ has exactly $(2n)^i$ leaves, and $n^i \le (2n)^i$.
+\end{proof}
+
+\section{The collapse of the second level}
+\label{sec:machines-collapse}
+
+\begin{definition}[The second level $\Sigma_2$ of the polynomial hierarchy, in a variant]
+  \label{def:machines-sigma2}
+  \lean{Sagitta.Map.Colapso.Sigma2}
+  \leanok
+  \uses{def:machines-codbits}
+  $\Sigma_2$ is the set of bit-string problems $L$ for which there are polynomials $p$ and $q$ with natural
+  coefficients and $V : \mathrm{List}\ \mathrm{Bool} \times \mathrm{List}\ \mathrm{Bool} \to \mathrm{Bool}$ with
+  $\mathrm{EsPolinomial}(V)$ such that, for every $x$, $L(x) = \mathrm{true}$ if and only if there is $y$ with
+  $|y| \le p(|x|)$ such that, for every $z$ with $|z| \le q(|\mathrm{cod}(x, y)|)$,
+  $V(\mathrm{cod}(x, y), z) = \mathrm{true}$. Here $\mathrm{cod}(x, y)$ is the encoding of the pair. This is a
+  variant of the usual definition, in which the verifier reads the pair $(x, y)$ already encoded as one
+  string.
+  \own{}
+  \leanfile{Sagitta/Map/Colapso.lean}
+\end{definition}
+
+\begin{theorem}[If P = NP then the second level is in P]
+  \label{thm:machines-collapse}
+  \lean{Sagitta.Map.Colapso.sigma2_sub_p}
+  \leanok
+  \uses{def:machines-sigma2, def:machines-peqnp}
+  Assume $\cP = \cNP$ (Definition~\ref{def:machines-peqnp}). Then $\Sigma_2 \subseteq \cP$.
+  \source{\cite{MeyerStockmeyer72}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/Colapso.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The inner level, ``for all $z$, $V(w, z)$'', is a problem of $\cconP$; from $\cP = \cNP$ and the closure of
+  $\cP$ under complement it is in $\cP$. Then the outer level has a polynomial verifier, which is that
+  solver applied to the pair $(x, y)$, so it is in $\cNP = \cP$.
+\end{proof}
+
+\section{Nondeterministic hierarchies and the simulation of Book and Greibach}
+\label{sec:machines-hierarchy}
+
+The first statement is about predicates on the natural numbers. The next two are about the nondeterministic
+multi-tape machines of cslib-frontier. The last two are about traces of such machines and about a machine of
+one work tape that checks one tape of a trace.
+
+\begin{theorem}[The lazy diagonal, as a statement about predicates on the natural numbers]
+  \label{thm:machines-lazy-diagonal}
+  \lean{Sagitta.Map.Tiempo.JerarquiaFina.diagonal_perezosa}
+  \leanok
+  Let $D, M : \mathbb{N} \to \mathrm{Prop}$ and $a \le b$. Assume (copy) that $D(m) \leftrightarrow M(m + 1)$
+  for every $m$ with $a \le m < b$; (negate) that $D(b) \leftrightarrow \lnot M(a)$; and (decide) that
+  $D(m) \leftrightarrow M(m)$ for every $m$ with $a \le m \le b$. Then the three assumptions are
+  contradictory: the statement concludes $\mathrm{False}$.
+  \source{the diagonal of \cite{Zak83}, used in \cite{SeiferasFischerMeyer78}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/JerarquiaFina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  By induction on $m$ from $a$, copy and decide give $D(a) \leftrightarrow D(m)$ for $a \le m \le b$; at
+  $m = b$, negate and decide at $a$ give $D(a) \leftrightarrow \lnot D(a)$, which is false.
+\end{proof}
+
+\begin{definition}[Nondeterministic time classes of cslib-frontier]
+  \label{def:machines-cslib-ntime}
+  \lean{Cslib.Complexity.NTIME}
+  \leanok
+  \uses{def:cslib-time-space}
+  For an embedding $\mathrm{enc}$ of a type $\alpha$ into lists of bits and a function $t : \mathbb{N} \to \mathbb{N}$,
+  $\mathrm{NTIME}(\mathrm{enc}, t)$ is the set of problems $A \subseteq \alpha$ for which there are constants
+  $c_1$ and $c_2$ and a nondeterministic multi-tape machine with a binary alphabet and finitely many states
+  that decides $A$ within $c_1 \cdot t(|\mathrm{enc}(a)|) + c_2$ steps on every instance $a$: every
+  computation path of that length has halted, and $a \in A$ exactly when some computation path halts with
+  output $[\mathrm{true}]$.
+  \cslibfile{CslibFrontier/Computability/Complexity/Classes/Time.lean}
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{theorem}[Nondeterministic exponential time: every integer exponent separates, on bit strings]
+  \label{thm:machines-ntime-hierarchy}
+  \lean{Sagitta.Map.Tiempo.JerarquiaFina.NTIME_two_pow_ssubset_NTIME_two_pow}
+  \leanok
+  \uses{def:machines-cslib-ntime}
+  For natural numbers $a < b$, $\mathrm{NTIME}(\mathrm{encBits}, n \mapsto 2^{a n})$ is strictly contained in
+  $\mathrm{NTIME}(\mathrm{encBits}, n \mapsto 2^{b n})$, where $\mathrm{encBits}$ is the encoding of lists of
+  bits by themselves.
+  \source{the hierarchy of \cite{SeiferasFischerMeyer78}, in the form with integer exponents.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/JerarquiaFina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Containment is monotonicity. If the inclusion were an equality, a collapse at $(a, b)$ would propagate by
+  linear padding to all the classes from the exponent $a(3a + 2)$ downwards, and that contradicts the
+  coarser hierarchy of cslib-frontier between $a(3a + 2)$ and $a(24a + 32)$. The case $a = 0$ is treated apart.
+\end{proof}
+
+\begin{definition}[Traces of a nondeterministic machine and their checks, tape by tape]
+  \label{def:machines-traces}
+  \lean{Sagitta.Map.Tiempo.SimulacionLineal.OpCinta, Sagitta.Map.Tiempo.SimulacionLineal.Cinta, Sagitta.Map.Tiempo.SimulacionLineal.PasoCinta, Sagitta.Map.Tiempo.SimulacionLineal.ConsistenteCinta, Sagitta.Map.Tiempo.SimulacionLineal.EntradaC, Sagitta.Map.Tiempo.SimulacionLineal.ControlC, Sagitta.Map.Tiempo.SimulacionLineal.estadoFinal, Sagitta.Map.Tiempo.SimulacionLineal.EntradaOk, Sagitta.Map.Tiempo.SimulacionLineal.proyeccionC}
+  \leanok
+  \uses{def:cslib-tm}
+  An operation on a tape writes a symbol or not and moves the head by at most one cell. A tape is a map from
+  $\mathbb{Z}$ to symbols with a head position. A step of a tape is the symbol declared as read together with an
+  operation. A list of steps is \emph{consistent} from a tape $T$ when the declared reading of the first step
+  is the symbol under the head of $T$ and the rest is consistent from the tape after the operation. An entry
+  of a trace of a nondeterministic machine with $k$ work tapes is a state, the symbols declared under the
+  input head and the work heads, and an action. $\mathrm{ControlC}$ holds for a trace and a state when the
+  states chain and every entry is a transition of the machine; $\mathrm{estadoFinal}$ is the state that the
+  control reaches; $\mathrm{EntradaOk}$ holds for a trace and a head position when each declared input symbol is
+  the symbol of the input at the position of the input head, which moves as the actions say;
+  $\mathrm{proyeccionC}(i, \tau)$ is the list of steps of work tape $i$ declared by the trace $\tau$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/SimulacionLineal.lean}
+\end{definition}
+
+\begin{theorem}[Acceptance by a trace that is checked one tape at a time, for nondeterministic multi-tape machines]
+  \label{thm:machines-trace-certificate}
+  \lean{Sagitta.Map.Tiempo.SimulacionLineal.accepts_iff_por_cinta}
+  \leanok
+  \uses{def:machines-traces, def:cslib-time-space}
+  Let $\mathrm{ntm}$ be a nondeterministic multi-tape machine with $k$ work tapes, a binary alphabet and
+  initial state $q_0$, let $\mathit{input}$ be a list of bits and $t \in \mathbb{N}$, and suppose that
+  $\mathrm{ntm}$ runs in time $t$ on $\mathit{input}$. Then $\mathrm{ntm}$ accepts $\mathit{input}$ (some
+  computation path ends halted with output $[\mathrm{true}]$) if and only if there is a trace $\tau$ with
+  $|\tau| \le t$, with $\mathrm{ControlC}(\mathrm{ntm}, \mathrm{some}(q_0), \tau)$, with
+  $\mathrm{estadoFinal}(\mathrm{some}(q_0), \tau) = \mathrm{none}$, with $\mathrm{EntradaOk}(\mathit{input}, 1, \tau)$,
+  such that for every work tape $i$ the list $\mathrm{proyeccionC}(i, \tau)$ is consistent from the blank tape
+  with the head at $0$, and such that the concatenation of the outputs of the entries is $[\mathrm{true}]$.
+  \source{the verification of a trace one tape at a time, from \cite{BookGreibach70}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/SimulacionLineal.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A trace is valid if and only if its control, its input and each work tape are valid separately; this is
+  proved by induction on the trace. Acceptance within time $t$ is the existence of a valid trace of length at
+  most $t$ that halts with output $[\mathrm{true}]$.
+\end{proof}
+
+\begin{definition}[The pass over one tape, as a multi-tape machine]
+  \label{def:machines-pass}
+  \lean{Sagitta.Map.Tiempo.BookGreibachMaquina.Paso, Sagitta.Map.Tiempo.BookGreibachMaquina.codPasos, Sagitta.Map.Tiempo.BookGreibachMaquina.pasada, Sagitta.Map.Tiempo.BookGreibachMaquina.cintaVacia}
+  \leanok
+  \uses{def:machines-traces, def:cslib-tm}
+  A step of a binary work tape is a step of a tape over $\mathrm{Option}\ \mathrm{Bool}$. A list of steps is
+  encoded with seven bits per step (the declared reading, the written symbol, the move). The machine
+  $\mathrm{pasada}$ has one work tape and finitely many states. It reads the encoded list of steps; at each
+  seventh bit it compares the declared reading with the symbol under its work head, and if they are equal it
+  writes and moves as the step says, and otherwise it halts with output $[\mathrm{false}]$; at the end of the
+  input it halts with output $[\mathrm{true}]$ if no bits of an unfinished step are pending. $\mathrm{cintaVacia}$ is the blank
+  tape with the head at $0$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/BookGreibachMaquina.lean}
+\end{definition}
+
+\begin{theorem}[The pass over one tape runs in exactly $7n + 1$ steps, on consistent lists]
+  \label{thm:machines-pass-time}
+  \lean{Sagitta.Map.Tiempo.BookGreibachMaquina.pasada_tiempo_exacto}
+  \leanok
+  \uses{def:machines-pass}
+  Let $es$ be a list of steps of length $n$ that is consistent from the blank tape. Then $\mathrm{pasada}$ runs
+  in time $7n + 1$ on the encoding of $es$, and does not run in time $7n$.
+  \source{the one-tape pass of the simulation of \cite{BookGreibach70}.}
+  \fidelity{Not checked against the printed source.}
+  \leanfile{Sagitta/Map/BookGreibachMaquina.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  The machine halts in the step $7n + 1$ by an invariant on the passes proved by induction on the list. For a
+  consistent list it is still in its running state at step $7n$, so it does not halt within $7n$ steps.
+\end{proof}
+
+\section{Hardness and completeness for $\cNP$}
+\label{sec:machines-hardness}
+
+The reductions and the class $\cNP$ of cslib-frontier are in Definitions~\ref{def:NP} and~\ref{def:reduction},
+and the completeness of $\SAT$ and of $\TSAT$ in Theorem~\ref{thm:cook-levin}. The notion of
+completeness in an abstract model is in Definition~\ref{def:model}. This section adds the hardness half of
+Cook and Levin.
+
+\begin{definition}[Hardness for $\cNP$ under polynomial-time reductions]
+  \label{def:machines-nphard}
+  \lean{Cslib.Complexity.NPHard}
+  \leanok
+  \uses{def:reduction, def:NP, def:model}
+  A problem $B$, with an encoding of its instances into lists of bits, is $\cNP$-hard when every problem in
+  $\cNP$, with any encoding of its instances, reduces to $B$ in polynomial time. Completeness
+  (Definition~\ref{def:reduction}) is membership in $\cNP$ together with hardness.
+  \cslibfile{CslibFrontier/Computability/Complexity/Reduction.lean}
+  \notours{cslib-frontier}
+\end{definition}
+
+\begin{theorem}[Every problem of NP reduces to SAT]
+  \label{thm:machines-sat-hard}
+  \lean{Cslib.Complexity.CookLevin.SAT_npHard}
+  \leanok
+  \uses{def:machines-nphard, def:threesat}
+  $\SAT$, with its encoding $\mathrm{encCNF}$, is $\cNP$-hard.
+  \cslibfile{CslibFrontier/Computability/Complexity/CookLevin/Completeness.lean}
+  \notours{cslib-frontier}
+\end{theorem}
+
+\section{Bounded rounds}
+\label{sec:machines-rounds}
+
+A \emph{round} is a step of a procedure that does a bounded amount of work and makes the size of its state grow
+by a bounded amount. The statements are in this abstract model of procedures, and in the evaluator of codes of
+Mathlib.
+
+\begin{definition}[Runs with bounded rounds, and stages]
+  \label{def:machines-rounds}
+  \lean{Sagitta.Map.Tiempo.RondasAcotadas.Recorrido, Sagitta.Map.Tiempo.RondasAcotadas.EsAcotado, Sagitta.Map.Tiempo.RondasAcotadas.Etapa, Sagitta.Map.Tiempo.RondasAcotadas.Etapa.CorreEn, Sagitta.Map.Tiempo.RondasAcotadas.Etapa.componer}
+  \leanok
+  A run on a type $\sigma$ is a sequence of states $s_0, s_1, \dots$ with a work $w_i \in \mathbb{N}$ for each
+  round $i$. For a size function $\mathrm{tam} : \sigma \to \mathbb{N}$ and a constant $C$, the run is
+  \emph{bounded by $C$ in the first $t$ rounds} when, for every $i < t$, $w_i \le C$ and
+  $\mathrm{tam}(s_{i+1}) \le \mathrm{tam}(s_i) + C$. A \emph{stage} is a constant $C$, a number of rounds for
+  each initial state $s$ and, for each $s$, a run that starts at $s$ and is bounded by $C$ during those
+  rounds. Its \emph{output} is the state after those rounds. The stage runs in $t$ rounds when for every $s$
+  the number of rounds is at most $t(\mathrm{tam}(s))$. The composition of stages $P$ and $Q$ has constant
+  $\max(C_P, C_Q)$ and, on $s$, runs $P$ and then $Q$ on the output of $P$.
+  \own{}
+  \infrastructure{}
+  \leanfile{Sagitta/Map/RondasAcotadas.lean}
+\end{definition}
+
+\begin{theorem}[The composition of two stages with polynomially many rounds has polynomially many rounds]
+  \label{thm:machines-rounds-comp}
+  \lean{Sagitta.Map.Tiempo.RondasAcotadas.componer_pol}
+  \leanok
+  \uses{def:machines-rounds, def:machines-landau, thm:machines-pol-comp}
+  Let $P$ and $Q$ be stages on a type $\sigma$ with size function $\mathrm{tam}$, and let
+  $t_1, t_2 : \mathbb{N} \to \mathbb{N}$ be in $\mathrm{Pol}$ with $P$ running in $t_1$ rounds and $Q$ running
+  in $t_2$ rounds. Then there is $t \in \mathrm{Pol}$ such that the composition of $P$ and $Q$ runs in $t$
+  rounds.
+  \own{}
+  \leanfile{Sagitta/Map/RondasAcotadas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Bound $t_2$ by a monotone polynomial. The composition runs at most $t_1(n) + t_2(n + C_P\, t_1(n))$ rounds,
+  because the output of $P$ has size at most $n + C_P \cdot t_1(n)$; this is in $\mathrm{Pol}$ because
+  $\mathrm{Pol}$ is closed under sums, products and composition.
+\end{proof}
+
+\begin{theorem}[A construction of cost $2^n$ absorbs a polynomial execution]
+  \label{thm:machines-absorbs}
+  \lean{Sagitta.Map.Tiempo.RondasAcotadas.construccion_absorbe}
+  \leanok
+  \uses{def:machines-landau}
+  Let $p \in \mathrm{Pol}$. Then $n \mapsto 2^n + p(n)$ is in $O(n \mapsto 2^n)$, $n \mapsto 2^n$ is in
+  $O(n \mapsto 2^n + p(n))$, and $n \mapsto 2^n + p(n)$ is not in $O(p)$.
+  \own{}
+  \leanfile{Sagitta/Map/RondasAcotadas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  A polynomial is below $2^n$ from some $n$ on, so the sum is at most $2 \cdot 2^n$ there; the second
+  statement is immediate, and the third follows because $2^n$ is not in $O(p)$ for a polynomial $p$.
+\end{proof}
+
+\begin{theorem}[The evaluator of codes of Mathlib has no bound on the growth of its output]
+  \label{thm:machines-evaln}
+  \lean{Sagitta.Map.Tiempo.RondasAcotadas.evaln_no_acotado}
+  \leanok
+  There is no $C$ such that, for every code $p$ of a partial recursive function and all $r$, $n$, $x$, if
+  $\mathrm{evaln}(r, p, n) = \mathrm{some}(x)$ then the binary length of $x$ is at most the binary length of
+  $n$ plus $C \cdot r$. Here $\mathrm{evaln}$ is the evaluator of Mathlib for codes with a bound $r$.
+  \own{}
+  \leanfile{Sagitta/Map/RondasAcotadas.lean}
+\end{theorem}
+
+\begin{proof}
+  \leanok
+  Given $C$, take the code of a pairing tree whose value is $2^{C+1}$: it is evaluated with bound $1$ from
+  the input $0$ and its output has $C + 2$ bits, more than $0 + C \cdot 1$.
+\end{proof}
